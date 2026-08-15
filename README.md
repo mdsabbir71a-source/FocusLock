@@ -4,6 +4,8 @@ FocusLock lets a user choose distracting apps, give each app an allowed amount o
 
 Version 0.5 introduces a calm, light interface inspired by the supplied FocusLock concept: warmer surfaces, clearer permission cards, a visual app grid, compact boundary controls, and a dedicated breathing-focused pause screen. The underlying per-app timing and blocking behavior is unchanged.
 
+Version 0.6 adds Easy Setup. FocusLock guides the user through Android's special Usage Access and overlay screens, requests ordinary notification permission with a system popup, and offers one-tap Adult Protection through a DNS-only local VPN. Only DNS requests enter the VPN; ordinary app traffic stays on its normal connection. Cloudflare Family (`1.1.1.3`) supplies adult-domain and malware filtering. Because Android permits only one selected VPN, this mode cannot run alongside another VPN; the original Private DNS configuration remains recognized as an alternative.
+
 It also includes a first-launch Adult Protection setup that guides the device owner to enable Cloudflare Family Private DNS (`family.cloudflare-dns.com`). Android requires the owner to confirm this system setting; apps cannot silently change it. The DNS provider blocks known adult and malware domains across the device, while FocusLock receives no browsing or DNS traffic.
 
 ## MVP behavior
