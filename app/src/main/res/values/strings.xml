@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FocusLock</string>
+    <string name="accessibility_description">Detects when a selected app opens and shows the FocusLock screen during an active lock.</string>
+</resources>
