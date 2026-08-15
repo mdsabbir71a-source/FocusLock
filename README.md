@@ -8,6 +8,8 @@ Version 0.6 adds Easy Setup. FocusLock guides the user through Android's special
 
 Version 0.7 adds a first-launch permission walkthrough, a master on/off control, a simpler botanical dashboard, lightweight native animations, and eleven rotating gentle reminders on the blocked-app screen.
 
+Version 0.8 introduces the minimalist botanical pause logo, automatically scrolls to app and timer selection after onboarding, supports minute-and-second limits, and makes the boundary button reactivate after every unsaved app or time change before fading once saved.
+
 It also includes a first-launch Adult Protection setup that guides the device owner to enable Cloudflare Family Private DNS (`family.cloudflare-dns.com`). Android requires the owner to confirm this system setting; apps cannot silently change it. The DNS provider blocks known adult and malware domains across the device, while FocusLock receives no browsing or DNS traffic.
 
 ## MVP behavior

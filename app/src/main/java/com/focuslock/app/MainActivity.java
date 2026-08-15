@@ -22,6 +22,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
 import android.text.InputType;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -60,12 +62,18 @@ public class MainActivity extends Activity {
     private TextView selectedCount;
     private TextView adultStatus;
     private EditText graceInput;
+    private EditText graceSecondsInput;
     private EditText durationInput;
+    private EditText durationSecondsInput;
     private LinearLayout permissionRow;
     private Button protectionButton;
     private Button masterButton;
     private ImageView headerLogo;
+    private Button saveButton;
+    private ScrollView mainScroll;
+    private View appSectionAnchor;
     private boolean guidedSetup;
+    private boolean scrollAfterVpn;
     private int waitingForSpecialPermission;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -100,6 +108,7 @@ public class MainActivity extends Activity {
 
     private View buildUi() {
         ScrollView scroll = new ScrollView(this);
+        mainScroll = scroll;
         scroll.setFillViewport(true);
         scroll.setBackgroundColor(Color.rgb(248, 251, 246));
 
@@ -189,6 +198,7 @@ public class MainActivity extends Activity {
         selectedCount.setBackground(shape(SOFT_VIOLET, BORDER, 14));
         chooseHeader.addView(selectedCount);
         root.addView(chooseHeader, topMargin(28));
+        appSectionAnchor = chooseHeader;
         TextView hint = text("Each app gets its own allowance. Only selected apps are affected.", 11, MUTED, false);
         root.addView(hint, topMargin(6));
 
@@ -199,12 +209,14 @@ public class MainActivity extends Activity {
 
         root.addView(section("YOUR BOUNDARY"), topMargin(28));
         LinearLayout settings = row();
-        LinearLayout useCard = timeCard("USE FOR", "Minutes of actual use");
-        graceInput = numberInput(String.valueOf(Math.max(1, LockStore.allowance(this) / 60_000)));
-        useCard.addView(graceInput, topMargin(8));
-        LinearLayout pauseCard = timeCard("PAUSE FOR", "Minutes locked");
-        durationInput = numberInput(String.valueOf(Math.max(1, LockStore.lockDuration(this) / 60_000)));
-        pauseCard.addView(durationInput, topMargin(8));
+        LinearLayout useCard = timeCard("USE FOR", "Minutes : seconds");
+        graceInput = numberInput(String.valueOf(LockStore.allowance(this) / 60_000));
+        graceSecondsInput = numberInput(String.valueOf((LockStore.allowance(this) % 60_000) / 1000));
+        useCard.addView(timeInputRow(graceInput, graceSecondsInput), topMargin(8));
+        LinearLayout pauseCard = timeCard("PAUSE FOR", "Minutes : seconds");
+        durationInput = numberInput(String.valueOf(LockStore.lockDuration(this) / 60_000));
+        durationSecondsInput = numberInput(String.valueOf((LockStore.lockDuration(this) % 60_000) / 1000));
+        pauseCard.addView(timeInputRow(durationInput, durationSecondsInput), topMargin(8));
         LinearLayout.LayoutParams half1 = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         half1.rightMargin = dp(5);
         settings.addView(useCard, half1);
@@ -213,10 +225,11 @@ public class MainActivity extends Activity {
         settings.addView(pauseCard, half2);
         root.addView(settings, topMargin(10));
 
-        Button start = button("Start gentle boundary   →", INK, Color.WHITE);
-        start.setTextSize(14);
-        start.setOnClickListener(v -> startCommitment());
-        root.addView(start, topMargin(18));
+        saveButton = button("Save & start boundary   →", INK, Color.WHITE);
+        saveButton.setTextSize(14);
+        saveButton.setOnClickListener(v -> startCommitment());
+        root.addView(saveButton, topMargin(18));
+        if (LockStore.packages(this).isEmpty()) markDirty(); else markSaved();
         TextView foot = text("Kind boundary • no activity leaves your device", 10, FAINT, false);
         foot.setGravity(Gravity.CENTER);
         root.addView(foot, topMargin(10));
@@ -340,6 +353,7 @@ public class MainActivity extends Activity {
             check.setOnCheckedChangeListener((button, checked) -> {
                 styleAppTile(check);
                 refreshSelectedCount();
+                markDirty();
             });
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
             lp.width = 0;
@@ -368,16 +382,17 @@ public class MainActivity extends Activity {
         Set<String> selected = new HashSet<>();
         for (CheckBox check : appChecks) if (check.isChecked()) selected.add((String) check.getTag());
         if (selected.isEmpty()) { toast("Choose at least one app first."); return; }
-        int grace = parsePositive(graceInput, "use time");
-        int duration = parsePositive(durationInput, "pause time");
+        long grace = parseDuration(graceInput, graceSecondsInput, "use time");
+        long duration = parseDuration(durationInput, durationSecondsInput, "pause time");
         if (grace < 1 || duration < 1) return;
         if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)) { toast("Let's finish the required permissions first."); startEasySetup(); return; }
-        LockStore.configure(this, selected, grace * 60_000L, duration * 60_000L);
+        LockStore.configure(this, selected, grace, duration);
         LockStore.setEnabled(this, true);
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS);
         Intent monitor = new Intent(this, FocusMonitorService.class);
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(monitor); else startService(monitor);
         toast("Your gentle boundary is active.");
+        markSaved();
         refreshMasterButton();
         refreshStatus();
     }
@@ -464,12 +479,14 @@ public class MainActivity extends Activity {
             return;
         }
         if (!adultProtectionActive()) {
+            scrollAfterVpn = true;
             guidedSetup = false;
             requestAdultProtection();
             return;
         }
         guidedSetup = false;
         toast("Everything is ready. You can start your boundary now.");
+        scrollToBoundarySetup();
     }
 
     private boolean adultProtectionActive() {
@@ -502,6 +519,10 @@ public class MainActivity extends Activity {
         if (requestCode == REQUEST_VPN) {
             if (resultCode == RESULT_OK) startAdultProtectionService();
             else toast("Adult Protection was not enabled.");
+            if (scrollAfterVpn) {
+                scrollAfterVpn = false;
+                new Handler().postDelayed(this::scrollToBoundarySetup, 650);
+            }
         }
     }
 
@@ -520,13 +541,35 @@ public class MainActivity extends Activity {
         return mode == AppOpsManager.MODE_ALLOWED;
     }
 
-    private int parsePositive(EditText input, String label) {
+    private long parseDuration(EditText minutesInput, EditText secondsInput, String label) {
         try {
-            int value = Integer.parseInt(input.getText().toString().trim());
-            if (value > 0) return value;
+            int minutes = Integer.parseInt(minutesInput.getText().toString().trim());
+            int seconds = Integer.parseInt(secondsInput.getText().toString().trim());
+            if (minutes >= 0 && seconds >= 0 && seconds <= 59 && (minutes > 0 || seconds > 0)) return (minutes * 60L + seconds) * 1000L;
         } catch (Exception ignored) {}
-        toast("Enter a positive " + label + " in minutes.");
+        toast("Enter a " + label + " above zero, with seconds between 0 and 59.");
         return -1;
+    }
+
+    private void scrollToBoundarySetup() {
+        if (mainScroll == null || appSectionAnchor == null) return;
+        mainScroll.post(() -> mainScroll.smoothScrollTo(0, Math.max(0, appSectionAnchor.getTop() - dp(18))));
+        appSectionAnchor.setAlpha(.35f);
+        appSectionAnchor.animate().alpha(1f).setStartDelay(250).setDuration(650).start();
+    }
+
+    private void markDirty() {
+        if (saveButton == null) return;
+        saveButton.setEnabled(true);
+        saveButton.animate().alpha(1f).setDuration(180).start();
+        saveButton.setText("Save changes & start   →");
+    }
+
+    private void markSaved() {
+        if (saveButton == null) return;
+        saveButton.setText("Boundary saved  ✓");
+        saveButton.setEnabled(false);
+        saveButton.animate().alpha(.38f).setDuration(420).start();
     }
 
     private LinearLayout timeCard(String label, String detail) {
@@ -549,7 +592,23 @@ public class MainActivity extends Activity {
         input.setPadding(dp(8), dp(7), dp(8), dp(7));
         input.setBackground(shape(Color.rgb(249, 250, 251), BORDER, 14));
         if (Build.VERSION.SDK_INT >= 21) input.setBackgroundTintList(null);
+        input.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { markDirty(); }
+            @Override public void afterTextChanged(Editable s) {}
+        });
         return input;
+    }
+
+    private LinearLayout timeInputRow(EditText minutes, EditText seconds) {
+        LinearLayout fields = row();
+        fields.setGravity(Gravity.CENTER_VERTICAL);
+        fields.addView(minutes, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView colon = text(":", 22, MUTED, true);
+        colon.setGravity(Gravity.CENTER);
+        fields.addView(colon, new LinearLayout.LayoutParams(dp(18), ViewGroup.LayoutParams.WRAP_CONTENT));
+        fields.addView(seconds, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        return fields;
     }
 
     private Button button(String label, int background, int foreground) {
@@ -595,6 +654,13 @@ public class MainActivity extends Activity {
     private LinearLayout.LayoutParams matchWrap() { return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); }
     private LinearLayout.LayoutParams topMargin(int margin) { LinearLayout.LayoutParams p = matchWrap(); p.topMargin = dp(margin); return p; }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
-    private String friendly(long ms) { long minutes = Math.max(1, ms / 60_000); return minutes >= 60 && minutes % 60 == 0 ? (minutes / 60) + "h" : minutes + "m"; }
+    private String friendly(long ms) {
+        long totalSeconds = Math.max(1, ms / 1000);
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
+        if (minutes >= 60 && minutes % 60 == 0 && seconds == 0) return (minutes / 60) + "h";
+        if (minutes == 0) return seconds + "s";
+        return seconds == 0 ? minutes + "m" : minutes + "m " + seconds + "s";
+    }
     private void toast(String message) { Toast.makeText(this, message, Toast.LENGTH_LONG).show(); }
 }
