@@ -7,7 +7,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Build;
 import android.net.Uri;
@@ -18,6 +20,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -50,23 +53,24 @@ public class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(22), dp(28), dp(22), dp(36));
-        root.setBackgroundColor(Color.rgb(247, 242, 250));
+        root.setBackgroundColor(Color.rgb(14, 11, 22));
         scroll.addView(root);
 
-        TextView title = text("FocusLock", 32, true);
-        root.addView(title);
-        TextView intro = text("Decide now. Scroll less later.", 17, false);
-        intro.setTextColor(Color.DKGRAY);
-        root.addView(intro, margins(dp(0), dp(4), dp(0), dp(22)));
+        LinearLayout hero = new LinearLayout(this); hero.setOrientation(LinearLayout.HORIZONTAL); hero.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView logo = new ImageView(this); logo.setImageResource(R.drawable.focuslock_logo); hero.addView(logo, new LinearLayout.LayoutParams(dp(82), dp(82)));
+        LinearLayout brand = new LinearLayout(this); brand.setOrientation(LinearLayout.VERTICAL); brand.setPadding(dp(12), 0, 0, 0);
+        brand.addView(text("FocusLock", 30, true));
+        TextView intro = text("Decide now. Scroll less later.", 15, false); intro.setTextColor(Color.rgb(180, 172, 199)); brand.addView(intro);
+        hero.addView(brand); root.addView(hero, margins(0, 0, 0, dp(20)));
 
         status = text("", 16, true);
         status.setPadding(dp(16), dp(14), dp(16), dp(14));
-        status.setBackgroundColor(Color.WHITE);
+        status.setBackground(panel(Color.rgb(36, 28, 56), 18));
         root.addView(status, margins(0, 0, 0, dp(18)));
 
         root.addView(text("1. Allow app blocking", 20, true));
         TextView permissionHelp = text("FocusLock needs Usage Access to detect the current app and Display Over Other Apps to show the lock screen. It does not read screen content.", 14, false);
-        permissionHelp.setTextColor(Color.DKGRAY);
+        permissionHelp.setTextColor(Color.rgb(180, 172, 199));
         root.addView(permissionHelp, margins(0, dp(5), 0, dp(10)));
         Button usage = button("1A. Allow Usage Access");
         usage.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
@@ -76,7 +80,8 @@ public class MainActivity extends Activity {
         root.addView(overlay, margins(0, 0, 0, dp(22)));
 
         root.addView(text("2. Choose apps to block", 20, true));
-        addLaunchableApps(root);
+        LinearLayout appPanel = new LinearLayout(this); appPanel.setOrientation(LinearLayout.VERTICAL); appPanel.setPadding(dp(12), dp(8), dp(12), dp(8)); appPanel.setBackground(panel(Color.rgb(26, 21, 40), 18));
+        addLaunchableApps(appPanel); root.addView(appPanel, margins(0, dp(10), 0, 0));
 
         root.addView(text("3. Set your commitment", 20, true), margins(0, dp(20), 0, dp(8)));
         graceInput = numberInput("Countdown before lock (minutes)", "1");
@@ -85,7 +90,7 @@ public class MainActivity extends Activity {
         root.addView(durationInput, margins(0, 0, 0, dp(14)));
 
         Button start = button("Start commitment");
-        start.setTextSize(17);
+        start.setTextSize(17); start.setTextColor(Color.WHITE); start.setBackgroundTintList(ColorStateList.valueOf(Color.rgb(124, 82, 240)));
         start.setPadding(0, dp(15), 0, dp(15));
         start.setOnClickListener(v -> startCommitment());
         root.addView(start);
@@ -108,6 +113,8 @@ public class MainActivity extends Activity {
             check.setTag(app.packageName);
             check.setChecked(saved.contains(app.packageName));
             check.setTextSize(16);
+            check.setTextColor(Color.rgb(239, 235, 247));
+            check.setButtonTintList(ColorStateList.valueOf(Color.rgb(139, 92, 246)));
             check.setPadding(0, dp(5), 0, dp(5));
             appChecks.add(check);
             root.addView(check);
@@ -152,13 +159,14 @@ public class MainActivity extends Activity {
         return minutes > 0 ? minutes + "m " + (seconds % 60) + "s" : seconds + "s";
     }
     private TextView text(String value, int sp, boolean bold) {
-        TextView view = new TextView(this); view.setText(value); view.setTextSize(sp); view.setTextColor(Color.rgb(35, 32, 36));
+        TextView view = new TextView(this); view.setText(value); view.setTextSize(sp); view.setTextColor(Color.rgb(244, 240, 250));
         if (bold) view.setTypeface(null, android.graphics.Typeface.BOLD); return view;
     }
-    private Button button(String value) { Button b = new Button(this); b.setText(value); b.setAllCaps(false); return b; }
+    private Button button(String value) { Button b = new Button(this); b.setText(value); b.setAllCaps(false); b.setTextColor(Color.WHITE); b.setBackgroundTintList(ColorStateList.valueOf(Color.rgb(58, 43, 88))); return b; }
     private EditText numberInput(String hint, String value) {
-        EditText e = new EditText(this); e.setHint(hint); e.setText(value); e.setInputType(InputType.TYPE_CLASS_NUMBER); e.setTextSize(16); return e;
+        EditText e = new EditText(this); e.setHint(hint); e.setText(value); e.setInputType(InputType.TYPE_CLASS_NUMBER); e.setTextSize(16); e.setTextColor(Color.WHITE); e.setHintTextColor(Color.rgb(150, 142, 170)); e.setBackgroundTintList(ColorStateList.valueOf(Color.rgb(139, 92, 246))); return e;
     }
+    private GradientDrawable panel(int color, int radiusDp) { GradientDrawable g = new GradientDrawable(); g.setColor(color); g.setCornerRadius(dp(radiusDp)); return g; }
     private LinearLayout.LayoutParams margins(int l, int t, int r, int b) {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2); p.setMargins(l, t, r, b); return p;
     }

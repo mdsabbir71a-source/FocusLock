@@ -8,7 +8,7 @@ FocusLock lets a user choose distracting apps, set a short commitment countdown,
 2. Select one or more installed apps.
 3. Enter a countdown in minutes and a lock duration in minutes.
 4. Tap **Start commitment**.
-5. When the countdown finishes, a foreground monitor shows a full-screen lock overlay over selected apps until the timer expires.
+5. When the countdown finishes, opening a selected app immediately sends it to the background and opens a dedicated FocusLock timer screen.
 
 ## Run it
 
@@ -20,7 +20,8 @@ Upload the contents of this folder to a GitHub repository. The included GitHub A
 
 ## Important production notes
 
-- The private-test build avoids Accessibility permission. It uses Usage Access only to identify the foreground package and an overlay to show the lock screen.
+- The private-test build avoids Accessibility permission. It uses event-based Usage Access to identify only newly opened apps, preventing false lock screens on Home or unrelated apps.
+- Display Over Other Apps permission allows the foreground monitor to open the dedicated lock activity when a blocked app is launched; it no longer leaves a persistent overlay on screen.
 - `QUERY_ALL_PACKAGES` is restricted by Google Play policy. Before publishing, replace the general app picker with a curated social-app list or submit the required policy declaration.
 - A technically determined user can disable Accessibility permission or uninstall the app. Device-owner mode would be needed for a tamper-resistant parental-control edition.
 - Battery-optimization behavior differs by manufacturer, so test on Samsung, Xiaomi, Oppo/Realme, and Pixel devices.
