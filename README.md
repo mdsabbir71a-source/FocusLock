@@ -1,14 +1,14 @@
 # FocusLock for Android
 
-FocusLock lets a user choose distracting apps, set a short commitment countdown, and then block those apps for a chosen duration.
+FocusLock lets a user choose distracting apps, give each app an allowed amount of actual foreground usage, and then block that app for a chosen duration when its allowance is consumed.
 
 ## MVP behavior
 
 1. Allow **Usage Access** and **Display Over Other Apps** from the buttons in FocusLock.
 2. Select one or more installed apps.
-3. Enter a countdown in minutes and a lock duration in minutes.
+3. Enter allowed foreground usage in minutes and a lock duration in minutes.
 4. Tap **Start commitment**.
-5. When the countdown finishes, opening a selected app immediately sends it to the background and opens a dedicated FocusLock timer screen.
+5. Only time actually spent inside each selected app counts. When an app consumes its allowance, it is sent to the background and locked for the configured period.
 
 ## Run it
 

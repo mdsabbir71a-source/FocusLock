@@ -17,9 +17,14 @@ import android.os.Looper;
 public class FocusMonitorService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private long lastKick;
+    private long lastEventQuery;
+    private long lastTick;
+    private String currentPackage;
 
     @Override public void onCreate() {
         super.onCreate();
+        lastEventQuery = System.currentTimeMillis() - 5000;
+        lastTick = System.currentTimeMillis();
         createChannel();
         Intent open = new Intent(this, MainActivity.class);
         PendingIntent pending = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
@@ -35,33 +40,33 @@ public class FocusMonitorService extends Service {
     private final Runnable check = new Runnable() {
         @Override public void run() {
             long now = System.currentTimeMillis();
-            if (now >= LockStore.end(FocusMonitorService.this)) { stopSelf(); return; }
-            String foreground = foregroundPackage();
-            if (foreground != null && LockStore.isLocked(FocusMonitorService.this, foreground) && now - lastKick > 1200) {
-                lastKick = now;
-                kickOut(foreground);
+            updateForegroundPackage(now);
+            long elapsed = now - lastTick;
+            lastTick = now;
+            if (currentPackage != null && LockStore.isSelected(FocusMonitorService.this, currentPackage)) {
+                boolean newlyLocked = LockStore.addUsage(FocusMonitorService.this, currentPackage, elapsed);
+                if ((newlyLocked || LockStore.isLocked(FocusMonitorService.this, currentPackage)) && now - lastKick > 1200) {
+                    lastKick = now;
+                    kickOut(currentPackage);
+                }
             }
             handler.postDelayed(this, 350);
         }
     };
 
-    private String foregroundPackage() {
+    private void updateForegroundPackage(long now) {
         UsageStatsManager manager = (UsageStatsManager) getSystemService(Context.USAGE_STATS_SERVICE);
-        long now = System.currentTimeMillis();
-        UsageEvents events = manager.queryEvents(now - 2500, now);
+        UsageEvents events = manager.queryEvents(lastEventQuery, now);
+        lastEventQuery = now + 1;
         UsageEvents.Event event = new UsageEvents.Event();
-        String latest = null;
-        long latestTime = 0;
         while (events.hasNextEvent()) {
             events.getNextEvent(event);
             int type = event.getEventType();
             boolean resumed = type == UsageEvents.Event.MOVE_TO_FOREGROUND || (Build.VERSION.SDK_INT >= 29 && type == UsageEvents.Event.ACTIVITY_RESUMED);
-            if (resumed && event.getTimeStamp() >= latestTime) {
-                latest = event.getPackageName();
-                latestTime = event.getTimeStamp();
-            }
+            boolean paused = type == UsageEvents.Event.MOVE_TO_BACKGROUND || (Build.VERSION.SDK_INT >= 29 && type == UsageEvents.Event.ACTIVITY_PAUSED);
+            if (resumed) currentPackage = event.getPackageName();
+            else if (paused && event.getPackageName().equals(currentPackage)) currentPackage = null;
         }
-        return latest;
     }
 
     private void kickOut(String blockedPackage) {

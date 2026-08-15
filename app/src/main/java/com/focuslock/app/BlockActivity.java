@@ -36,7 +36,8 @@ public class BlockActivity extends Activity {
     }
 
     private void startTimer() {
-        countDown = new CountDownTimer(Math.max(0, LockStore.end(this) - System.currentTimeMillis()), 1000) {
+        String pkg = getIntent().getStringExtra("blocked_package");
+        countDown = new CountDownTimer(Math.max(0, LockStore.lockedUntil(this, pkg) - System.currentTimeMillis()), 1000) {
             public void onTick(long ms) { timer.setText(format(ms)); }
             public void onFinish() { finish(); }
         }.start();

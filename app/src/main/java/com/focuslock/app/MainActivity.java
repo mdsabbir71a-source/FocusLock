@@ -84,7 +84,7 @@ public class MainActivity extends Activity {
         addLaunchableApps(appPanel); root.addView(appPanel, margins(0, dp(10), 0, 0));
 
         root.addView(text("3. Set your commitment", 20, true), margins(0, dp(20), 0, dp(8)));
-        graceInput = numberInput("Countdown before lock (minutes)", "1");
+        graceInput = numberInput("Allowed usage before lock (minutes)", "1");
         durationInput = numberInput("Lock duration (minutes)", "60");
         root.addView(graceInput, margins(0, dp(5), 0, dp(10)));
         root.addView(durationInput, margins(0, 0, 0, dp(14)));
@@ -128,22 +128,19 @@ public class MainActivity extends Activity {
         int grace = parsePositive(graceInput, 1);
         int duration = parsePositive(durationInput, 60);
         if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)) { Toast.makeText(this, "Allow both Usage Access and Display Over Apps first", Toast.LENGTH_LONG).show(); return; }
-        long start = System.currentTimeMillis() + grace * 60_000L;
-        LockStore.saveSelection(this, selected);
-        LockStore.schedule(this, start, start + duration * 60_000L);
+        LockStore.configure(this, selected, grace * 60_000L, duration * 60_000L);
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 10);
         Intent monitor = new Intent(this, FocusMonitorService.class);
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(monitor); else startService(monitor);
-        Toast.makeText(this, "Commitment started", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Usage monitoring started", Toast.LENGTH_SHORT).show();
         refreshStatus();
     }
 
     private void refreshStatus() {
         if (status == null) return;
-        long now = System.currentTimeMillis(), start = LockStore.start(this), end = LockStore.end(this);
-        if (now < start) status.setText("Countdown: lock begins in " + friendly(start - now));
-        else if (now < end) status.setText("Locked: " + friendly(end - now) + " remaining");
-        else status.setText("Ready for a new commitment");
+        Set<String> selected = LockStore.packages(this);
+        if (selected.isEmpty()) status.setText("Ready for a new commitment");
+        else status.setText("Monitoring " + selected.size() + " app" + (selected.size() == 1 ? "" : "s") + " • " + friendly(LockStore.allowance(this)) + " usage allowed each");
     }
 
     private boolean usageAccessEnabled() {
