@@ -3,6 +3,9 @@ package com.focuslock.app;
 import android.Manifest;
 import android.app.AppOpsManager;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -12,6 +15,7 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Build;
+import android.os.Handler;
 import android.net.Uri;
 import android.provider.Settings;
 import android.text.InputType;
@@ -37,15 +41,19 @@ public class MainActivity extends Activity {
     private TextView status;
     private EditText graceInput;
     private EditText durationInput;
+    private TextView adultStatus;
+    private static final String FAMILY_DNS = "family.cloudflare-dns.com";
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         setContentView(buildUi());
+        if (!adultProtectionActive()) new Handler(android.os.Looper.getMainLooper()).postDelayed(this::showAdultProtectionIntro, 350);
     }
 
     @Override protected void onResume() {
         super.onResume();
         refreshStatus();
+        refreshAdultStatus();
     }
 
     private View buildUi() {
@@ -62,6 +70,13 @@ public class MainActivity extends Activity {
         brand.addView(text("FocusLock", 30, true));
         TextView intro = text("Decide now. Scroll less later.", 15, false); intro.setTextColor(Color.rgb(180, 172, 199)); brand.addView(intro);
         hero.addView(brand); root.addView(hero, margins(0, 0, 0, dp(20)));
+
+        LinearLayout protection = new LinearLayout(this); protection.setOrientation(LinearLayout.VERTICAL); protection.setPadding(dp(16), dp(14), dp(16), dp(14)); protection.setBackground(panel(Color.rgb(33, 25, 51), 18));
+        TextView protectionTitle = text("Adult Protection", 19, true); protection.addView(protectionTitle);
+        adultStatus = text("Checking protection…", 14, true); adultStatus.setPadding(0, dp(5), 0, dp(5)); protection.addView(adultStatus);
+        TextView protectionCopy = text("Blocks known adult and malware domains device-wide using encrypted Family DNS. FocusLock never receives your browsing traffic.", 14, false); protectionCopy.setTextColor(Color.rgb(180, 172, 199)); protection.addView(protectionCopy);
+        Button protect = button("Set up device protection"); protect.setOnClickListener(v -> openAdultProtectionSetup()); protection.addView(protect, margins(0, dp(10), 0, 0));
+        root.addView(protection, margins(0, 0, 0, dp(16)));
 
         status = text("", 16, true);
         status.setPadding(dp(16), dp(14), dp(16), dp(14));
@@ -141,6 +156,35 @@ public class MainActivity extends Activity {
         Set<String> selected = LockStore.packages(this);
         if (selected.isEmpty()) status.setText("Ready for a new commitment");
         else status.setText("Monitoring " + selected.size() + " app" + (selected.size() == 1 ? "" : "s") + " • " + friendly(LockStore.allowance(this)) + " usage allowed each");
+    }
+
+    private void showAdultProtectionIntro() {
+        new AlertDialog.Builder(this)
+                .setTitle("Protect this device")
+                .setMessage("FocusLock can block known adult and malware domains across browsers and apps. Android requires one system setting. DNS requests will be handled by Cloudflare Family DNS; FocusLock does not receive them.")
+                .setPositiveButton("Set up now", (dialog, which) -> openAdultProtectionSetup())
+                .setNegativeButton("Later", null)
+                .show();
+    }
+
+    private void openAdultProtectionSetup() {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        clipboard.setPrimaryClip(ClipData.newPlainText("FocusLock Family DNS", FAMILY_DNS));
+        Toast.makeText(this, "Copied. Choose Private DNS provider hostname, paste it, then Save.", Toast.LENGTH_LONG).show();
+        try { startActivity(new Intent("android.settings.PRIVATE_DNS_SETTINGS")); }
+        catch (Exception unavailable) { startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS)); }
+    }
+
+    private boolean adultProtectionActive() {
+        String mode = Settings.Global.getString(getContentResolver(), "private_dns_mode");
+        String host = Settings.Global.getString(getContentResolver(), "private_dns_specifier");
+        return "hostname".equals(mode) && FAMILY_DNS.equalsIgnoreCase(host);
+    }
+
+    private void refreshAdultStatus() {
+        if (adultStatus == null) return;
+        if (adultProtectionActive()) { adultStatus.setText("● ACTIVE — adult sites filtered"); adultStatus.setTextColor(Color.rgb(91, 222, 151)); }
+        else { adultStatus.setText("● SETUP REQUIRED"); adultStatus.setTextColor(Color.rgb(255, 126, 101)); }
     }
 
     private boolean usageAccessEnabled() {
