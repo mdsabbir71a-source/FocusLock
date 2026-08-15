@@ -1,6 +1,8 @@
 package com.focuslock.app;
 
 import android.app.Activity;
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -9,6 +11,7 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.view.Gravity;
 import android.view.ViewGroup;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -16,14 +19,29 @@ import android.widget.Space;
 import android.widget.TextView;
 
 public class BlockActivity extends Activity {
+    private static final String[] REMINDERS = {
+            "This boundary is doing what you asked. Take a breath — the app will return when the pause is complete.",
+            "A quiet minute can protect an entire afternoon. Let this pause make room for what matters.",
+            "You are not missing out. You are choosing where your attention gets to grow.",
+            "The urge will pass like weather. Breathe slowly and let it move through you.",
+            "Your time is a garden. Every boundary leaves more space for something meaningful to grow.",
+            "Small pauses build strong habits. This moment counts, even if it feels ordinary.",
+            "You already made the hard decision earlier. Right now, simply let that decision support you.",
+            "Look away from the screen, soften your shoulders, and give your mind a little sunlight.",
+            "Nothing needs to be fixed in this moment. Inhale, exhale, and begin again gently.",
+            "Attention is precious. You are practicing how to spend it with intention.",
+            "A calmer mind begins with one protected moment. This is that moment."
+    };
     private static final int INK = Color.rgb(17, 24, 39);
     private static final int MUTED = Color.rgb(107, 114, 128);
     private static final int FAINT = Color.rgb(156, 163, 175);
-    private static final int VIOLET = Color.rgb(139, 92, 246);
-    private static final int BORDER = Color.rgb(237, 233, 254);
+    private static final int VIOLET = Color.rgb(52, 116, 76);
+    private static final int BORDER = Color.rgb(220, 233, 220);
     private String blockedPackage;
     private TextView timerText;
     private CountDownTimer timer;
+    private LinearLayout logoCard;
+    private LinearLayout reminderCard;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -31,6 +49,7 @@ public class BlockActivity extends Activity {
         if (blockedPackage == null || !LockStore.isLocked(this, blockedPackage)) { finish(); return; }
         setContentView(buildUi());
         startTimer();
+        startAnimations();
     }
 
     private LinearLayout buildUi() {
@@ -38,15 +57,17 @@ public class BlockActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(24), dp(22), dp(24), dp(24));
-        root.setBackgroundColor(Color.rgb(254, 254, 252));
+        root.setBackgroundColor(Color.rgb(248, 251, 246));
+        root.setAlpha(0f);
+        root.animate().alpha(1f).setDuration(450).start();
 
-        TextView top = text("◑  Taking a break from " + appName(), 11, MUTED, false);
+        TextView top = text("🌿  Taking a quiet break from " + appName(), 11, MUTED, false);
         top.setGravity(Gravity.CENTER);
         root.addView(top, matchWrap());
         Space upper = new Space(this);
         root.addView(upper, new LinearLayout.LayoutParams(1, 0, .8f));
 
-        LinearLayout logoCard = new LinearLayout(this);
+        logoCard = new LinearLayout(this);
         logoCard.setGravity(Gravity.CENTER);
         logoCard.setBackground(shape(Color.WHITE, BORDER, 28));
         ImageView logo = new ImageView(this);
@@ -55,7 +76,7 @@ public class BlockActivity extends Activity {
         logoCard.addView(logo, new LinearLayout.LayoutParams(dp(58), dp(58)));
         root.addView(logoCard, new LinearLayout.LayoutParams(dp(92), dp(92)));
 
-        TextView title = text("Taking a pause", 30, INK, true);
+        TextView title = text("Let your mind breathe", 28, INK, true);
         title.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams titleLp = matchWrap(); titleLp.topMargin = dp(24);
         root.addView(title, titleLp);
@@ -68,15 +89,15 @@ public class BlockActivity extends Activity {
         timerLp.topMargin = dp(14);
         root.addView(timerText, timerLp);
 
-        LinearLayout reminder = new LinearLayout(this);
-        reminder.setOrientation(LinearLayout.VERTICAL);
-        reminder.setPadding(dp(18), dp(18), dp(18), dp(18));
-        reminder.setBackground(shape(Color.WHITE, BORDER, 24));
-        reminder.addView(text("✦  A GENTLE REMINDER", 10, VIOLET, true));
-        TextView quote = text("This boundary is doing what you asked. Take a breath — the app will return when the pause is complete.", 14, INK, true);
+        reminderCard = new LinearLayout(this);
+        reminderCard.setOrientation(LinearLayout.VERTICAL);
+        reminderCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        reminderCard.setBackground(shape(Color.WHITE, Color.rgb(220, 233, 220), 24));
+        reminderCard.addView(text("🍃  A GENTLE REMINDER", 10, Color.rgb(52, 116, 76), true));
+        TextView quote = text(REMINDERS[LockStore.nextReminderIndex(this, REMINDERS.length)], 14, INK, true);
         quote.setLineSpacing(0, 1.22f);
         LinearLayout.LayoutParams quoteLp = matchWrap(); quoteLp.topMargin = dp(12);
-        reminder.addView(quote, quoteLp);
+        reminderCard.addView(quote, quoteLp);
         LinearLayout breath = new LinearLayout(this);
         breath.setOrientation(LinearLayout.HORIZONTAL);
         breath.setGravity(Gravity.CENTER);
@@ -84,9 +105,9 @@ public class BlockActivity extends Activity {
         breath.addView(breathStep("HOLD", "4s"), weighted());
         breath.addView(breathStep("EXHALE", "6s"), weighted());
         LinearLayout.LayoutParams breathLp = matchWrap(); breathLp.topMargin = dp(18);
-        reminder.addView(breath, breathLp);
+        reminderCard.addView(breath, breathLp);
         LinearLayout.LayoutParams reminderLp = matchWrap(); reminderLp.topMargin = dp(30);
-        root.addView(reminder, reminderLp);
+        root.addView(reminderCard, reminderLp);
 
         TextView boundary = text("kind boundary  •  no override needed", 10, FAINT, false);
         boundary.setGravity(Gravity.CENTER);
@@ -109,6 +130,33 @@ public class BlockActivity extends Activity {
         LinearLayout.LayoutParams activeLp = matchWrap(); activeLp.topMargin = dp(10);
         root.addView(active, activeLp);
         return root;
+    }
+
+    private void startAnimations() {
+        if (logoCard != null) {
+            ObjectAnimator x = ObjectAnimator.ofFloat(logoCard, "scaleX", 1f, 1.07f);
+            ObjectAnimator y = ObjectAnimator.ofFloat(logoCard, "scaleY", 1f, 1.07f);
+            x.setDuration(1800); y.setDuration(1800);
+            x.setRepeatCount(ObjectAnimator.INFINITE); y.setRepeatCount(ObjectAnimator.INFINITE);
+            x.setRepeatMode(ObjectAnimator.REVERSE); y.setRepeatMode(ObjectAnimator.REVERSE);
+            x.setInterpolator(new AccelerateDecelerateInterpolator());
+            y.setInterpolator(new AccelerateDecelerateInterpolator());
+            AnimatorSet breathing = new AnimatorSet();
+            breathing.playTogether(x, y);
+            breathing.start();
+        }
+        if (reminderCard != null) {
+            reminderCard.setAlpha(0f);
+            reminderCard.setTranslationY(dp(28));
+            reminderCard.animate().alpha(1f).translationY(0f).setStartDelay(220).setDuration(550).start();
+        }
+        if (timerText != null) {
+            ObjectAnimator pulse = ObjectAnimator.ofFloat(timerText, "alpha", 1f, .72f);
+            pulse.setDuration(1100);
+            pulse.setRepeatCount(ObjectAnimator.INFINITE);
+            pulse.setRepeatMode(ObjectAnimator.REVERSE);
+            pulse.start();
+        }
     }
 
     private LinearLayout breathStep(String label, String value) {

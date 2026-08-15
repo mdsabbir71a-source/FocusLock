@@ -39,6 +39,7 @@ public class FocusMonitorService extends Service {
 
     private final Runnable check = new Runnable() {
         @Override public void run() {
+            if (!LockStore.isEnabled(FocusMonitorService.this)) { stopSelf(); return; }
             long now = System.currentTimeMillis();
             updateForegroundPackage(now);
             long elapsed = now - lastTick;
