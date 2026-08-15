@@ -47,10 +47,10 @@ public class MainActivity extends Activity {
     private static final int INK = Color.rgb(17, 24, 39);
     private static final int MUTED = Color.rgb(107, 114, 128);
     private static final int FAINT = Color.rgb(156, 163, 175);
-    private static final int VIOLET = Color.rgb(139, 92, 246);
-    private static final int SOFT_VIOLET = Color.rgb(245, 243, 255);
-    private static final int BORDER = Color.rgb(237, 233, 254);
-    private static final int GREEN = Color.rgb(16, 185, 129);
+    private static final int VIOLET = Color.rgb(52, 116, 76);
+    private static final int SOFT_VIOLET = Color.rgb(240, 248, 239);
+    private static final int BORDER = Color.rgb(220, 233, 220);
+    private static final int GREEN = Color.rgb(45, 130, 78);
     private static final String FAMILY_DNS = "family.cloudflare-dns.com";
     private static final int REQUEST_VPN = 41;
     private static final int REQUEST_NOTIFICATIONS = 42;
@@ -63,14 +63,17 @@ public class MainActivity extends Activity {
     private EditText durationInput;
     private LinearLayout permissionRow;
     private Button protectionButton;
+    private Button masterButton;
+    private ImageView headerLogo;
     private boolean guidedSetup;
     private int waitingForSpecialPermission;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(buildUi());
-        if (!adultProtectionActive()) {
-            new Handler().postDelayed(this::showAdultProtectionIntro, 650);
+        boolean welcomed = getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("welcome_seen", false);
+        if (!welcomed) {
+            new Handler().postDelayed(this::showFirstLaunchSetup, 550);
         }
     }
 
@@ -79,6 +82,7 @@ public class MainActivity extends Activity {
         refreshStatus();
         refreshAdultStatus();
         refreshPermissionCards();
+        refreshMasterButton();
         if (waitingForSpecialPermission != 0) {
             int returningFrom = waitingForSpecialPermission;
             waitingForSpecialPermission = 0;
@@ -97,7 +101,7 @@ public class MainActivity extends Activity {
     private View buildUi() {
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
-        scroll.setBackgroundColor(Color.rgb(254, 254, 252));
+        scroll.setBackgroundColor(Color.rgb(248, 251, 246));
 
         LinearLayout root = column();
         root.setPadding(dp(20), dp(18), dp(20), dp(36));
@@ -105,40 +109,54 @@ public class MainActivity extends Activity {
 
         LinearLayout header = row();
         header.setGravity(Gravity.CENTER_VERTICAL);
-        ImageView logo = new ImageView(this);
-        logo.setImageResource(com.focuslock.app.R.drawable.focuslock_logo);
-        logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        header.addView(logo, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        headerLogo = new ImageView(this);
+        headerLogo.setImageResource(com.focuslock.app.R.drawable.focuslock_logo);
+        headerLogo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        header.addView(headerLogo, new LinearLayout.LayoutParams(dp(42), dp(42)));
         TextView brand = text("FocusLock", 16, INK, true);
         LinearLayout.LayoutParams brandLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         brandLp.leftMargin = dp(10);
         header.addView(brand, brandLp);
-        TextView kind = text("calm mode  ✦", 11, VIOLET, true);
+        TextView kind = text("growing gently  🌱", 11, VIOLET, true);
         kind.setGravity(Gravity.CENTER);
         kind.setPadding(dp(12), dp(7), dp(12), dp(7));
         kind.setBackground(shape(SOFT_VIOLET, BORDER, 18));
         header.addView(kind);
         root.addView(header, matchWrap());
 
-        TextView headline = text("A little boundary", 30, INK, true);
+        TextView headline = text("Protect your attention.", 29, INK, true);
         root.addView(headline, topMargin(34));
-        TextView headline2 = text("goes a long way.", 30, FAINT, true);
+        TextView headline2 = text("Let better things grow.", 25, VIOLET, true);
         root.addView(headline2, topMargin(0));
-        TextView intro = text("Choose what deserves a pause. FocusLock will gently step in only when your limit is reached.", 13, MUTED, false);
+        TextView intro = text("A calm place for healthier screen habits — simple boundaries, gentle pauses, and more room to breathe.", 13, MUTED, false);
         intro.setLineSpacing(0, 1.18f);
         root.addView(intro, topMargin(12));
+
+        LinearLayout master = row();
+        master.setGravity(Gravity.CENTER_VERTICAL);
+        master.setPadding(dp(15), dp(14), dp(12), dp(14));
+        master.setBackground(shape(Color.WHITE, BORDER, 20));
+        LinearLayout masterCopy = column();
+        masterCopy.addView(text("🌿  Master control", 14, INK, true));
+        masterCopy.addView(text("App limits + FocusLock DNS", 10, MUTED, false), topMargin(3));
+        master.addView(masterCopy, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        masterButton = button("ON", GREEN, Color.WHITE);
+        masterButton.setMinWidth(dp(72));
+        masterButton.setOnClickListener(v -> toggleMaster());
+        master.addView(masterButton);
+        root.addView(master, topMargin(20));
 
         status = text("No boundary active yet", 12, MUTED, true);
         status.setPadding(dp(14), dp(12), dp(14), dp(12));
         status.setBackground(shape(Color.WHITE, BORDER, 16));
-        root.addView(status, topMargin(18));
+        root.addView(status, topMargin(10));
 
         TextView protectionLabel = section("PROTECTION");
         root.addView(protectionLabel, topMargin(26));
         LinearLayout protection = column();
         protection.setPadding(dp(16), dp(15), dp(16), dp(15));
         protection.setBackground(shape(SOFT_VIOLET, BORDER, 20));
-        TextView protectionTitle = text("Adult Protection", 15, INK, true);
+        TextView protectionTitle = text("🍃  Adult Protection", 15, INK, true);
         protection.addView(protectionTitle);
         adultStatus = text("Checking device protection…", 11, VIOLET, true);
         protection.addView(adultStatus, topMargin(5));
@@ -146,7 +164,7 @@ public class MainActivity extends Activity {
         protectionCopy.setLineSpacing(0, 1.15f);
         protection.addView(protectionCopy, topMargin(8));
         protectionButton = button("Enable with one tap  →", VIOLET, Color.WHITE);
-        protectionButton.setOnClickListener(v -> requestAdultProtection());
+        protectionButton.setOnClickListener(v -> toggleAdultProtection());
         protection.addView(protectionButton, topMargin(12));
         root.addView(protection, topMargin(9));
 
@@ -202,7 +220,58 @@ public class MainActivity extends Activity {
         TextView foot = text("Kind boundary • no activity leaves your device", 10, FAINT, false);
         foot.setGravity(Gravity.CENTER);
         root.addView(foot, topMargin(10));
+        root.setAlpha(0f);
+        root.animate().alpha(1f).setDuration(500).start();
+        headerLogo.animate().rotation(4f).scaleX(1.04f).scaleY(1.04f).setDuration(1200).withEndAction(() ->
+                headerLogo.animate().rotation(-3f).scaleX(1f).scaleY(1f).setDuration(1200).start()).start();
         return scroll;
+    }
+
+    private void showFirstLaunchSetup() {
+        if (isFinishing()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Welcome to FocusLock 🌿")
+                .setMessage("Let's prepare everything now. FocusLock will open each required Android permission in order. Approve it, return here, and the next one will appear automatically.")
+                .setPositiveButton("Begin setup", (dialog, which) -> {
+                    getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("welcome_seen", true).apply();
+                    startEasySetup();
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void toggleMaster() {
+        boolean enable = !LockStore.isEnabled(this);
+        LockStore.setEnabled(this, enable);
+        if (!enable) {
+            stopService(new Intent(this, FocusMonitorService.class));
+            stopService(new Intent(this, FamilyDnsVpnService.class).setAction(FamilyDnsVpnService.ACTION_STOP));
+            toast("FocusLock is paused. Your choices are still saved.");
+        } else {
+            if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)) {
+                startEasySetup();
+            } else {
+                startSavedMonitoring();
+                if (!adultProtectionActive()) requestAdultProtection();
+                toast("FocusLock is back on.");
+            }
+        }
+        refreshMasterButton();
+        refreshStatus();
+    }
+
+    private void refreshMasterButton() {
+        if (masterButton == null) return;
+        boolean enabled = LockStore.isEnabled(this);
+        masterButton.setText(enabled ? "ON  ●" : "OFF  ○");
+        masterButton.setTextColor(enabled ? Color.WHITE : MUTED);
+        masterButton.setBackground(shape(enabled ? GREEN : Color.rgb(238, 241, 236), enabled ? GREEN : BORDER, 22));
+    }
+
+    private void startSavedMonitoring() {
+        if (LockStore.packages(this).isEmpty()) return;
+        Intent monitor = new Intent(this, FocusMonitorService.class);
+        if (Build.VERSION.SDK_INT >= 26) startForegroundService(monitor); else startService(monitor);
     }
 
     private void refreshPermissionCards() {
@@ -304,17 +373,22 @@ public class MainActivity extends Activity {
         if (grace < 1 || duration < 1) return;
         if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)) { toast("Let's finish the required permissions first."); startEasySetup(); return; }
         LockStore.configure(this, selected, grace * 60_000L, duration * 60_000L);
+        LockStore.setEnabled(this, true);
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS);
         Intent monitor = new Intent(this, FocusMonitorService.class);
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(monitor); else startService(monitor);
         toast("Your gentle boundary is active.");
+        refreshMasterButton();
         refreshStatus();
     }
 
     private void refreshStatus() {
         if (status == null) return;
         Set<String> packages = LockStore.packages(this);
-        if (packages.isEmpty()) {
+        if (!LockStore.isEnabled(this)) {
+            status.setText("○  FocusLock paused — settings are safely saved");
+            status.setTextColor(MUTED);
+        } else if (packages.isEmpty()) {
             status.setText("○  No boundary active yet");
             status.setTextColor(MUTED);
         } else {
@@ -334,11 +408,26 @@ public class MainActivity extends Activity {
     }
 
     private void requestAdultProtection() {
+        LockStore.setEnabled(this, true);
+        refreshMasterButton();
         Intent approval = VpnService.prepare(this);
         if (approval != null) {
             startActivityForResult(approval, REQUEST_VPN);
         } else {
             startAdultProtectionService();
+        }
+    }
+
+    private void toggleAdultProtection() {
+        if (FamilyDnsVpnService.isActive()) {
+            stopService(new Intent(this, FamilyDnsVpnService.class).setAction(FamilyDnsVpnService.ACTION_STOP));
+            new Handler().postDelayed(() -> { refreshAdultStatus(); toast("Adult Protection is off."); }, 250);
+        } else if (privateDnsActive()) {
+            toast("Protection is supplied by Android Private DNS. Change it from the phone's Private DNS settings.");
+            try { startActivity(new Intent("android.settings.PRIVATE_DNS_SETTINGS")); }
+            catch (Exception e) { startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS)); }
+        } else {
+            requestAdultProtection();
         }
     }
 
@@ -385,6 +474,10 @@ public class MainActivity extends Activity {
 
     private boolean adultProtectionActive() {
         if (FamilyDnsVpnService.isActive()) return true;
+        return privateDnsActive();
+    }
+
+    private boolean privateDnsActive() {
         try {
             String mode = Settings.Global.getString(getContentResolver(), "private_dns_mode");
             String specifier = Settings.Global.getString(getContentResolver(), "private_dns_specifier");
@@ -397,7 +490,11 @@ public class MainActivity extends Activity {
         boolean active = adultProtectionActive();
         adultStatus.setText(active ? "●  ACTIVE ON THIS DEVICE" : "○  SETUP REQUIRED");
         adultStatus.setTextColor(active ? GREEN : VIOLET);
-        if (protectionButton != null) protectionButton.setText(active ? "Protection enabled  ✓" : "Enable with one tap  →");
+        if (protectionButton != null) {
+            if (FamilyDnsVpnService.isActive()) protectionButton.setText("Turn protection off");
+            else if (privateDnsActive()) protectionButton.setText("Managed by Private DNS  ✓");
+            else protectionButton.setText("Enable with one tap  →");
+        }
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
