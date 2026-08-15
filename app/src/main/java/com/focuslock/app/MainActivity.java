@@ -16,6 +16,7 @@ import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.net.VpnService;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -51,6 +52,8 @@ public class MainActivity extends Activity {
     private static final int BORDER = Color.rgb(237, 233, 254);
     private static final int GREEN = Color.rgb(16, 185, 129);
     private static final String FAMILY_DNS = "family.cloudflare-dns.com";
+    private static final int REQUEST_VPN = 41;
+    private static final int REQUEST_NOTIFICATIONS = 42;
 
     private final List<CheckBox> appChecks = new ArrayList<>();
     private TextView status;
@@ -59,6 +62,9 @@ public class MainActivity extends Activity {
     private EditText graceInput;
     private EditText durationInput;
     private LinearLayout permissionRow;
+    private Button protectionButton;
+    private boolean guidedSetup;
+    private int waitingForSpecialPermission;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -73,6 +79,19 @@ public class MainActivity extends Activity {
         refreshStatus();
         refreshAdultStatus();
         refreshPermissionCards();
+        if (waitingForSpecialPermission != 0) {
+            int returningFrom = waitingForSpecialPermission;
+            waitingForSpecialPermission = 0;
+            new Handler().postDelayed(() -> {
+                boolean allowed = returningFrom == 1 ? usageAccessEnabled() : Settings.canDrawOverlays(this);
+                if (!allowed) {
+                    guidedSetup = false;
+                    toast("That permission was not enabled. Tap Easy Setup whenever you're ready.");
+                } else {
+                    continueEasySetup();
+                }
+            }, 300);
+        }
     }
 
     private View buildUi() {
@@ -123,18 +142,25 @@ public class MainActivity extends Activity {
         protection.addView(protectionTitle);
         adultStatus = text("Checking device protection…", 11, VIOLET, true);
         protection.addView(adultStatus, topMargin(5));
-        TextView protectionCopy = text("Blocks known adult and malware domains across this phone using Android Private DNS.", 12, MUTED, false);
+        TextView protectionCopy = text("One approval enables lightweight DNS-only filtering. Normal app traffic never passes through FocusLock.", 12, MUTED, false);
         protectionCopy.setLineSpacing(0, 1.15f);
         protection.addView(protectionCopy, topMargin(8));
-        Button dnsButton = button("Set up protection  →", VIOLET, Color.WHITE);
-        dnsButton.setOnClickListener(v -> beginAdultProtectionSetup());
-        protection.addView(dnsButton, topMargin(12));
+        protectionButton = button("Enable with one tap  →", VIOLET, Color.WHITE);
+        protectionButton.setOnClickListener(v -> requestAdultProtection());
+        protection.addView(protectionButton, topMargin(12));
         root.addView(protection, topMargin(9));
 
         root.addView(section("PERMISSIONS"), topMargin(26));
         permissionRow = row();
         root.addView(permissionRow, topMargin(9));
         refreshPermissionCards();
+        Button easySetup = button("Allow required permissions   →", INK, Color.WHITE);
+        easySetup.setTextSize(13);
+        easySetup.setOnClickListener(v -> startEasySetup());
+        root.addView(easySetup, topMargin(10));
+        TextView permissionNote = text("FocusLock opens each exact Android approval screen and continues automatically when you return.", 10, FAINT, false);
+        permissionNote.setGravity(Gravity.CENTER);
+        root.addView(permissionNote, topMargin(7));
 
         LinearLayout chooseHeader = row();
         chooseHeader.setGravity(Gravity.CENTER_VERTICAL);
@@ -276,10 +302,9 @@ public class MainActivity extends Activity {
         int grace = parsePositive(graceInput, "use time");
         int duration = parsePositive(durationInput, "pause time");
         if (grace < 1 || duration < 1) return;
-        if (!usageAccessEnabled()) { toast("Please allow Usage Access first."); startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); return; }
-        if (!Settings.canDrawOverlays(this)) { toast("Please allow Display Over Other Apps first."); startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); return; }
+        if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)) { toast("Let's finish the required permissions first."); startEasySetup(); return; }
         LockStore.configure(this, selected, grace * 60_000L, duration * 60_000L);
-        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 24);
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS);
         Intent monitor = new Intent(this, FocusMonitorService.class);
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(monitor); else startService(monitor);
         toast("Your gentle boundary is active.");
@@ -302,20 +327,64 @@ public class MainActivity extends Activity {
         if (isFinishing() || adultProtectionActive()) return;
         new AlertDialog.Builder(this)
                 .setTitle("Protect this phone from adult sites")
-                .setMessage("FocusLock can guide you to Android Private DNS. Cloudflare Family will block known adult and malware domains across the device. Android requires you to confirm this setting, and FocusLock does not receive your browsing or DNS traffic.")
-                .setPositiveButton("Set up", (d, w) -> beginAdultProtectionSetup())
+                .setMessage("One Android VPN approval can enable adult-site and malware filtering across this phone. FocusLock routes only DNS lookups through the filter—not your normal app traffic, messages, photos, or passwords. Android permits one active VPN at a time.")
+                .setPositiveButton("Allow", (d, w) -> requestAdultProtection())
                 .setNegativeButton("Not now", null)
                 .show();
     }
 
-    private void beginAdultProtectionSetup() {
-        ((ClipboardManager) getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("Private DNS hostname", FAMILY_DNS));
-        toast("Hostname copied. Choose Private DNS provider hostname and paste it.");
-        try { startActivity(new Intent("android.settings.PRIVATE_DNS_SETTINGS")); }
-        catch (Exception e) { startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS)); }
+    private void requestAdultProtection() {
+        Intent approval = VpnService.prepare(this);
+        if (approval != null) {
+            startActivityForResult(approval, REQUEST_VPN);
+        } else {
+            startAdultProtectionService();
+        }
+    }
+
+    private void startAdultProtectionService() {
+        Intent service = new Intent(this, FamilyDnsVpnService.class);
+        if (Build.VERSION.SDK_INT >= 26) startForegroundService(service); else startService(service);
+        new Handler().postDelayed(() -> {
+            refreshAdultStatus();
+            toast("Adult Protection is active.");
+        }, 500);
+    }
+
+    private void startEasySetup() {
+        guidedSetup = true;
+        continueEasySetup();
+    }
+
+    private void continueEasySetup() {
+        if (!guidedSetup) return;
+        if (!usageAccessEnabled()) {
+            waitingForSpecialPermission = 1;
+            toast("Turn on Permit usage access, then return to FocusLock.");
+            startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
+            return;
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            waitingForSpecialPermission = 2;
+            toast("Turn on Allow display over other apps, then return.");
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS);
+            return;
+        }
+        if (!adultProtectionActive()) {
+            guidedSetup = false;
+            requestAdultProtection();
+            return;
+        }
+        guidedSetup = false;
+        toast("Everything is ready. You can start your boundary now.");
     }
 
     private boolean adultProtectionActive() {
+        if (FamilyDnsVpnService.isActive()) return true;
         try {
             String mode = Settings.Global.getString(getContentResolver(), "private_dns_mode");
             String specifier = Settings.Global.getString(getContentResolver(), "private_dns_specifier");
@@ -328,6 +397,23 @@ public class MainActivity extends Activity {
         boolean active = adultProtectionActive();
         adultStatus.setText(active ? "●  ACTIVE ON THIS DEVICE" : "○  SETUP REQUIRED");
         adultStatus.setTextColor(active ? GREEN : VIOLET);
+        if (protectionButton != null) protectionButton.setText(active ? "Protection enabled  ✓" : "Enable with one tap  →");
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_VPN) {
+            if (resultCode == RESULT_OK) startAdultProtectionService();
+            else toast("Adult Protection was not enabled.");
+        }
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_NOTIFICATIONS) {
+            if (guidedSetup) continueEasySetup();
+            else if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) toast("Notifications are off, but FocusLock can still run.");
+        }
     }
 
     private boolean usageAccessEnabled() {
