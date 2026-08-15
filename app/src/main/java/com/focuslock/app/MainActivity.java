@@ -1,215 +1,417 @@
 package com.focuslock.app;
 
 import android.Manifest;
-import android.app.AppOpsManager;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.AppOpsManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.os.Bundle;
-import android.os.Build;
-import android.os.Handler;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
 import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class MainActivity extends Activity {
-    private final List<CheckBox> appChecks = new ArrayList<>();
-    private TextView status;
-    private EditText graceInput;
-    private EditText durationInput;
-    private TextView adultStatus;
+    private static final int INK = Color.rgb(17, 24, 39);
+    private static final int MUTED = Color.rgb(107, 114, 128);
+    private static final int FAINT = Color.rgb(156, 163, 175);
+    private static final int VIOLET = Color.rgb(139, 92, 246);
+    private static final int SOFT_VIOLET = Color.rgb(245, 243, 255);
+    private static final int BORDER = Color.rgb(237, 233, 254);
+    private static final int GREEN = Color.rgb(16, 185, 129);
     private static final String FAMILY_DNS = "family.cloudflare-dns.com";
 
-    @Override public void onCreate(Bundle state) {
-        super.onCreate(state);
+    private final List<CheckBox> appChecks = new ArrayList<>();
+    private TextView status;
+    private TextView selectedCount;
+    private TextView adultStatus;
+    private EditText graceInput;
+    private EditText durationInput;
+    private LinearLayout permissionRow;
+
+    @Override protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         setContentView(buildUi());
-        if (!adultProtectionActive()) new Handler(android.os.Looper.getMainLooper()).postDelayed(this::showAdultProtectionIntro, 350);
+        if (!adultProtectionActive()) {
+            new Handler().postDelayed(this::showAdultProtectionIntro, 650);
+        }
     }
 
     @Override protected void onResume() {
         super.onResume();
         refreshStatus();
         refreshAdultStatus();
+        refreshPermissionCards();
     }
 
     private View buildUi() {
         ScrollView scroll = new ScrollView(this);
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(22), dp(28), dp(22), dp(36));
-        root.setBackgroundColor(Color.rgb(14, 11, 22));
-        scroll.addView(root);
+        scroll.setFillViewport(true);
+        scroll.setBackgroundColor(Color.rgb(254, 254, 252));
 
-        LinearLayout hero = new LinearLayout(this); hero.setOrientation(LinearLayout.HORIZONTAL); hero.setGravity(Gravity.CENTER_VERTICAL);
-        ImageView logo = new ImageView(this); logo.setImageResource(R.drawable.focuslock_logo); hero.addView(logo, new LinearLayout.LayoutParams(dp(82), dp(82)));
-        LinearLayout brand = new LinearLayout(this); brand.setOrientation(LinearLayout.VERTICAL); brand.setPadding(dp(12), 0, 0, 0);
-        brand.addView(text("FocusLock", 30, true));
-        TextView intro = text("Decide now. Scroll less later.", 15, false); intro.setTextColor(Color.rgb(180, 172, 199)); brand.addView(intro);
-        hero.addView(brand); root.addView(hero, margins(0, 0, 0, dp(20)));
+        LinearLayout root = column();
+        root.setPadding(dp(20), dp(18), dp(20), dp(36));
+        scroll.addView(root, matchWrap());
 
-        LinearLayout protection = new LinearLayout(this); protection.setOrientation(LinearLayout.VERTICAL); protection.setPadding(dp(16), dp(14), dp(16), dp(14)); protection.setBackground(panel(Color.rgb(33, 25, 51), 18));
-        TextView protectionTitle = text("Adult Protection", 19, true); protection.addView(protectionTitle);
-        adultStatus = text("Checking protection…", 14, true); adultStatus.setPadding(0, dp(5), 0, dp(5)); protection.addView(adultStatus);
-        TextView protectionCopy = text("Blocks known adult and malware domains device-wide using encrypted Family DNS. FocusLock never receives your browsing traffic.", 14, false); protectionCopy.setTextColor(Color.rgb(180, 172, 199)); protection.addView(protectionCopy);
-        Button protect = button("Set up device protection"); protect.setOnClickListener(v -> openAdultProtectionSetup()); protection.addView(protect, margins(0, dp(10), 0, 0));
-        root.addView(protection, margins(0, 0, 0, dp(16)));
+        LinearLayout header = row();
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(com.focuslock.app.R.drawable.focuslock_logo);
+        logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        header.addView(logo, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        TextView brand = text("FocusLock", 16, INK, true);
+        LinearLayout.LayoutParams brandLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        brandLp.leftMargin = dp(10);
+        header.addView(brand, brandLp);
+        TextView kind = text("calm mode  ✦", 11, VIOLET, true);
+        kind.setGravity(Gravity.CENTER);
+        kind.setPadding(dp(12), dp(7), dp(12), dp(7));
+        kind.setBackground(shape(SOFT_VIOLET, BORDER, 18));
+        header.addView(kind);
+        root.addView(header, matchWrap());
 
-        status = text("", 16, true);
-        status.setPadding(dp(16), dp(14), dp(16), dp(14));
-        status.setBackground(panel(Color.rgb(36, 28, 56), 18));
-        root.addView(status, margins(0, 0, 0, dp(18)));
+        TextView headline = text("A little boundary", 30, INK, true);
+        root.addView(headline, topMargin(34));
+        TextView headline2 = text("goes a long way.", 30, FAINT, true);
+        root.addView(headline2, topMargin(0));
+        TextView intro = text("Choose what deserves a pause. FocusLock will gently step in only when your limit is reached.", 13, MUTED, false);
+        intro.setLineSpacing(0, 1.18f);
+        root.addView(intro, topMargin(12));
 
-        root.addView(text("1. Allow app blocking", 20, true));
-        TextView permissionHelp = text("FocusLock needs Usage Access to detect the current app and Display Over Other Apps to show the lock screen. It does not read screen content.", 14, false);
-        permissionHelp.setTextColor(Color.rgb(180, 172, 199));
-        root.addView(permissionHelp, margins(0, dp(5), 0, dp(10)));
-        Button usage = button("1A. Allow Usage Access");
-        usage.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
-        root.addView(usage, margins(0, 0, 0, dp(8)));
-        Button overlay = button("1B. Allow Display Over Apps");
-        overlay.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))));
-        root.addView(overlay, margins(0, 0, 0, dp(22)));
+        status = text("No boundary active yet", 12, MUTED, true);
+        status.setPadding(dp(14), dp(12), dp(14), dp(12));
+        status.setBackground(shape(Color.WHITE, BORDER, 16));
+        root.addView(status, topMargin(18));
 
-        root.addView(text("2. Choose apps to block", 20, true));
-        LinearLayout appPanel = new LinearLayout(this); appPanel.setOrientation(LinearLayout.VERTICAL); appPanel.setPadding(dp(12), dp(8), dp(12), dp(8)); appPanel.setBackground(panel(Color.rgb(26, 21, 40), 18));
-        addLaunchableApps(appPanel); root.addView(appPanel, margins(0, dp(10), 0, 0));
+        TextView protectionLabel = section("PROTECTION");
+        root.addView(protectionLabel, topMargin(26));
+        LinearLayout protection = column();
+        protection.setPadding(dp(16), dp(15), dp(16), dp(15));
+        protection.setBackground(shape(SOFT_VIOLET, BORDER, 20));
+        TextView protectionTitle = text("Adult Protection", 15, INK, true);
+        protection.addView(protectionTitle);
+        adultStatus = text("Checking device protection…", 11, VIOLET, true);
+        protection.addView(adultStatus, topMargin(5));
+        TextView protectionCopy = text("Blocks known adult and malware domains across this phone using Android Private DNS.", 12, MUTED, false);
+        protectionCopy.setLineSpacing(0, 1.15f);
+        protection.addView(protectionCopy, topMargin(8));
+        Button dnsButton = button("Set up protection  →", VIOLET, Color.WHITE);
+        dnsButton.setOnClickListener(v -> beginAdultProtectionSetup());
+        protection.addView(dnsButton, topMargin(12));
+        root.addView(protection, topMargin(9));
 
-        root.addView(text("3. Set your commitment", 20, true), margins(0, dp(20), 0, dp(8)));
-        graceInput = numberInput("Allowed usage before lock (minutes)", "1");
-        durationInput = numberInput("Lock duration (minutes)", "60");
-        root.addView(graceInput, margins(0, dp(5), 0, dp(10)));
-        root.addView(durationInput, margins(0, 0, 0, dp(14)));
+        root.addView(section("PERMISSIONS"), topMargin(26));
+        permissionRow = row();
+        root.addView(permissionRow, topMargin(9));
+        refreshPermissionCards();
 
-        Button start = button("Start commitment");
-        start.setTextSize(17); start.setTextColor(Color.WHITE); start.setBackgroundTintList(ColorStateList.valueOf(Color.rgb(124, 82, 240)));
-        start.setPadding(0, dp(15), 0, dp(15));
+        LinearLayout chooseHeader = row();
+        chooseHeader.setGravity(Gravity.CENTER_VERTICAL);
+        TextView choose = text("Choose apps to pause", 17, INK, true);
+        chooseHeader.addView(choose, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        selectedCount = text("0 selected", 11, VIOLET, true);
+        selectedCount.setPadding(dp(9), dp(5), dp(9), dp(5));
+        selectedCount.setBackground(shape(SOFT_VIOLET, BORDER, 14));
+        chooseHeader.addView(selectedCount);
+        root.addView(chooseHeader, topMargin(28));
+        TextView hint = text("Each app gets its own allowance. Only selected apps are affected.", 11, MUTED, false);
+        root.addView(hint, topMargin(6));
+
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(3);
+        addLaunchableApps(grid);
+        root.addView(grid, topMargin(12));
+
+        root.addView(section("YOUR BOUNDARY"), topMargin(28));
+        LinearLayout settings = row();
+        LinearLayout useCard = timeCard("USE FOR", "Minutes of actual use");
+        graceInput = numberInput(String.valueOf(Math.max(1, LockStore.allowance(this) / 60_000)));
+        useCard.addView(graceInput, topMargin(8));
+        LinearLayout pauseCard = timeCard("PAUSE FOR", "Minutes locked");
+        durationInput = numberInput(String.valueOf(Math.max(1, LockStore.lockDuration(this) / 60_000)));
+        pauseCard.addView(durationInput, topMargin(8));
+        LinearLayout.LayoutParams half1 = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        half1.rightMargin = dp(5);
+        settings.addView(useCard, half1);
+        LinearLayout.LayoutParams half2 = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        half2.leftMargin = dp(5);
+        settings.addView(pauseCard, half2);
+        root.addView(settings, topMargin(10));
+
+        Button start = button("Start gentle boundary   →", INK, Color.WHITE);
+        start.setTextSize(14);
         start.setOnClickListener(v -> startCommitment());
-        root.addView(start);
+        root.addView(start, topMargin(18));
+        TextView foot = text("Kind boundary • no activity leaves your device", 10, FAINT, false);
+        foot.setGravity(Gravity.CENTER);
+        root.addView(foot, topMargin(10));
         return scroll;
     }
 
-    private void addLaunchableApps(LinearLayout root) {
+    private void refreshPermissionCards() {
+        if (permissionRow == null) return;
+        permissionRow.removeAllViews();
+        boolean usage = usageAccessEnabled();
+        boolean overlay = Settings.canDrawOverlays(this);
+        View usageCard = permissionCard("Usage Access", "Counts only real time spent in selected apps.", usage, v -> startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
+        View overlayCard = permissionCard("Gentle Lock", "Shows the pause screen when a limit is reached.", overlay, v -> startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))));
+        LinearLayout.LayoutParams left = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        left.rightMargin = dp(5);
+        permissionRow.addView(usageCard, left);
+        LinearLayout.LayoutParams right = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        right.leftMargin = dp(5);
+        permissionRow.addView(overlayCard, right);
+    }
+
+    private View permissionCard(String title, String copy, boolean enabled, View.OnClickListener click) {
+        LinearLayout card = column();
+        card.setPadding(dp(13), dp(13), dp(13), dp(13));
+        card.setBackground(shape(Color.WHITE, enabled ? Color.rgb(167, 243, 208) : BORDER, 18));
+        TextView state = text(enabled ? "●  READY" : "○  NEEDED", 9, enabled ? GREEN : VIOLET, true);
+        card.addView(state);
+        card.addView(text(title, 13, INK, true), topMargin(8));
+        TextView detail = text(copy, 10, MUTED, false);
+        detail.setMinHeight(dp(42));
+        card.addView(detail, topMargin(5));
+        Button action = button(enabled ? "Enabled  ✓" : "Allow", enabled ? Color.rgb(236, 253, 245) : INK, enabled ? GREEN : Color.WHITE);
+        action.setEnabled(!enabled);
+        action.setOnClickListener(click);
+        card.addView(action, topMargin(8));
+        return card;
+    }
+
+    private void addLaunchableApps(GridLayout grid) {
         PackageManager pm = getPackageManager();
         Intent launcher = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        List<ApplicationInfo> apps = new ArrayList<>();
-        for (android.content.pm.ResolveInfo info : pm.queryIntentActivities(launcher, 0)) {
-            ApplicationInfo app = info.activityInfo.applicationInfo;
-            if (!app.packageName.equals(getPackageName()) && apps.stream().noneMatch(a -> a.packageName.equals(app.packageName))) apps.add(app);
+        List<ResolveInfo> resolved = pm.queryIntentActivities(launcher, 0);
+        Map<String, ResolveInfo> unique = new LinkedHashMap<>();
+        for (ResolveInfo info : resolved) {
+            String pkg = info.activityInfo.packageName;
+            if (!pkg.equals(getPackageName())) unique.put(pkg, info);
         }
-        Collections.sort(apps, Comparator.comparing(a -> pm.getApplicationLabel(a).toString().toLowerCase()));
+        List<ResolveInfo> apps = new ArrayList<>(unique.values());
+        apps.sort(Comparator.comparing(a -> a.loadLabel(pm).toString().toLowerCase()));
         Set<String> saved = LockStore.packages(this);
-        for (ApplicationInfo app : apps) {
+        for (ResolveInfo info : apps) {
+            String pkg = info.activityInfo.packageName;
             CheckBox check = new CheckBox(this);
-            check.setText(pm.getApplicationLabel(app));
-            check.setTag(app.packageName);
-            check.setChecked(saved.contains(app.packageName));
-            check.setTextSize(16);
-            check.setTextColor(Color.rgb(239, 235, 247));
-            check.setButtonTintList(ColorStateList.valueOf(Color.rgb(139, 92, 246)));
-            check.setPadding(0, dp(5), 0, dp(5));
+            check.setTag(pkg);
+            check.setText(info.loadLabel(pm));
+            check.setTextSize(10);
+            check.setTextColor(INK);
+            check.setGravity(Gravity.CENTER);
+            check.setButtonDrawable(null);
+            check.setPadding(dp(6), dp(10), dp(6), dp(8));
+            check.setMaxLines(2);
+            try {
+                Drawable icon = info.loadIcon(pm);
+                icon.setBounds(0, 0, dp(34), dp(34));
+                check.setCompoundDrawables(null, icon, null, null);
+                check.setCompoundDrawablePadding(dp(7));
+            } catch (Exception ignored) {}
+            check.setChecked(saved.contains(pkg));
+            styleAppTile(check);
+            check.setOnCheckedChangeListener((button, checked) -> {
+                styleAppTile(check);
+                refreshSelectedCount();
+            });
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = 0;
+            lp.height = dp(96);
+            lp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+            lp.setMargins(dp(4), dp(4), dp(4), dp(4));
+            grid.addView(check, lp);
             appChecks.add(check);
-            root.addView(check);
         }
+        refreshSelectedCount();
+    }
+
+    private void styleAppTile(CheckBox check) {
+        check.setBackground(shape(check.isChecked() ? SOFT_VIOLET : Color.WHITE, check.isChecked() ? VIOLET : BORDER, 18));
+        if (Build.VERSION.SDK_INT >= 21) check.setBackgroundTintList(null);
+    }
+
+    private void refreshSelectedCount() {
+        if (selectedCount == null) return;
+        int count = 0;
+        for (CheckBox check : appChecks) if (check.isChecked()) count++;
+        selectedCount.setText(count + (count == 1 ? " selected" : " selected"));
     }
 
     private void startCommitment() {
         Set<String> selected = new HashSet<>();
         for (CheckBox check : appChecks) if (check.isChecked()) selected.add((String) check.getTag());
-        if (selected.isEmpty()) { Toast.makeText(this, "Choose at least one app", Toast.LENGTH_SHORT).show(); return; }
-        int grace = parsePositive(graceInput, 1);
-        int duration = parsePositive(durationInput, 60);
-        if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)) { Toast.makeText(this, "Allow both Usage Access and Display Over Apps first", Toast.LENGTH_LONG).show(); return; }
+        if (selected.isEmpty()) { toast("Choose at least one app first."); return; }
+        int grace = parsePositive(graceInput, "use time");
+        int duration = parsePositive(durationInput, "pause time");
+        if (grace < 1 || duration < 1) return;
+        if (!usageAccessEnabled()) { toast("Please allow Usage Access first."); startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)); return; }
+        if (!Settings.canDrawOverlays(this)) { toast("Please allow Display Over Other Apps first."); startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); return; }
         LockStore.configure(this, selected, grace * 60_000L, duration * 60_000L);
-        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 10);
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 24);
         Intent monitor = new Intent(this, FocusMonitorService.class);
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(monitor); else startService(monitor);
-        Toast.makeText(this, "Usage monitoring started", Toast.LENGTH_SHORT).show();
+        toast("Your gentle boundary is active.");
         refreshStatus();
     }
 
     private void refreshStatus() {
         if (status == null) return;
-        Set<String> selected = LockStore.packages(this);
-        if (selected.isEmpty()) status.setText("Ready for a new commitment");
-        else status.setText("Monitoring " + selected.size() + " app" + (selected.size() == 1 ? "" : "s") + " • " + friendly(LockStore.allowance(this)) + " usage allowed each");
+        Set<String> packages = LockStore.packages(this);
+        if (packages.isEmpty()) {
+            status.setText("○  No boundary active yet");
+            status.setTextColor(MUTED);
+        } else {
+            status.setText("●  Boundary active  •  " + packages.size() + " apps  •  " + friendly(LockStore.allowance(this)) + " use then " + friendly(LockStore.lockDuration(this)) + " pause");
+            status.setTextColor(GREEN);
+        }
     }
 
     private void showAdultProtectionIntro() {
+        if (isFinishing() || adultProtectionActive()) return;
         new AlertDialog.Builder(this)
-                .setTitle("Protect this device")
-                .setMessage("FocusLock can block known adult and malware domains across browsers and apps. Android requires one system setting. DNS requests will be handled by Cloudflare Family DNS; FocusLock does not receive them.")
-                .setPositiveButton("Set up now", (dialog, which) -> openAdultProtectionSetup())
-                .setNegativeButton("Later", null)
+                .setTitle("Protect this phone from adult sites")
+                .setMessage("FocusLock can guide you to Android Private DNS. Cloudflare Family will block known adult and malware domains across the device. Android requires you to confirm this setting, and FocusLock does not receive your browsing or DNS traffic.")
+                .setPositiveButton("Set up", (d, w) -> beginAdultProtectionSetup())
+                .setNegativeButton("Not now", null)
                 .show();
     }
 
-    private void openAdultProtectionSetup() {
-        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        clipboard.setPrimaryClip(ClipData.newPlainText("FocusLock Family DNS", FAMILY_DNS));
-        Toast.makeText(this, "Copied. Choose Private DNS provider hostname, paste it, then Save.", Toast.LENGTH_LONG).show();
+    private void beginAdultProtectionSetup() {
+        ((ClipboardManager) getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("Private DNS hostname", FAMILY_DNS));
+        toast("Hostname copied. Choose Private DNS provider hostname and paste it.");
         try { startActivity(new Intent("android.settings.PRIVATE_DNS_SETTINGS")); }
-        catch (Exception unavailable) { startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS)); }
+        catch (Exception e) { startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS)); }
     }
 
     private boolean adultProtectionActive() {
-        String mode = Settings.Global.getString(getContentResolver(), "private_dns_mode");
-        String host = Settings.Global.getString(getContentResolver(), "private_dns_specifier");
-        return "hostname".equals(mode) && FAMILY_DNS.equalsIgnoreCase(host);
+        try {
+            String mode = Settings.Global.getString(getContentResolver(), "private_dns_mode");
+            String specifier = Settings.Global.getString(getContentResolver(), "private_dns_specifier");
+            return "hostname".equals(mode) && FAMILY_DNS.equalsIgnoreCase(specifier == null ? "" : specifier.trim());
+        } catch (Exception e) { return false; }
     }
 
     private void refreshAdultStatus() {
         if (adultStatus == null) return;
-        if (adultProtectionActive()) { adultStatus.setText("● ACTIVE — adult sites filtered"); adultStatus.setTextColor(Color.rgb(91, 222, 151)); }
-        else { adultStatus.setText("● SETUP REQUIRED"); adultStatus.setTextColor(Color.rgb(255, 126, 101)); }
+        boolean active = adultProtectionActive();
+        adultStatus.setText(active ? "●  ACTIVE ON THIS DEVICE" : "○  SETUP REQUIRED");
+        adultStatus.setTextColor(active ? GREEN : VIOLET);
     }
 
     private boolean usageAccessEnabled() {
-        AppOpsManager ops = (AppOpsManager) getSystemService(Context.APP_OPS_SERVICE);
-        return ops.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), getPackageName()) == AppOpsManager.MODE_ALLOWED;
+        AppOpsManager appOps = (AppOpsManager) getSystemService(APP_OPS_SERVICE);
+        ApplicationInfo info = getApplicationInfo();
+        int mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, info.uid, getPackageName());
+        return mode == AppOpsManager.MODE_ALLOWED;
     }
 
-    private int parsePositive(EditText field, int fallback) {
-        try { return Math.max(1, Integer.parseInt(field.getText().toString())); } catch (Exception e) { return fallback; }
+    private int parsePositive(EditText input, String label) {
+        try {
+            int value = Integer.parseInt(input.getText().toString().trim());
+            if (value > 0) return value;
+        } catch (Exception ignored) {}
+        toast("Enter a positive " + label + " in minutes.");
+        return -1;
     }
-    private String friendly(long millis) {
-        long seconds = Math.max(0, millis / 1000), minutes = seconds / 60;
-        return minutes > 0 ? minutes + "m " + (seconds % 60) + "s" : seconds + "s";
+
+    private LinearLayout timeCard(String label, String detail) {
+        LinearLayout card = column();
+        card.setPadding(dp(14), dp(14), dp(14), dp(14));
+        card.setBackground(shape(Color.WHITE, BORDER, 18));
+        card.addView(text(label, 10, FAINT, true));
+        card.addView(text(detail, 11, MUTED, false), topMargin(4));
+        return card;
     }
-    private TextView text(String value, int sp, boolean bold) {
-        TextView view = new TextView(this); view.setText(value); view.setTextSize(sp); view.setTextColor(Color.rgb(244, 240, 250));
-        if (bold) view.setTypeface(null, android.graphics.Typeface.BOLD); return view;
+
+    private EditText numberInput(String value) {
+        EditText input = new EditText(this);
+        input.setText(value);
+        input.setTextSize(24);
+        input.setTextColor(INK);
+        input.setGravity(Gravity.CENTER);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setSingleLine(true);
+        input.setPadding(dp(8), dp(7), dp(8), dp(7));
+        input.setBackground(shape(Color.rgb(249, 250, 251), BORDER, 14));
+        if (Build.VERSION.SDK_INT >= 21) input.setBackgroundTintList(null);
+        return input;
     }
-    private Button button(String value) { Button b = new Button(this); b.setText(value); b.setAllCaps(false); b.setTextColor(Color.WHITE); b.setBackgroundTintList(ColorStateList.valueOf(Color.rgb(58, 43, 88))); return b; }
-    private EditText numberInput(String hint, String value) {
-        EditText e = new EditText(this); e.setHint(hint); e.setText(value); e.setInputType(InputType.TYPE_CLASS_NUMBER); e.setTextSize(16); e.setTextColor(Color.WHITE); e.setHintTextColor(Color.rgb(150, 142, 170)); e.setBackgroundTintList(ColorStateList.valueOf(Color.rgb(139, 92, 246))); return e;
+
+    private Button button(String label, int background, int foreground) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setTextSize(11);
+        button.setTextColor(foreground);
+        button.setAllCaps(false);
+        button.setGravity(Gravity.CENTER);
+        button.setMinHeight(0);
+        button.setMinimumHeight(0);
+        button.setPadding(dp(12), dp(12), dp(12), dp(12));
+        button.setBackground(shape(background, background, 22));
+        if (Build.VERSION.SDK_INT >= 21) button.setBackgroundTintList(null);
+        return button;
     }
-    private GradientDrawable panel(int color, int radiusDp) { GradientDrawable g = new GradientDrawable(); g.setColor(color); g.setCornerRadius(dp(radiusDp)); return g; }
-    private LinearLayout.LayoutParams margins(int l, int t, int r, int b) {
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2); p.setMargins(l, t, r, b); return p;
+
+    private TextView section(String label) {
+        TextView view = text(label, 10, FAINT, true);
+        view.setLetterSpacing(.14f);
+        return view;
     }
-    private int dp(int n) { return Math.round(n * getResources().getDisplayMetrics().density); }
+
+    private TextView text(String value, int size, int color, boolean bold) {
+        TextView view = new TextView(this);
+        view.setText(value);
+        view.setTextSize(size);
+        view.setTextColor(color);
+        if (bold) view.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        return view;
+    }
+
+    private GradientDrawable shape(int fill, int stroke, int radius) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(fill);
+        drawable.setCornerRadius(dp(radius));
+        drawable.setStroke(dp(1), stroke);
+        return drawable;
+    }
+
+    private LinearLayout column() { LinearLayout v = new LinearLayout(this); v.setOrientation(LinearLayout.VERTICAL); return v; }
+    private LinearLayout row() { LinearLayout v = new LinearLayout(this); v.setOrientation(LinearLayout.HORIZONTAL); return v; }
+    private LinearLayout.LayoutParams matchWrap() { return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); }
+    private LinearLayout.LayoutParams topMargin(int margin) { LinearLayout.LayoutParams p = matchWrap(); p.topMargin = dp(margin); return p; }
+    private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
+    private String friendly(long ms) { long minutes = Math.max(1, ms / 60_000); return minutes >= 60 && minutes % 60 == 0 ? (minutes / 60) + "h" : minutes + "m"; }
+    private void toast(String message) { Toast.makeText(this, message, Toast.LENGTH_LONG).show(); }
 }
