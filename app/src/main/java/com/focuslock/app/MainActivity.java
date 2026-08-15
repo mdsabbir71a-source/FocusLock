@@ -1,6 +1,7 @@
 package com.focuslock.app;
 
-import android.accessibilityservice.AccessibilityServiceInfo;
+import android.Manifest;
+import android.app.AppOpsManager;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -8,6 +9,8 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Build;
+import android.net.Uri;
 import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
@@ -19,7 +22,6 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.view.accessibility.AccessibilityManager;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -63,12 +65,15 @@ public class MainActivity extends Activity {
         root.addView(status, margins(0, 0, 0, dp(18)));
 
         root.addView(text("1. Allow app blocking", 20, true));
-        TextView permissionHelp = text("Android requires Accessibility permission. FocusLock only reads which app is in front; it does not read screen content.", 14, false);
+        TextView permissionHelp = text("FocusLock needs Usage Access to detect the current app and Display Over Other Apps to show the lock screen. It does not read screen content.", 14, false);
         permissionHelp.setTextColor(Color.DKGRAY);
         root.addView(permissionHelp, margins(0, dp(5), 0, dp(10)));
-        Button permission = button("Open Accessibility settings");
-        permission.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
-        root.addView(permission, margins(0, 0, 0, dp(22)));
+        Button usage = button("1A. Allow Usage Access");
+        usage.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
+        root.addView(usage, margins(0, 0, 0, dp(8)));
+        Button overlay = button("1B. Allow Display Over Apps");
+        overlay.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))));
+        root.addView(overlay, margins(0, 0, 0, dp(22)));
 
         root.addView(text("2. Choose apps to block", 20, true));
         addLaunchableApps(root);
@@ -115,10 +120,13 @@ public class MainActivity extends Activity {
         if (selected.isEmpty()) { Toast.makeText(this, "Choose at least one app", Toast.LENGTH_SHORT).show(); return; }
         int grace = parsePositive(graceInput, 1);
         int duration = parsePositive(durationInput, 60);
-        if (!accessibilityEnabled()) { Toast.makeText(this, "Enable FocusLock in Accessibility first", Toast.LENGTH_LONG).show(); return; }
+        if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)) { Toast.makeText(this, "Allow both Usage Access and Display Over Apps first", Toast.LENGTH_LONG).show(); return; }
         long start = System.currentTimeMillis() + grace * 60_000L;
         LockStore.saveSelection(this, selected);
         LockStore.schedule(this, start, start + duration * 60_000L);
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 10);
+        Intent monitor = new Intent(this, FocusMonitorService.class);
+        if (Build.VERSION.SDK_INT >= 26) startForegroundService(monitor); else startService(monitor);
         Toast.makeText(this, "Commitment started", Toast.LENGTH_SHORT).show();
         refreshStatus();
     }
@@ -131,12 +139,9 @@ public class MainActivity extends Activity {
         else status.setText("Ready for a new commitment");
     }
 
-    private boolean accessibilityEnabled() {
-        AccessibilityManager manager = (AccessibilityManager) getSystemService(Context.ACCESSIBILITY_SERVICE);
-        for (AccessibilityServiceInfo info : manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)) {
-            if (info.getResolveInfo().serviceInfo.packageName.equals(getPackageName())) return true;
-        }
-        return false;
+    private boolean usageAccessEnabled() {
+        AppOpsManager ops = (AppOpsManager) getSystemService(Context.APP_OPS_SERVICE);
+        return ops.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), getPackageName()) == AppOpsManager.MODE_ALLOWED;
     }
 
     private int parsePositive(EditText field, int fallback) {
