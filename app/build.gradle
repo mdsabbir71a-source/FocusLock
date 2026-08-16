@@ -4,6 +4,10 @@ android {
     namespace 'com.focuslock.app'
     compileSdk 35
 
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId 'com.focuslock.app'
         minSdk 26
