@@ -76,9 +76,7 @@ public class BlockActivity extends Activity {
         artRow.addView(leafLeft, new LinearLayout.LayoutParams(dp(42), ViewGroup.LayoutParams.WRAP_CONTENT));
         logoCard = new LinearLayout(this);
         logoCard.setGravity(Gravity.CENTER);
-        ImageView illustration = new ImageView(this);
-        illustration.setImageResource(R.drawable.blocker_illustration);
-        illustration.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        NatureLineArtView illustration = new NatureLineArtView(this, LockStore.nextArtIndex(this, 8));
         logoCard.addView(illustration, new LinearLayout.LayoutParams(dp(145), dp(178)));
         artRow.addView(logoCard, new LinearLayout.LayoutParams(dp(150), dp(184)));
         artRow.addView(leafRight, new LinearLayout.LayoutParams(dp(42), ViewGroup.LayoutParams.WRAP_CONTENT));

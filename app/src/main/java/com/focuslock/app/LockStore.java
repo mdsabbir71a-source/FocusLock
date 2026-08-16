@@ -12,6 +12,7 @@ public final class LockStore {
     private static final String LOCK_DURATION = "lock_duration_ms";
     private static final String ENABLED = "enabled";
     private static final String REMINDER_INDEX = "reminder_index";
+    private static final String ART_INDEX = "art_index";
     private static final String TOTAL_PAUSES = "analytics_total_pauses";
     private static final String PROTECTED_MS = "analytics_protected_ms";
     private static final String STREAK = "analytics_streak";
@@ -33,6 +34,12 @@ public final class LockStore {
     public static int nextReminderIndex(Context context, int count) {
         int current = prefs(context).getInt(REMINDER_INDEX, 0);
         prefs(context).edit().putInt(REMINDER_INDEX, (current + 1) % Math.max(1, count)).apply();
+        return current % Math.max(1, count);
+    }
+
+    public static int nextArtIndex(Context context, int count) {
+        int current = prefs(context).getInt(ART_INDEX, 0);
+        prefs(context).edit().putInt(ART_INDEX, (current + 1) % Math.max(1, count)).apply();
         return current % Math.max(1, count);
     }
 
