@@ -5,6 +5,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AppOpsManager;
 import android.app.Dialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -15,6 +18,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.net.VpnService;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -52,7 +56,9 @@ public class MainActivity extends Activity {
     private static final int SOFT_VIOLET = Color.rgb(240, 248, 239);
     private static final int BORDER = Color.rgb(220, 233, 220);
     private static final int GREEN = Color.rgb(45, 130, 78);
+    private static final int REQUEST_VPN = 41;
     private static final int REQUEST_NOTIFICATIONS = 42;
+    private static final String FAMILY_DNS = "family.cloudflare-dns.com";
 
     private final List<CheckBox> appChecks = new ArrayList<>();
     private TextView status;
@@ -63,7 +69,8 @@ public class MainActivity extends Activity {
     private EditText durationInput;
     private EditText durationSecondsInput;
     private LinearLayout permissionRow;
-    private Button protectionButton;
+    private Button privateDnsButton;
+    private Button vpnButton;
     private Button masterButton;
     private ImageView headerLogo;
     private Button saveButton;
@@ -86,14 +93,16 @@ public class MainActivity extends Activity {
     private boolean guidedSetup;
     private boolean skipNotificationPrompt;
     private boolean newGuideIntro;
+    private boolean waitingForPrivateDns;
+    private boolean pendingVpnAfterDnsOff;
     private int waitingForSpecialPermission;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         SharedPreferences onboarding = getSharedPreferences("focuslock_onboarding", MODE_PRIVATE);
-        newGuideIntro = !onboarding.getBoolean("interactive_guide_v12_seen", false);
+        newGuideIntro = !onboarding.getBoolean("interactive_guide_v13_seen", false);
         if (newGuideIntro) {
-            onboarding.edit().putBoolean("interactive_guide_v12_seen", true).putBoolean("guide_complete", false).apply();
+            onboarding.edit().putBoolean("interactive_guide_v13_seen", true).putBoolean("guide_complete", false).apply();
         }
         setContentView(buildUi());
         boolean welcomed = onboarding.getBoolean("welcome_seen", false);
@@ -109,6 +118,20 @@ public class MainActivity extends Activity {
         refreshPermissionCards();
         refreshMasterButton();
         refreshAnalytics();
+        if (waitingForPrivateDns) {
+            waitingForPrivateDns = false;
+            new Handler().postDelayed(() -> {
+                refreshAdultStatus();
+                toast(privateDnsActive() ? "Option 1 is active." : "Private DNS was not enabled yet. Tap Option 1 to try again.");
+            }, 350);
+        }
+        if (pendingVpnAfterDnsOff) {
+            pendingVpnAfterDnsOff = false;
+            new Handler().postDelayed(() -> {
+                if (privateDnsActive()) toast("Set Private DNS to Automatic or Off, then try Option 2 again.");
+                else requestAdultProtection();
+            }, 350);
+        }
         if (waitingForSpecialPermission != 0) {
             int returningFrom = waitingForSpecialPermission;
             waitingForSpecialPermission = 0;
@@ -193,16 +216,26 @@ public class MainActivity extends Activity {
         LinearLayout protection = column();
         protection.setPadding(dp(16), dp(15), dp(16), dp(15));
         protection.setBackground(shape(SOFT_VIOLET, BORDER, 20));
-        TextView protectionTitle = text("🍃  FocusLock Safe Browser", 15, INK, true);
+        TextView protectionTitle = text("🍃  Full-phone website protection", 15, INK, true);
         protection.addView(protectionTitle);
-        adultStatus = text("Checking device protection…", 11, VIOLET, true);
+        adultStatus = text("Choose one option to test", 11, VIOLET, true);
         protection.addView(adultStatus, topMargin(5));
-        TextView protectionCopy = text("Adult-domain blocking and strict search filtering turn on automatically inside this browser. No VPN, DNS setup, or extra permission.", 12, MUTED, false);
+        TextView protectionCopy = text("Both options use Cloudflare Family to block adult domains across the device. Use only one option at a time.", 12, MUTED, false);
         protectionCopy.setLineSpacing(0, 1.15f);
         protection.addView(protectionCopy, topMargin(8));
-        protectionButton = button("Open Safe Browser  →", VIOLET, Color.WHITE);
-        protectionButton.setOnClickListener(v -> startActivity(new Intent(this, SafeBrowserActivity.class)));
-        protection.addView(protectionButton, topMargin(12));
+        LinearLayout dnsOption = protectionOption("OPTION 1  •  NO VPN ICON", "Private DNS",
+                "One-time Android setup. FocusLock copies the hostname; paste it in Private DNS.");
+        privateDnsButton = button("Try Option 1  →", Color.WHITE, VIOLET);
+        privateDnsButton.setBackground(shape(Color.WHITE, VIOLET, 20));
+        privateDnsButton.setOnClickListener(v -> choosePrivateDns());
+        dnsOption.addView(privateDnsButton, topMargin(10));
+        protection.addView(dnsOption, topMargin(13));
+        LinearLayout vpnOption = protectionOption("OPTION 2  •  ONE TAP", "DNS-only VPN",
+                "Tap Allow once. Android will show its required VPN/key indicator while active.");
+        vpnButton = button("Try Option 2  →", VIOLET, Color.WHITE);
+        vpnButton.setOnClickListener(v -> chooseVpnProtection());
+        vpnOption.addView(vpnButton, topMargin(10));
+        protection.addView(vpnOption, topMargin(9));
         root.addView(protection, topMargin(9));
         reveal(protection, 320);
 
@@ -292,7 +325,7 @@ public class MainActivity extends Activity {
         if (isFinishing()) return;
         new AlertDialog.Builder(this)
                 .setTitle("Welcome to FocusLock 🌿")
-                .setMessage("Let's prepare app blocking now. FocusLock will guide each required Android approval. The Safe Browser needs no additional setup.")
+                .setMessage("Let's prepare app blocking now. FocusLock will guide each required Android approval. You can then test either website-protection option on the main screen.")
                 .setPositiveButton("Begin setup", (dialog, which) -> {
                     getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("welcome_seen", true).apply();
                     startEasySetup();
@@ -527,9 +560,113 @@ public class MainActivity extends Activity {
 
     private void refreshAdultStatus() {
         if (adultStatus == null) return;
-        adultStatus.setText("●  AUTOMATICALLY ACTIVE INSIDE SAFE BROWSER");
-        adultStatus.setTextColor(GREEN);
-        if (protectionButton != null) protectionButton.setText("Open Safe Browser  →");
+        boolean vpnActive = FamilyDnsVpnService.isActive();
+        boolean dnsActive = privateDnsActive();
+        if (vpnActive) {
+            adultStatus.setText("●  OPTION 2 ACTIVE — DNS-ONLY VPN");
+            adultStatus.setTextColor(GREEN);
+        } else if (dnsActive) {
+            adultStatus.setText("●  OPTION 1 ACTIVE — PRIVATE DNS");
+            adultStatus.setTextColor(GREEN);
+        } else {
+            adultStatus.setText("○  CHOOSE OPTION 1 OR OPTION 2");
+            adultStatus.setTextColor(VIOLET);
+        }
+        if (privateDnsButton != null) privateDnsButton.setText(dnsActive ? "Private DNS active  ✓" : "Try Option 1  →");
+        if (vpnButton != null) vpnButton.setText(vpnActive ? "Turn Option 2 off" : "Try Option 2  →");
+    }
+
+    private LinearLayout protectionOption(String badge, String title, String detail) {
+        LinearLayout card = column();
+        card.setPadding(dp(13), dp(13), dp(13), dp(13));
+        card.setBackground(shape(Color.rgb(249, 252, 248), BORDER, 17));
+        card.addView(text(badge, 9, VIOLET, true));
+        card.addView(text(title, 14, INK, true), topMargin(6));
+        TextView copy = text(detail, 11, MUTED, false);
+        copy.setLineSpacing(0, 1.12f);
+        card.addView(copy, topMargin(5));
+        return card;
+    }
+
+    private boolean privateDnsActive() {
+        if (Build.VERSION.SDK_INT < 28) return false;
+        String mode = Settings.Global.getString(getContentResolver(), "private_dns_mode");
+        String specifier = Settings.Global.getString(getContentResolver(), "private_dns_specifier");
+        return "hostname".equals(mode) && FAMILY_DNS.equalsIgnoreCase(specifier == null ? "" : specifier.trim());
+    }
+
+    private void choosePrivateDns() {
+        if (FamilyDnsVpnService.isActive()) {
+            Intent stop = new Intent(this, FamilyDnsVpnService.class).setAction(FamilyDnsVpnService.ACTION_STOP);
+            startService(stop);
+        }
+        if (Build.VERSION.SDK_INT < 28) {
+            toast("Private DNS needs Android 9 or newer. Please use Option 2.");
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Try Option 1 — Private DNS")
+                .setMessage("FocusLock will copy this hostname:\n\n" + FAMILY_DNS + "\n\nOn the next screen choose Private DNS provider hostname, paste it, and tap Save. No VPN icon will appear.")
+                .setPositiveButton("Copy & open settings", (dialog, which) -> {
+                    ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    clipboard.setPrimaryClip(ClipData.newPlainText("FocusLock family DNS", FAMILY_DNS));
+                    waitingForPrivateDns = true;
+                    openPrivateDnsSettings();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void openPrivateDnsSettings() {
+        Intent settings = Build.VERSION.SDK_INT >= 28
+                ? new Intent(Settings.ACTION_PRIVATE_DNS_SETTINGS)
+                : new Intent(Settings.ACTION_WIRELESS_SETTINGS);
+        try { startActivity(settings); }
+        catch (Exception ignored) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
+    }
+
+    private void chooseVpnProtection() {
+        if (FamilyDnsVpnService.isActive()) {
+            Intent stop = new Intent(this, FamilyDnsVpnService.class).setAction(FamilyDnsVpnService.ACTION_STOP);
+            startService(stop);
+            new Handler().postDelayed(this::refreshAdultStatus, 250);
+            toast("Option 2 is off.");
+            return;
+        }
+        if (privateDnsActive()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Switch from Option 1?")
+                    .setMessage("To compare fairly, set Private DNS to Automatic or Off. When you return, FocusLock will open the one-tap VPN approval.")
+                    .setPositiveButton("Open Private DNS settings", (dialog, which) -> {
+                        pendingVpnAfterDnsOff = true;
+                        openPrivateDnsSettings();
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+            return;
+        }
+        requestAdultProtection();
+    }
+
+    private void requestAdultProtection() {
+        Intent approval = VpnService.prepare(this);
+        if (approval != null) startActivityForResult(approval, REQUEST_VPN);
+        else startAdultProtectionService();
+    }
+
+    private void startAdultProtectionService() {
+        Intent service = new Intent(this, FamilyDnsVpnService.class);
+        if (Build.VERSION.SDK_INT >= 26) startForegroundService(service); else startService(service);
+        new Handler().postDelayed(this::refreshAdultStatus, 350);
+        toast("Option 2 is active. Android will show its VPN indicator.");
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_VPN) {
+            if (resultCode == RESULT_OK) startAdultProtectionService();
+            else toast("VPN approval was not allowed. You can still try Option 1.");
+        }
     }
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -645,7 +782,7 @@ public class MainActivity extends Activity {
         if (step == 1) {
             guideTitle.setText("STEP 1 OF 4");
             guideBody.setText("Allow the setup requests ↓");
-            guideHint.setText("Approve the app-limit permissions. Safe Browser protection is already automatic.");
+            guideHint.setText("Approve the app-limit permissions, then choose either website-protection option above.");
         } else if (step == 2) {
             guideTitle.setText("STEP 2 OF 4");
             guideBody.setText("Choose at least one app ↓");
