@@ -218,24 +218,30 @@ public class MainActivity extends Activity {
         protection.setBackground(shape(SOFT_VIOLET, BORDER, 20));
         TextView protectionTitle = text("🍃  Full-phone website protection", 15, INK, true);
         protection.addView(protectionTitle);
-        adultStatus = text("Choose one option to test", 11, VIOLET, true);
+        boolean privateDnsEdition = "PRIVATE_DNS".equals(BuildConfig.PROTECTION_MODE);
+        adultStatus = text("Checking website protection…", 11, VIOLET, true);
         protection.addView(adultStatus, topMargin(5));
-        TextView protectionCopy = text("Both options use Cloudflare Family to block adult domains across the device. Use only one option at a time.", 12, MUTED, false);
+        TextView protectionCopy = text(privateDnsEdition
+                ? "This test version uses Android Private DNS to block adult domains across the device without a VPN icon."
+                : "This test version uses a DNS-only local VPN to block adult domains across the device with one approval.", 12, MUTED, false);
         protectionCopy.setLineSpacing(0, 1.15f);
         protection.addView(protectionCopy, topMargin(8));
-        LinearLayout dnsOption = protectionOption("OPTION 1  •  NO VPN ICON", "Private DNS",
-                "One-time Android setup. FocusLock copies the hostname; paste it in Private DNS.");
-        privateDnsButton = button("Try Option 1  →", Color.WHITE, VIOLET);
-        privateDnsButton.setBackground(shape(Color.WHITE, VIOLET, 20));
-        privateDnsButton.setOnClickListener(v -> choosePrivateDns());
-        dnsOption.addView(privateDnsButton, topMargin(10));
-        protection.addView(dnsOption, topMargin(13));
-        LinearLayout vpnOption = protectionOption("OPTION 2  •  ONE TAP", "DNS-only VPN",
-                "Tap Allow once. Android will show its required VPN/key indicator while active.");
-        vpnButton = button("Try Option 2  →", VIOLET, Color.WHITE);
-        vpnButton.setOnClickListener(v -> chooseVpnProtection());
-        vpnOption.addView(vpnButton, topMargin(10));
-        protection.addView(vpnOption, topMargin(9));
+        if (privateDnsEdition) {
+            LinearLayout dnsOption = protectionOption("PRIVATE DNS VERSION  •  NO VPN ICON", "Private DNS",
+                    "One-time Android setup. FocusLock copies the hostname; paste it in Private DNS.");
+            privateDnsButton = button("Set up Private DNS  →", Color.WHITE, VIOLET);
+            privateDnsButton.setBackground(shape(Color.WHITE, VIOLET, 20));
+            privateDnsButton.setOnClickListener(v -> choosePrivateDns());
+            dnsOption.addView(privateDnsButton, topMargin(10));
+            protection.addView(dnsOption, topMargin(13));
+        } else {
+            LinearLayout vpnOption = protectionOption("DNS-ONLY VPN VERSION  •  ONE TAP", "DNS-only VPN",
+                    "Tap Allow once. Android will show its required VPN/key indicator while active.");
+            vpnButton = button("Enable DNS protection  →", VIOLET, Color.WHITE);
+            vpnButton.setOnClickListener(v -> chooseVpnProtection());
+            vpnOption.addView(vpnButton, topMargin(10));
+            protection.addView(vpnOption, topMargin(13));
+        }
         root.addView(protection, topMargin(9));
         reveal(protection, 320);
 
@@ -560,20 +566,21 @@ public class MainActivity extends Activity {
 
     private void refreshAdultStatus() {
         if (adultStatus == null) return;
-        boolean vpnActive = FamilyDnsVpnService.isActive();
-        boolean dnsActive = privateDnsActive();
+        boolean privateDnsEdition = "PRIVATE_DNS".equals(BuildConfig.PROTECTION_MODE);
+        boolean vpnActive = !privateDnsEdition && FamilyDnsVpnService.isActive();
+        boolean dnsActive = privateDnsEdition && privateDnsActive();
         if (vpnActive) {
-            adultStatus.setText("●  OPTION 2 ACTIVE — DNS-ONLY VPN");
+            adultStatus.setText("●  DNS-ONLY VPN PROTECTION ACTIVE");
             adultStatus.setTextColor(GREEN);
         } else if (dnsActive) {
-            adultStatus.setText("●  OPTION 1 ACTIVE — PRIVATE DNS");
+            adultStatus.setText("●  PRIVATE DNS PROTECTION ACTIVE");
             adultStatus.setTextColor(GREEN);
         } else {
-            adultStatus.setText("○  CHOOSE OPTION 1 OR OPTION 2");
+            adultStatus.setText(privateDnsEdition ? "○  PRIVATE DNS NOT SET UP" : "○  DNS-ONLY VPN IS OFF");
             adultStatus.setTextColor(VIOLET);
         }
-        if (privateDnsButton != null) privateDnsButton.setText(dnsActive ? "Private DNS active  ✓" : "Try Option 1  →");
-        if (vpnButton != null) vpnButton.setText(vpnActive ? "Turn Option 2 off" : "Try Option 2  →");
+        if (privateDnsButton != null) privateDnsButton.setText(dnsActive ? "Private DNS active  ✓" : "Set up Private DNS  →");
+        if (vpnButton != null) vpnButton.setText(vpnActive ? "Turn protection off" : "Enable DNS protection  →");
     }
 
     private LinearLayout protectionOption(String badge, String title, String detail) {
