@@ -14,6 +14,8 @@ Version 0.9 simplifies the dashboard into three guided steps, adds first-boundar
 
 Version 0.10 adds a persistent four-step walkthrough that moves with the user from permissions to app selection, timer setup, and saving. Selecting the first app automatically reveals the timer step, valid timer edits reveal the final save step, and the walkthrough can be replayed from **How it works?** without changing saved settings.
 
+Version 0.11 removes FocusLock's local VPN service and uses Android Private DNS for optional adult-site and malware filtering instead. Android shows one system confirmation because ordinary apps cannot change device-wide DNS secretly. This avoids the VPN icon, VPN tunnel, and conflict with the phone's VPN slot. Progress analytics now live in an animated right-side drawer, and the main screen has a shorter, clearer setup structure.
+
 It also includes a first-launch Adult Protection setup that guides the device owner to enable Cloudflare Family Private DNS (`family.cloudflare-dns.com`). Android requires the owner to confirm this system setting; apps cannot silently change it. The DNS provider blocks known adult and malware domains across the device, while FocusLock receives no browsing or DNS traffic.
 
 ## MVP behavior
@@ -39,3 +41,4 @@ Upload the contents of this folder to a GitHub repository. The included GitHub A
 - `QUERY_ALL_PACKAGES` is restricted by Google Play policy. Before publishing, replace the general app picker with a curated social-app list or submit the required policy declaration.
 - A technically determined user can disable Accessibility permission or uninstall the app. Device-owner mode would be needed for a tamper-resistant parental-control edition.
 - Battery-optimization behavior differs by manufacturer, so test on Samsung, Xiaomi, Oppo/Realme, and Pixel devices.
+- Private DNS is device-wide but may be bypassed by a browser or app that uses its own secure DNS configuration. A VPN-based filter is stronger, but v0.11 intentionally does not include VPN capability.
