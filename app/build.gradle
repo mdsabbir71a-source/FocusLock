@@ -12,6 +12,20 @@ android {
         versionName '0.13-test'
     }
 
+    flavorDimensions 'protection'
+    productFlavors {
+        privateDns {
+            dimension 'protection'
+            buildConfigField 'String', 'PROTECTION_MODE', '"PRIVATE_DNS"'
+            versionNameSuffix '-private-dns'
+        }
+        dnsVpn {
+            dimension 'protection'
+            buildConfigField 'String', 'PROTECTION_MODE', '"DNS_VPN"'
+            versionNameSuffix '-dns-vpn'
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
