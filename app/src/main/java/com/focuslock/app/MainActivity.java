@@ -5,9 +5,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AppOpsManager;
 import android.app.Dialog;
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -58,7 +55,6 @@ public class MainActivity extends Activity {
     private static final int GREEN = Color.rgb(45, 130, 78);
     private static final int REQUEST_VPN = 41;
     private static final int REQUEST_NOTIFICATIONS = 42;
-    private static final String FAMILY_DNS = "family.cloudflare-dns.com";
 
     private final List<CheckBox> appChecks = new ArrayList<>();
     private TextView status;
@@ -69,7 +65,6 @@ public class MainActivity extends Activity {
     private EditText durationInput;
     private EditText durationSecondsInput;
     private LinearLayout permissionRow;
-    private Button privateDnsButton;
     private Button vpnButton;
     private Button masterButton;
     private ImageView headerLogo;
@@ -82,6 +77,8 @@ public class MainActivity extends Activity {
     private TextView analyticsPauses;
     private TextView analyticsTime;
     private TextView analyticsStreak;
+    private TextView analyticsHero;
+    private TextView analyticsInsight;
     private Button easySetupButton;
     private TextView permissionNote;
     private LinearLayout guideCard;
@@ -93,8 +90,7 @@ public class MainActivity extends Activity {
     private boolean guidedSetup;
     private boolean skipNotificationPrompt;
     private boolean newGuideIntro;
-    private boolean waitingForPrivateDns;
-    private boolean pendingVpnAfterDnsOff;
+    private boolean scrollAfterVpnApproval;
     private int waitingForSpecialPermission;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -118,19 +114,9 @@ public class MainActivity extends Activity {
         refreshPermissionCards();
         refreshMasterButton();
         refreshAnalytics();
-        if (waitingForPrivateDns) {
-            waitingForPrivateDns = false;
-            new Handler().postDelayed(() -> {
-                refreshAdultStatus();
-                toast(privateDnsActive() ? "Option 1 is active." : "Private DNS was not enabled yet. Tap Option 1 to try again.");
-            }, 350);
-        }
-        if (pendingVpnAfterDnsOff) {
-            pendingVpnAfterDnsOff = false;
-            new Handler().postDelayed(() -> {
-                if (privateDnsActive()) toast("Set Private DNS to Automatic or Off, then try Option 2 again.");
-                else requestAdultProtection();
-            }, 350);
+        if (LockStore.isEnabled(this) && usageAccessEnabled() && Settings.canDrawOverlays(this)
+                && !FamilyDnsVpnService.isActive() && VpnService.prepare(this) == null) {
+            startAdultProtectionService(false);
         }
         if (waitingForSpecialPermission != 0) {
             int returningFrom = waitingForSpecialPermission;
@@ -196,7 +182,7 @@ public class MainActivity extends Activity {
         master.setBackground(shape(Color.WHITE, BORDER, 20));
         LinearLayout masterCopy = column();
         masterCopy.addView(text("🌿  FocusLock", 14, INK, true));
-        masterCopy.addView(text("Pause or resume selected app limits", 10, MUTED, false), topMargin(3));
+        masterCopy.addView(text("Controls app limits and website protection", 10, MUTED, false), topMargin(3));
         master.addView(masterCopy, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         masterButton = button("ON", GREEN, Color.WHITE);
         masterButton.setMinWidth(dp(72));
@@ -218,30 +204,17 @@ public class MainActivity extends Activity {
         protection.setBackground(shape(SOFT_VIOLET, BORDER, 20));
         TextView protectionTitle = text("🍃  Full-phone website protection", 15, INK, true);
         protection.addView(protectionTitle);
-        boolean privateDnsEdition = "PRIVATE_DNS".equals(BuildConfig.PROTECTION_MODE);
         adultStatus = text("Checking website protection…", 11, VIOLET, true);
         protection.addView(adultStatus, topMargin(5));
-        TextView protectionCopy = text(privateDnsEdition
-                ? "This test version uses Android Private DNS to block adult domains across the device without a VPN icon."
-                : "This test version uses a DNS-only local VPN to block adult domains across the device with one approval.", 12, MUTED, false);
+        TextView protectionCopy = text("FocusLock uses a DNS-only local VPN to block adult domains across the device. It turns on and off with the main FocusLock switch.", 12, MUTED, false);
         protectionCopy.setLineSpacing(0, 1.15f);
         protection.addView(protectionCopy, topMargin(8));
-        if (privateDnsEdition) {
-            LinearLayout dnsOption = protectionOption("PRIVATE DNS VERSION  •  NO VPN ICON", "Private DNS",
-                    "One-time Android setup. FocusLock copies the hostname; paste it in Private DNS.");
-            privateDnsButton = button("Set up Private DNS  →", Color.WHITE, VIOLET);
-            privateDnsButton.setBackground(shape(Color.WHITE, VIOLET, 20));
-            privateDnsButton.setOnClickListener(v -> choosePrivateDns());
-            dnsOption.addView(privateDnsButton, topMargin(10));
-            protection.addView(dnsOption, topMargin(13));
-        } else {
-            LinearLayout vpnOption = protectionOption("DNS-ONLY VPN VERSION  •  ONE TAP", "DNS-only VPN",
-                    "Tap Allow once. Android will show its required VPN/key indicator while active.");
-            vpnButton = button("Enable DNS protection  →", VIOLET, Color.WHITE);
-            vpnButton.setOnClickListener(v -> chooseVpnProtection());
-            vpnOption.addView(vpnButton, topMargin(10));
-            protection.addView(vpnOption, topMargin(13));
-        }
+        LinearLayout vpnOption = protectionOption("AUTOMATIC WITH FOCUSLOCK", "DNS-only protection",
+                "The first activation needs Android's Allow confirmation. Android shows its required VPN/key indicator while protection is active.");
+        vpnButton = button("Allow DNS protection  →", VIOLET, Color.WHITE);
+        vpnButton.setOnClickListener(v -> chooseVpnProtection());
+        vpnOption.addView(vpnButton, topMargin(10));
+        protection.addView(vpnOption, topMargin(13));
         root.addView(protection, topMargin(9));
         reveal(protection, 320);
 
@@ -331,7 +304,7 @@ public class MainActivity extends Activity {
         if (isFinishing()) return;
         new AlertDialog.Builder(this)
                 .setTitle("Welcome to FocusLock 🌿")
-                .setMessage("Let's prepare app blocking now. FocusLock will guide each required Android approval. You can then test either website-protection option on the main screen.")
+                .setMessage("Let's prepare FocusLock now. It will guide the app-limit permissions and Android's one-time DNS protection approval.")
                 .setPositiveButton("Begin setup", (dialog, which) -> {
                     getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("welcome_seen", true).apply();
                     startEasySetup();
@@ -345,17 +318,20 @@ public class MainActivity extends Activity {
         LockStore.setEnabled(this, enable);
         if (!enable) {
             stopService(new Intent(this, FocusMonitorService.class));
-            toast("FocusLock is paused. Your choices are still saved.");
+            stopAdultProtectionService();
+            toast("FocusLock is off. App limits and DNS protection are paused.");
         } else {
             if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)) {
                 startEasySetup();
             } else {
                 startSavedMonitoring();
-                toast("FocusLock is back on.");
+                requestAdultProtection();
+                toast("FocusLock is on. All protection is starting.");
             }
         }
         refreshMasterButton();
         refreshStatus();
+        refreshAdultStatus();
     }
 
     private void refreshMasterButton() {
@@ -560,27 +536,35 @@ public class MainActivity extends Activity {
         }
         guidedSetup = false;
         skipNotificationPrompt = false;
-        toast("Everything is ready. You can start your boundary now.");
+        if (LockStore.isEnabled(this) && !FamilyDnsVpnService.isActive()) {
+            Intent approval = VpnService.prepare(this);
+            if (approval != null) {
+                scrollAfterVpnApproval = true;
+                toast("One last step: tap Allow for DNS protection.");
+                startActivityForResult(approval, REQUEST_VPN);
+                return;
+            }
+            startAdultProtectionService(false);
+        }
+        toast("Everything is ready. App limits and DNS protection are on.");
         scrollToBoundarySetup();
     }
 
     private void refreshAdultStatus() {
         if (adultStatus == null) return;
-        boolean privateDnsEdition = "PRIVATE_DNS".equals(BuildConfig.PROTECTION_MODE);
-        boolean vpnActive = !privateDnsEdition && FamilyDnsVpnService.isActive();
-        boolean dnsActive = privateDnsEdition && privateDnsActive();
+        boolean vpnActive = FamilyDnsVpnService.isActive();
         if (vpnActive) {
             adultStatus.setText("●  DNS-ONLY VPN PROTECTION ACTIVE");
             adultStatus.setTextColor(GREEN);
-        } else if (dnsActive) {
-            adultStatus.setText("●  PRIVATE DNS PROTECTION ACTIVE");
-            adultStatus.setTextColor(GREEN);
         } else {
-            adultStatus.setText(privateDnsEdition ? "○  PRIVATE DNS NOT SET UP" : "○  DNS-ONLY VPN IS OFF");
+            adultStatus.setText(LockStore.isEnabled(this) ? "○  DNS PROTECTION NEEDS APPROVAL" : "○  PAUSED WITH FOCUSLOCK");
             adultStatus.setTextColor(VIOLET);
         }
-        if (privateDnsButton != null) privateDnsButton.setText(dnsActive ? "Private DNS active  ✓" : "Set up Private DNS  →");
-        if (vpnButton != null) vpnButton.setText(vpnActive ? "Turn protection off" : "Enable DNS protection  →");
+        if (vpnButton != null) {
+            vpnButton.setText(vpnActive ? "Active with FocusLock  ✓" : LockStore.isEnabled(this) ? "Allow DNS protection  →" : "Turn on FocusLock first");
+            vpnButton.setEnabled(!vpnActive && LockStore.isEnabled(this));
+            vpnButton.setAlpha(vpnButton.isEnabled() ? 1f : .45f);
+        }
     }
 
     private LinearLayout protectionOption(String badge, String title, String detail) {
@@ -595,61 +579,9 @@ public class MainActivity extends Activity {
         return card;
     }
 
-    private boolean privateDnsActive() {
-        if (Build.VERSION.SDK_INT < 28) return false;
-        String mode = Settings.Global.getString(getContentResolver(), "private_dns_mode");
-        String specifier = Settings.Global.getString(getContentResolver(), "private_dns_specifier");
-        return "hostname".equals(mode) && FAMILY_DNS.equalsIgnoreCase(specifier == null ? "" : specifier.trim());
-    }
-
-    private void choosePrivateDns() {
-        if (FamilyDnsVpnService.isActive()) {
-            Intent stop = new Intent(this, FamilyDnsVpnService.class).setAction(FamilyDnsVpnService.ACTION_STOP);
-            startService(stop);
-        }
-        if (Build.VERSION.SDK_INT < 28) {
-            toast("Private DNS needs Android 9 or newer. Please use Option 2.");
-            return;
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("Try Option 1 — Private DNS")
-                .setMessage("FocusLock will copy this hostname:\n\n" + FAMILY_DNS + "\n\nOn the next screen choose Private DNS provider hostname, paste it, and tap Save. No VPN icon will appear.")
-                .setPositiveButton("Copy & open settings", (dialog, which) -> {
-                    ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                    clipboard.setPrimaryClip(ClipData.newPlainText("FocusLock family DNS", FAMILY_DNS));
-                    waitingForPrivateDns = true;
-                    openPrivateDnsSettings();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    private void openPrivateDnsSettings() {
-        Intent settings = Build.VERSION.SDK_INT >= 28
-                ? new Intent("android.settings.PRIVATE_DNS_SETTINGS")
-                : new Intent(Settings.ACTION_WIRELESS_SETTINGS);
-        try { startActivity(settings); }
-        catch (Exception ignored) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
-    }
-
     private void chooseVpnProtection() {
         if (FamilyDnsVpnService.isActive()) {
-            Intent stop = new Intent(this, FamilyDnsVpnService.class).setAction(FamilyDnsVpnService.ACTION_STOP);
-            startService(stop);
-            new Handler().postDelayed(this::refreshAdultStatus, 250);
-            toast("Option 2 is off.");
-            return;
-        }
-        if (privateDnsActive()) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Switch from Option 1?")
-                    .setMessage("To compare fairly, set Private DNS to Automatic or Off. When you return, FocusLock will open the one-tap VPN approval.")
-                    .setPositiveButton("Open Private DNS settings", (dialog, which) -> {
-                        pendingVpnAfterDnsOff = true;
-                        openPrivateDnsSettings();
-                    })
-                    .setNegativeButton("Cancel", null)
-                    .show();
+            toast("DNS protection stays active while FocusLock is on. Use the main switch to pause everything.");
             return;
         }
         requestAdultProtection();
@@ -658,21 +590,30 @@ public class MainActivity extends Activity {
     private void requestAdultProtection() {
         Intent approval = VpnService.prepare(this);
         if (approval != null) startActivityForResult(approval, REQUEST_VPN);
-        else startAdultProtectionService();
+        else startAdultProtectionService(true);
     }
 
-    private void startAdultProtectionService() {
+    private void startAdultProtectionService(boolean showMessage) {
         Intent service = new Intent(this, FamilyDnsVpnService.class);
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(service); else startService(service);
         new Handler().postDelayed(this::refreshAdultStatus, 350);
-        toast("Option 2 is active. Android will show its VPN indicator.");
+        if (showMessage) toast("DNS protection is active with FocusLock.");
+    }
+
+    private void stopAdultProtectionService() {
+        Intent stop = new Intent(this, FamilyDnsVpnService.class).setAction(FamilyDnsVpnService.ACTION_STOP);
+        startService(stop);
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_VPN) {
-            if (resultCode == RESULT_OK) startAdultProtectionService();
-            else toast("VPN approval was not allowed. You can still try Option 1.");
+            if (resultCode == RESULT_OK) startAdultProtectionService(true);
+            else toast("DNS protection needs Android's Allow confirmation.");
+            if (scrollAfterVpnApproval) {
+                scrollAfterVpnApproval = false;
+                new Handler().postDelayed(this::scrollToBoundarySetup, 350);
+            }
         }
     }
 
@@ -789,7 +730,7 @@ public class MainActivity extends Activity {
         if (step == 1) {
             guideTitle.setText("STEP 1 OF 4");
             guideBody.setText("Allow the setup requests ↓");
-            guideHint.setText("Approve the app-limit permissions, then choose either website-protection option above.");
+            guideHint.setText("Approve the app-limit permissions and the one-time DNS protection request.");
         } else if (step == 2) {
             guideTitle.setText("STEP 2 OF 4");
             guideBody.setText("Choose at least one app ↓");
@@ -850,8 +791,8 @@ public class MainActivity extends Activity {
         LinearLayout drawerHeader = row();
         drawerHeader.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout titleCopy = column();
-        titleCopy.addView(text("Your progress", 24, INK, true));
-        titleCopy.addView(text("A quiet record of the time you protected.", 11, MUTED, false), topMargin(4));
+        titleCopy.addView(text("Your focus garden", 24, INK, true));
+        titleCopy.addView(text("Every pause is a little space you reclaimed.", 11, MUTED, false), topMargin(4));
         drawerHeader.addView(titleCopy, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView close = text("×", 28, MUTED, false);
         close.setGravity(Gravity.CENTER);
@@ -859,10 +800,15 @@ public class MainActivity extends Activity {
         drawerHeader.addView(close, new LinearLayout.LayoutParams(dp(40), dp(40)));
         panel.addView(drawerHeader, matchWrap());
 
-        TextView encouragement = text("Small pauses create room for better things to grow. 🌿", 14, VIOLET, true);
-        encouragement.setPadding(dp(15), dp(15), dp(15), dp(15));
-        encouragement.setBackground(shape(SOFT_VIOLET, BORDER, 18));
-        panel.addView(encouragement, topMargin(22));
+        LinearLayout hero = column();
+        hero.setPadding(dp(18), dp(18), dp(18), dp(18));
+        hero.setBackground(shape(Color.rgb(39, 91, 59), Color.rgb(39, 91, 59), 22));
+        hero.addView(text("TOTAL TIME PROTECTED", 9, Color.rgb(190, 226, 198), true));
+        analyticsHero = text("0m", 30, Color.WHITE, true);
+        hero.addView(analyticsHero, topMargin(6));
+        TextView heroCopy = text("Time redirected away from blocked apps", 11, Color.rgb(220, 235, 222), false);
+        hero.addView(heroCopy, topMargin(3));
+        panel.addView(hero, topMargin(22));
 
         LinearLayout stats = row();
         analyticsPauses = progressStat("0", "PAUSES");
@@ -878,9 +824,14 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams stat3 = new LinearLayout.LayoutParams(0, dp(82), 1f);
         stat3.leftMargin = dp(4);
         stats.addView(analyticsStreak, stat3);
-        panel.addView(stats, topMargin(18));
+        panel.addView(stats, topMargin(12));
 
-        panel.addView(section("WHAT THIS SHOWS"), topMargin(28));
+        analyticsInsight = text("Your first pause will begin your progress story.", 13, VIOLET, true);
+        analyticsInsight.setPadding(dp(15), dp(14), dp(15), dp(14));
+        analyticsInsight.setBackground(shape(SOFT_VIOLET, BORDER, 18));
+        panel.addView(analyticsInsight, topMargin(14));
+
+        panel.addView(section("YOUR PROGRESS, EXPLAINED"), topMargin(26));
         panel.addView(progressExplanation("Pauses", "How many times FocusLock helped you step away after reaching a limit."), topMargin(10));
         panel.addView(progressExplanation("Protected time", "The total pause time created by your completed boundaries."), topMargin(8));
         panel.addView(progressExplanation("Day streak", "Consecutive days where at least one boundary was reached."), topMargin(8));
@@ -893,6 +844,8 @@ public class MainActivity extends Activity {
             analyticsPauses = null;
             analyticsTime = null;
             analyticsStreak = null;
+            analyticsHero = null;
+            analyticsInsight = null;
         });
         close.setOnClickListener(v -> panel.animate().translationX(panel.getWidth()).alpha(.4f).setDuration(240).withEndAction(drawer::dismiss).start());
         drawer.show();
@@ -920,9 +873,20 @@ public class MainActivity extends Activity {
 
     private void refreshAnalytics() {
         if (analyticsPauses == null) return;
-        analyticsPauses.setText(LockStore.totalPauses(this) + "\nPAUSES");
-        analyticsTime.setText(formatProtected(LockStore.protectedTime(this)) + "\nPROTECTED");
-        analyticsStreak.setText(LockStore.streak(this) + "\nDAY STREAK");
+        int pauses = LockStore.totalPauses(this);
+        long protectedMs = LockStore.protectedTime(this);
+        int streak = LockStore.streak(this);
+        String protectedTime = formatProtected(protectedMs);
+        analyticsPauses.setText(pauses + "\nPAUSES");
+        analyticsTime.setText(protectedTime + "\nPROTECTED");
+        analyticsStreak.setText(streak + "\nDAY STREAK");
+        if (analyticsHero != null) analyticsHero.setText(protectedTime);
+        if (analyticsInsight != null) {
+            if (pauses == 0) analyticsInsight.setText("🌱  Reach your first boundary to plant your first progress marker.");
+            else if (streak >= 7) analyticsInsight.setText("🌳  A " + streak + "-day streak — your focus habit is taking root.");
+            else if (pauses >= 10) analyticsInsight.setText("🌿  " + pauses + " intentional pauses. Consistency is growing.");
+            else analyticsInsight.setText("🌱  " + (10 - pauses) + " more pause" + (10 - pauses == 1 ? "" : "s") + " until your first 10-pause milestone.");
+        }
         analyticsPauses.animate().scaleX(1.04f).scaleY(1.04f).setDuration(180).withEndAction(() -> analyticsPauses.animate().scaleX(1f).scaleY(1f).setDuration(180).start()).start();
     }
 
