@@ -4,30 +4,12 @@ android {
     namespace 'com.focuslock.app'
     compileSdk 35
 
-    buildFeatures {
-        buildConfig true
-    }
-
     defaultConfig {
         applicationId 'com.focuslock.app'
         minSdk 26
         targetSdk 33
-        versionCode 13
-        versionName '0.13-test'
-    }
-
-    flavorDimensions 'protection'
-    productFlavors {
-        privateDns {
-            dimension 'protection'
-            buildConfigField 'String', 'PROTECTION_MODE', '"PRIVATE_DNS"'
-            versionNameSuffix '-private-dns'
-        }
-        dnsVpn {
-            dimension 'protection'
-            buildConfigField 'String', 'PROTECTION_MODE', '"DNS_VPN"'
-            versionNameSuffix '-dns-vpn'
-        }
+        versionCode 14
+        versionName '0.14-test'
     }
 
     compileOptions {
