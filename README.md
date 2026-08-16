@@ -18,6 +18,8 @@ Version 0.11 removes FocusLock's local VPN service and uses Android Private DNS 
 
 Version 0.12 replaces the manual Private DNS flow with FocusLock Safe Browser. Adult-domain rules and strict Google, Bing, DuckDuckGo, and Yahoo search parameters apply automatically inside the browser, with no VPN, DNS setup, or special permission. The browser also disables file/content access, third-party cookies, mixed HTTP content, geolocation, popup windows, and WebView debugging. Protection is intentionally limited to FocusLock Safe Browser; other browsers and apps remain unaffected.
 
+Version 0.14 keeps only the DNS-only VPN method. The main FocusLock switch now controls the entire app: OFF stops selected-app monitoring and DNS protection, while ON starts both and opens Android's approval only when needed. The progress drawer has a redesigned focus-garden summary, clearer statistics, and milestone feedback based only on private on-device analytics.
+
 ## MVP behavior
 
 1. Allow **Usage Access** and **Display Over Other Apps** from the buttons in FocusLock.
@@ -41,4 +43,4 @@ Upload the contents of this folder to a GitHub repository. The included GitHub A
 - `QUERY_ALL_PACKAGES` is restricted by Google Play policy. Before publishing, replace the general app picker with a curated social-app list or submit the required policy declaration.
 - A technically determined user can disable Accessibility permission or uninstall the app. Device-owner mode would be needed for a tamper-resistant parental-control edition.
 - Battery-optimization behavior differs by manufacturer, so test on Samsung, Xiaomi, Oppo/Realme, and Pixel devices.
-- Safe Browser protection is automatic but applies only inside FocusLock Safe Browser. It does not alter or monitor Chrome, other browsers, or unrelated apps.
+- Adult-domain protection is optional and device-wide: Private DNS avoids the VPN slot but needs one manual paste, while DNS-only VPN needs Android's approval and visibly occupies the VPN slot. Neither method inspects browsing history or routes ordinary app traffic through FocusLock.
