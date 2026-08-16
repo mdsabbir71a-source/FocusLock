@@ -619,7 +619,7 @@ public class MainActivity extends Activity {
 
     private void openPrivateDnsSettings() {
         Intent settings = Build.VERSION.SDK_INT >= 28
-                ? new Intent(Settings.ACTION_PRIVATE_DNS_SETTINGS)
+                ? new Intent("android.settings.PRIVATE_DNS_SETTINGS")
                 : new Intent(Settings.ACTION_WIRELESS_SETTINGS);
         try { startActivity(settings); }
         catch (Exception ignored) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
