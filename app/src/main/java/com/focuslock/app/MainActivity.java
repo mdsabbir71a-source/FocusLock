@@ -72,6 +72,12 @@ public class MainActivity extends Activity {
     private Button saveButton;
     private ScrollView mainScroll;
     private View appSectionAnchor;
+    private View settingsAnchor;
+    private TextView analyticsPauses;
+    private TextView analyticsTime;
+    private TextView analyticsStreak;
+    private Button easySetupButton;
+    private TextView permissionNote;
     private boolean guidedSetup;
     private boolean scrollAfterVpn;
     private int waitingForSpecialPermission;
@@ -91,6 +97,7 @@ public class MainActivity extends Activity {
         refreshAdultStatus();
         refreshPermissionCards();
         refreshMasterButton();
+        refreshAnalytics();
         if (waitingForSpecialPermission != 0) {
             int returningFrom = waitingForSpecialPermission;
             waitingForSpecialPermission = 0;
@@ -154,13 +161,31 @@ public class MainActivity extends Activity {
         masterButton.setOnClickListener(v -> toggleMaster());
         master.addView(masterButton);
         root.addView(master, topMargin(20));
+        reveal(master, 120);
 
         status = text("No boundary active yet", 12, MUTED, true);
         status.setPadding(dp(14), dp(12), dp(14), dp(12));
         status.setBackground(shape(Color.WHITE, BORDER, 16));
         root.addView(status, topMargin(10));
 
-        TextView protectionLabel = section("PROTECTION");
+        LinearLayout progress = column();
+        progress.setPadding(dp(15), dp(15), dp(15), dp(15));
+        progress.setBackground(shape(Color.WHITE, BORDER, 20));
+        progress.addView(text("Your progress", 15, INK, true));
+        progress.addView(text("Small boundaries become meaningful change.", 10, MUTED, false), topMargin(3));
+        LinearLayout stats = row();
+        analyticsPauses = progressStat("0", "PAUSES");
+        analyticsTime = progressStat("0m", "PROTECTED");
+        analyticsStreak = progressStat("0", "DAY STREAK");
+        stats.addView(analyticsPauses, new LinearLayout.LayoutParams(0, dp(68), 1f));
+        stats.addView(analyticsTime, new LinearLayout.LayoutParams(0, dp(68), 1f));
+        stats.addView(analyticsStreak, new LinearLayout.LayoutParams(0, dp(68), 1f));
+        progress.addView(stats, topMargin(12));
+        root.addView(progress, topMargin(10));
+        reveal(progress, 220);
+        refreshAnalytics();
+
+        TextView protectionLabel = section("STEP 1  •  SET UP");
         root.addView(protectionLabel, topMargin(26));
         LinearLayout protection = column();
         protection.setPadding(dp(16), dp(15), dp(16), dp(15));
@@ -176,22 +201,23 @@ public class MainActivity extends Activity {
         protectionButton.setOnClickListener(v -> toggleAdultProtection());
         protection.addView(protectionButton, topMargin(12));
         root.addView(protection, topMargin(9));
+        reveal(protection, 320);
 
-        root.addView(section("PERMISSIONS"), topMargin(26));
+        root.addView(section("REQUIRED APPROVALS"), topMargin(16));
         permissionRow = row();
         root.addView(permissionRow, topMargin(9));
         refreshPermissionCards();
-        Button easySetup = button("Allow required permissions   →", INK, Color.WHITE);
-        easySetup.setTextSize(13);
-        easySetup.setOnClickListener(v -> startEasySetup());
-        root.addView(easySetup, topMargin(10));
-        TextView permissionNote = text("FocusLock opens each exact Android approval screen and continues automatically when you return.", 10, FAINT, false);
+        easySetupButton = button("Guide me through setup   →", INK, Color.WHITE);
+        easySetupButton.setTextSize(13);
+        easySetupButton.setOnClickListener(v -> startEasySetup());
+        root.addView(easySetupButton, topMargin(10));
+        permissionNote = text("FocusLock opens each exact Android approval screen and continues automatically when you return.", 10, FAINT, false);
         permissionNote.setGravity(Gravity.CENTER);
         root.addView(permissionNote, topMargin(7));
 
         LinearLayout chooseHeader = row();
         chooseHeader.setGravity(Gravity.CENTER_VERTICAL);
-        TextView choose = text("Choose apps to pause", 17, INK, true);
+        TextView choose = text("2  •  Choose apps", 17, INK, true);
         chooseHeader.addView(choose, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         selectedCount = text("0 selected", 11, VIOLET, true);
         selectedCount.setPadding(dp(9), dp(5), dp(9), dp(5));
@@ -206,9 +232,11 @@ public class MainActivity extends Activity {
         grid.setColumnCount(3);
         addLaunchableApps(grid);
         root.addView(grid, topMargin(12));
+        reveal(grid, 420);
 
-        root.addView(section("YOUR BOUNDARY"), topMargin(28));
+        root.addView(section("STEP 3  •  SET YOUR BOUNDARY"), topMargin(28));
         LinearLayout settings = row();
+        settingsAnchor = settings;
         LinearLayout useCard = timeCard("USE FOR", "Minutes : seconds");
         graceInput = numberInput(String.valueOf(LockStore.allowance(this) / 60_000));
         graceSecondsInput = numberInput(String.valueOf((LockStore.allowance(this) % 60_000) / 1000));
@@ -224,6 +252,7 @@ public class MainActivity extends Activity {
         half2.leftMargin = dp(5);
         settings.addView(pauseCard, half2);
         root.addView(settings, topMargin(10));
+        reveal(settings, 500);
 
         saveButton = button("Save & start boundary   →", INK, Color.WHITE);
         saveButton.setTextSize(14);
@@ -300,6 +329,14 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams right = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         right.leftMargin = dp(5);
         permissionRow.addView(overlayCard, right);
+        boolean approvalsReady = usage && overlay && (Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED);
+        permissionRow.setVisibility(approvalsReady ? View.GONE : View.VISIBLE);
+        if (easySetupButton != null) {
+            easySetupButton.setText(approvalsReady ? "Permissions ready  ✓" : "Guide me through setup   →");
+            easySetupButton.setAlpha(approvalsReady ? .45f : 1f);
+            easySetupButton.setEnabled(!approvalsReady);
+        }
+        if (permissionNote != null) permissionNote.setVisibility(approvalsReady ? View.GONE : View.VISIBLE);
     }
 
     private View permissionCard(String title, String copy, boolean enabled, View.OnClickListener click) {
@@ -354,6 +391,8 @@ public class MainActivity extends Activity {
                 styleAppTile(check);
                 refreshSelectedCount();
                 markDirty();
+                check.animate().scaleX(checked ? 1.04f : 1f).scaleY(checked ? 1.04f : 1f).setDuration(180).start();
+                if (checked) maybeGuideToTime();
             });
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
             lp.width = 0;
@@ -393,6 +432,13 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(monitor); else startService(monitor);
         toast("Your gentle boundary is active.");
         markSaved();
+        getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("guide_complete", true).apply();
+        if (!getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("finish_seen", false)) {
+            getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("finish_seen", true).apply();
+            new AlertDialog.Builder(this).setTitle("Your first boundary is growing 🌱")
+                    .setMessage("That's it. FocusLock will now count only real time inside your selected apps and gently step in when the limit is reached.")
+                    .setPositiveButton("Got it", null).show();
+        }
         refreshMasterButton();
         refreshStatus();
     }
@@ -556,6 +602,55 @@ public class MainActivity extends Activity {
         mainScroll.post(() -> mainScroll.smoothScrollTo(0, Math.max(0, appSectionAnchor.getTop() - dp(18))));
         appSectionAnchor.setAlpha(.35f);
         appSectionAnchor.animate().alpha(1f).setStartDelay(250).setDuration(650).start();
+        if (!getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("app_tip_seen", false)) {
+            getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("app_tip_seen", true).apply();
+            new Handler().postDelayed(() -> new AlertDialog.Builder(this)
+                    .setTitle("Step 2 — choose what to protect")
+                    .setMessage("Tap one or more apps. Only those apps will use the boundary you create; everything else stays untouched.")
+                    .setPositiveButton("Choose apps", null).show(), 750);
+        }
+    }
+
+    private void maybeGuideToTime() {
+        if (getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false)) return;
+        if (getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("time_tip_seen", false)) return;
+        getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("time_tip_seen", true).apply();
+        new Handler().postDelayed(() -> new AlertDialog.Builder(this)
+                .setTitle("Step 3 — choose your boundary")
+                .setMessage("Set how long the app may be used, then how long it should pause. Tap Save changes when you're ready.")
+                .setPositiveButton("Set the time", (d, w) -> {
+                    if (settingsAnchor != null) mainScroll.smoothScrollTo(0, Math.max(0, settingsAnchor.getTop() - dp(24)));
+                }).show(), 240);
+    }
+
+    private void refreshAnalytics() {
+        if (analyticsPauses == null) return;
+        analyticsPauses.setText(LockStore.totalPauses(this) + "\nPAUSES");
+        analyticsTime.setText(formatProtected(LockStore.protectedTime(this)) + "\nPROTECTED");
+        analyticsStreak.setText(LockStore.streak(this) + "\nDAY STREAK");
+        analyticsPauses.animate().scaleX(1.04f).scaleY(1.04f).setDuration(180).withEndAction(() -> analyticsPauses.animate().scaleX(1f).scaleY(1f).setDuration(180).start()).start();
+    }
+
+    private String formatProtected(long ms) {
+        long minutes = ms / 60_000;
+        if (minutes >= 60) return (minutes / 60) + "h " + (minutes % 60) + "m";
+        if (minutes > 0) return minutes + "m";
+        return Math.max(0, ms / 1000) + "s";
+    }
+
+    private TextView progressStat(String value, String label) {
+        TextView stat = text(value + "\n" + label, 15, INK, true);
+        stat.setGravity(Gravity.CENTER);
+        stat.setLineSpacing(dp(3), 1f);
+        stat.setBackground(shape(SOFT_VIOLET, BORDER, 16));
+        stat.setPadding(dp(3), dp(9), dp(3), dp(9));
+        return stat;
+    }
+
+    private void reveal(View view, long delay) {
+        view.setAlpha(0f);
+        view.setTranslationY(dp(18));
+        view.animate().alpha(1f).translationY(0f).setStartDelay(delay).setDuration(520).start();
     }
 
     private void markDirty() {

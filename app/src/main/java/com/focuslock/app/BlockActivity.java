@@ -42,6 +42,8 @@ public class BlockActivity extends Activity {
     private CountDownTimer timer;
     private LinearLayout logoCard;
     private LinearLayout reminderCard;
+    private TextView leafLeft;
+    private TextView leafRight;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -67,14 +69,18 @@ public class BlockActivity extends Activity {
         Space upper = new Space(this);
         root.addView(upper, new LinearLayout.LayoutParams(1, 0, .8f));
 
+        LinearLayout artRow = new LinearLayout(this);
+        artRow.setGravity(Gravity.CENTER);
+        leafLeft = text("🍃", 24, VIOLET, false);
+        leafRight = text("🌿", 22, VIOLET, false);
+        artRow.addView(leafLeft, new LinearLayout.LayoutParams(dp(42), ViewGroup.LayoutParams.WRAP_CONTENT));
         logoCard = new LinearLayout(this);
         logoCard.setGravity(Gravity.CENTER);
-        logoCard.setBackground(shape(Color.WHITE, BORDER, 28));
-        ImageView logo = new ImageView(this);
-        logo.setImageResource(R.drawable.focuslock_logo);
-        logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        logoCard.addView(logo, new LinearLayout.LayoutParams(dp(58), dp(58)));
-        root.addView(logoCard, new LinearLayout.LayoutParams(dp(92), dp(92)));
+        NatureLineArtView illustration = new NatureLineArtView(this, LockStore.nextArtIndex(this, 8));
+        logoCard.addView(illustration, new LinearLayout.LayoutParams(dp(145), dp(178)));
+        artRow.addView(logoCard, new LinearLayout.LayoutParams(dp(150), dp(184)));
+        artRow.addView(leafRight, new LinearLayout.LayoutParams(dp(42), ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(artRow, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(188)));
 
         TextView title = text("Let your mind breathe", 28, INK, true);
         title.setGravity(Gravity.CENTER);
@@ -157,6 +163,20 @@ public class BlockActivity extends Activity {
             pulse.setRepeatMode(ObjectAnimator.REVERSE);
             pulse.start();
         }
+        animateLeaf(leafLeft, -14f, -12f, 1700);
+        animateLeaf(leafRight, 13f, 10f, 2100);
+    }
+
+    private void animateLeaf(TextView leaf, float move, float rotation, long duration) {
+        if (leaf == null) return;
+        ObjectAnimator y = ObjectAnimator.ofFloat(leaf, "translationY", 0f, move);
+        ObjectAnimator r = ObjectAnimator.ofFloat(leaf, "rotation", -rotation, rotation);
+        y.setDuration(duration); r.setDuration(duration + 250);
+        y.setRepeatCount(ObjectAnimator.INFINITE); r.setRepeatCount(ObjectAnimator.INFINITE);
+        y.setRepeatMode(ObjectAnimator.REVERSE); r.setRepeatMode(ObjectAnimator.REVERSE);
+        AnimatorSet set = new AnimatorSet();
+        set.playTogether(y, r);
+        set.start();
     }
 
     private LinearLayout breathStep(String label, String value) {
