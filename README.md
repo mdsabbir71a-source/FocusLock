@@ -10,6 +10,8 @@ Version 0.7 adds a first-launch permission walkthrough, a master on/off control,
 
 Version 0.8 introduces the minimalist botanical pause logo, automatically scrolls to app and timer selection after onboarding, supports minute-and-second limits, and makes the boundary button reactivate after every unsaved app or time change before fading once saved.
 
+Version 0.9 simplifies the dashboard into three guided steps, adds first-boundary coaching, introduces private on-device progress analytics (pauses, protected time, and active-day streak), and upgrades the blocker with a custom botanical illustration plus floating, breathing, pulse, and staggered entrance animations.
+
 It also includes a first-launch Adult Protection setup that guides the device owner to enable Cloudflare Family Private DNS (`family.cloudflare-dns.com`). Android requires the owner to confirm this system setting; apps cannot silently change it. The DNS provider blocks known adult and malware domains across the device, while FocusLock receives no browsing or DNS traffic.
 
 ## MVP behavior
