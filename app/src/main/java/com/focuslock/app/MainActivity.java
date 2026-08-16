@@ -5,9 +5,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AppOpsManager;
 import android.app.Dialog;
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -55,7 +52,6 @@ public class MainActivity extends Activity {
     private static final int SOFT_VIOLET = Color.rgb(240, 248, 239);
     private static final int BORDER = Color.rgb(220, 233, 220);
     private static final int GREEN = Color.rgb(45, 130, 78);
-    private static final String FAMILY_DNS = "family.cloudflare-dns.com";
     private static final int REQUEST_NOTIFICATIONS = 42;
 
     private final List<CheckBox> appChecks = new ArrayList<>();
@@ -90,15 +86,14 @@ public class MainActivity extends Activity {
     private boolean guidedSetup;
     private boolean skipNotificationPrompt;
     private boolean newGuideIntro;
-    private boolean waitingForPrivateDns;
     private int waitingForSpecialPermission;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         SharedPreferences onboarding = getSharedPreferences("focuslock_onboarding", MODE_PRIVATE);
-        newGuideIntro = !onboarding.getBoolean("interactive_guide_v11_seen", false);
+        newGuideIntro = !onboarding.getBoolean("interactive_guide_v12_seen", false);
         if (newGuideIntro) {
-            onboarding.edit().putBoolean("interactive_guide_v11_seen", true).putBoolean("guide_complete", false).apply();
+            onboarding.edit().putBoolean("interactive_guide_v12_seen", true).putBoolean("guide_complete", false).apply();
         }
         setContentView(buildUi());
         boolean welcomed = onboarding.getBoolean("welcome_seen", false);
@@ -126,19 +121,6 @@ public class MainActivity extends Activity {
                     continueEasySetup();
                 }
             }, 300);
-        }
-        if (waitingForPrivateDns) {
-            waitingForPrivateDns = false;
-            new Handler().postDelayed(() -> {
-                refreshAdultStatus();
-                refreshPermissionCards();
-                if (privateDnsActive()) {
-                    toast("Website protection is active. No VPN is running.");
-                    scrollToBoundarySetup();
-                } else {
-                    toast("Private DNS was not finished. Tap Website Protection to try again.");
-                }
-            }, 350);
         }
     }
 
@@ -211,15 +193,15 @@ public class MainActivity extends Activity {
         LinearLayout protection = column();
         protection.setPadding(dp(16), dp(15), dp(16), dp(15));
         protection.setBackground(shape(SOFT_VIOLET, BORDER, 20));
-        TextView protectionTitle = text("🍃  Website Protection", 15, INK, true);
+        TextView protectionTitle = text("🍃  FocusLock Safe Browser", 15, INK, true);
         protection.addView(protectionTitle);
         adultStatus = text("Checking device protection…", 11, VIOLET, true);
         protection.addView(adultStatus, topMargin(5));
-        TextView protectionCopy = text("Uses Android Private DNS to filter known adult and malware sites. No VPN icon, VPN tunnel, or FocusLock traffic routing.", 12, MUTED, false);
+        TextView protectionCopy = text("Adult-domain blocking and strict search filtering turn on automatically inside this browser. No VPN, DNS setup, or extra permission.", 12, MUTED, false);
         protectionCopy.setLineSpacing(0, 1.15f);
         protection.addView(protectionCopy, topMargin(8));
-        protectionButton = button("Set up without VPN  →", VIOLET, Color.WHITE);
-        protectionButton.setOnClickListener(v -> openPrivateDnsSetup(false));
+        protectionButton = button("Open Safe Browser  →", VIOLET, Color.WHITE);
+        protectionButton.setOnClickListener(v -> startActivity(new Intent(this, SafeBrowserActivity.class)));
         protection.addView(protectionButton, topMargin(12));
         root.addView(protection, topMargin(9));
         reveal(protection, 320);
@@ -310,7 +292,7 @@ public class MainActivity extends Activity {
         if (isFinishing()) return;
         new AlertDialog.Builder(this)
                 .setTitle("Welcome to FocusLock 🌿")
-                .setMessage("Let's prepare everything now. FocusLock will guide each required Android approval, then show the optional Private DNS step for website protection.")
+                .setMessage("Let's prepare app blocking now. FocusLock will guide each required Android approval. The Safe Browser needs no additional setup.")
                 .setPositiveButton("Begin setup", (dialog, which) -> {
                     getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("welcome_seen", true).apply();
                     startEasySetup();
@@ -365,18 +347,15 @@ public class MainActivity extends Activity {
         right.leftMargin = dp(5);
         permissionRow.addView(overlayCard, right);
         boolean approvalsReady = usage && overlay && (Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED);
-        boolean setupReady = approvalsReady && privateDnsActive();
         permissionRow.setVisibility(approvalsReady ? View.GONE : View.VISIBLE);
         if (easySetupButton != null) {
-            easySetupButton.setText(setupReady ? "Setup complete  ✓" : approvalsReady ? "Finish website protection  →" : "Guide me through setup   →");
-            easySetupButton.setAlpha(setupReady ? .45f : 1f);
-            easySetupButton.setEnabled(!setupReady);
+            easySetupButton.setText(approvalsReady ? "Setup complete  ✓" : "Guide me through setup   →");
+            easySetupButton.setAlpha(approvalsReady ? .45f : 1f);
+            easySetupButton.setEnabled(!approvalsReady);
         }
         if (permissionNote != null) {
-            permissionNote.setVisibility(setupReady ? View.GONE : View.VISIBLE);
-            permissionNote.setText(approvalsReady
-                    ? "One visible Android Private DNS confirmation remains. FocusLock cannot change it secretly."
-                    : "FocusLock opens each exact Android approval screen and continues when you return.");
+            permissionNote.setVisibility(approvalsReady ? View.GONE : View.VISIBLE);
+            permissionNote.setText("FocusLock opens each exact Android approval screen and continues when you return.");
         }
     }
 
@@ -515,42 +494,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void openPrivateDnsSetup(boolean fromGuidedSetup) {
-        if (isFinishing()) return;
-        if (privateDnsActive()) {
-            toast("Website protection is already active through Android Private DNS.");
-            openPrivateDnsSettings();
-            return;
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("Website protection without a VPN")
-                .setMessage("Android requires one visible confirmation. On the next screen:\n\n1. Choose Private DNS provider hostname\n2. Paste: " + FAMILY_DNS + "\n3. Tap Save and return\n\nThe hostname will be copied now. FocusLock cannot see your browsing or change this setting secretly.")
-                .setPositiveButton("Copy & open settings", (d, w) -> {
-                    copyDnsHostname();
-                    waitingForPrivateDns = true;
-                    guidedSetup = false;
-                    openPrivateDnsSettings();
-                })
-                .setNegativeButton(fromGuidedSetup ? "Skip for now" : "Cancel", (d, w) -> {
-                    guidedSetup = false;
-                    if (fromGuidedSetup) scrollToBoundarySetup();
-                })
-                .show();
-    }
-
-    private void copyDnsHostname() {
-        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("Private DNS hostname", FAMILY_DNS));
-    }
-
-    private void openPrivateDnsSettings() {
-        try {
-            startActivity(new Intent("android.settings.PRIVATE_DNS_SETTINGS"));
-        } catch (Exception e) {
-            startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
-        }
-    }
-
     private void startEasySetup() {
         guidedSetup = true;
         skipNotificationPrompt = false;
@@ -576,36 +519,17 @@ public class MainActivity extends Activity {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS);
             return;
         }
-        if (!adultProtectionActive()) {
-            openPrivateDnsSetup(true);
-            return;
-        }
         guidedSetup = false;
         skipNotificationPrompt = false;
         toast("Everything is ready. You can start your boundary now.");
         scrollToBoundarySetup();
     }
 
-    private boolean adultProtectionActive() {
-        return privateDnsActive();
-    }
-
-    private boolean privateDnsActive() {
-        try {
-            String mode = Settings.Global.getString(getContentResolver(), "private_dns_mode");
-            String specifier = Settings.Global.getString(getContentResolver(), "private_dns_specifier");
-            return "hostname".equals(mode) && FAMILY_DNS.equalsIgnoreCase(specifier == null ? "" : specifier.trim());
-        } catch (Exception e) { return false; }
-    }
-
     private void refreshAdultStatus() {
         if (adultStatus == null) return;
-        boolean active = adultProtectionActive();
-        adultStatus.setText(active ? "●  ACTIVE ON THIS DEVICE" : "○  SETUP REQUIRED");
-        adultStatus.setTextColor(active ? GREEN : VIOLET);
-        if (protectionButton != null) {
-            protectionButton.setText(active ? "Open Private DNS settings  ✓" : "Set up without VPN  →");
-        }
+        adultStatus.setText("●  AUTOMATICALLY ACTIVE INSIDE SAFE BROWSER");
+        adultStatus.setTextColor(GREEN);
+        if (protectionButton != null) protectionButton.setText("Open Safe Browser  →");
     }
 
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -673,7 +597,7 @@ public class MainActivity extends Activity {
         }
         boolean permissionsReady = usageAccessEnabled() && Settings.canDrawOverlays(this)
                 && (Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED);
-        if (!permissionsReady || !adultProtectionActive()) updateGuideStep(1, permissionSectionAnchor);
+        if (!permissionsReady) updateGuideStep(1, permissionSectionAnchor);
         else if (newGuideIntro || selectedAppCount() == 0) {
             newGuideIntro = false;
             updateGuideStep(2, appSectionAnchor);
@@ -691,7 +615,7 @@ public class MainActivity extends Activity {
         currentGuideStep = 0;
         boolean notificationsReady = Build.VERSION.SDK_INT < 33
                 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
-        if (!usageAccessEnabled() || !Settings.canDrawOverlays(this) || !notificationsReady || !adultProtectionActive()) {
+        if (!usageAccessEnabled() || !Settings.canDrawOverlays(this) || !notificationsReady) {
             updateGuideStep(1, permissionSectionAnchor);
             guideHandler.postDelayed(this::startEasySetup, 450);
         } else {
@@ -721,7 +645,7 @@ public class MainActivity extends Activity {
         if (step == 1) {
             guideTitle.setText("STEP 1 OF 4");
             guideBody.setText("Allow the setup requests ↓");
-            guideHint.setText("Tap this green guide or “Guide me through setup,” then approve each Android screen.");
+            guideHint.setText("Approve the app-limit permissions. Safe Browser protection is already automatic.");
         } else if (step == 2) {
             guideTitle.setText("STEP 2 OF 4");
             guideBody.setText("Choose at least one app ↓");
