@@ -8,6 +8,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -71,6 +72,8 @@ public class MainActivity extends Activity {
     private ImageView headerLogo;
     private Button saveButton;
     private ScrollView mainScroll;
+    private LinearLayout contentRoot;
+    private View permissionSectionAnchor;
     private View appSectionAnchor;
     private View settingsAnchor;
     private TextView analyticsPauses;
@@ -78,14 +81,27 @@ public class MainActivity extends Activity {
     private TextView analyticsStreak;
     private Button easySetupButton;
     private TextView permissionNote;
+    private LinearLayout guideCard;
+    private TextView guideTitle;
+    private TextView guideBody;
+    private TextView guideHint;
+    private final Handler guideHandler = new Handler();
+    private int currentGuideStep;
     private boolean guidedSetup;
+    private boolean skipNotificationPrompt;
+    private boolean newGuideIntro;
     private boolean scrollAfterVpn;
     private int waitingForSpecialPermission;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        SharedPreferences onboarding = getSharedPreferences("focuslock_onboarding", MODE_PRIVATE);
+        newGuideIntro = !onboarding.getBoolean("interactive_guide_v10_seen", false);
+        if (newGuideIntro) {
+            onboarding.edit().putBoolean("interactive_guide_v10_seen", true).putBoolean("guide_complete", false).apply();
+        }
         setContentView(buildUi());
-        boolean welcomed = getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("welcome_seen", false);
+        boolean welcomed = onboarding.getBoolean("welcome_seen", false);
         if (!welcomed) {
             new Handler().postDelayed(this::showFirstLaunchSetup, 550);
         }
@@ -120,6 +136,7 @@ public class MainActivity extends Activity {
         scroll.setBackgroundColor(Color.rgb(248, 251, 246));
 
         LinearLayout root = column();
+        contentRoot = root;
         root.setPadding(dp(20), dp(18), dp(20), dp(36));
         scroll.addView(root, matchWrap());
 
@@ -133,10 +150,11 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams brandLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         brandLp.leftMargin = dp(10);
         header.addView(brand, brandLp);
-        TextView kind = text("growing gently  🌱", 11, VIOLET, true);
+        TextView kind = text("How it works  ?", 11, VIOLET, true);
         kind.setGravity(Gravity.CENTER);
         kind.setPadding(dp(12), dp(7), dp(12), dp(7));
         kind.setBackground(shape(SOFT_VIOLET, BORDER, 18));
+        kind.setOnClickListener(v -> restartGuide());
         header.addView(kind);
         root.addView(header, matchWrap());
 
@@ -186,6 +204,7 @@ public class MainActivity extends Activity {
         refreshAnalytics();
 
         TextView protectionLabel = section("STEP 1  •  SET UP");
+        permissionSectionAnchor = protectionLabel;
         root.addView(protectionLabel, topMargin(26));
         LinearLayout protection = column();
         protection.setPadding(dp(16), dp(15), dp(16), dp(15));
@@ -214,6 +233,21 @@ public class MainActivity extends Activity {
         permissionNote = text("FocusLock opens each exact Android approval screen and continues automatically when you return.", 10, FAINT, false);
         permissionNote.setGravity(Gravity.CENTER);
         root.addView(permissionNote, topMargin(7));
+
+        guideCard = column();
+        guideCard.setPadding(dp(16), dp(15), dp(16), dp(15));
+        guideCard.setBackground(shape(Color.rgb(39, 91, 59), Color.rgb(39, 91, 59), 20));
+        guideTitle = text("STEP 2 OF 4", 10, Color.rgb(190, 226, 198), true);
+        guideTitle.setLetterSpacing(.12f);
+        guideBody = text("Choose at least one app below ↓", 16, Color.WHITE, true);
+        guideBody.setLineSpacing(0, 1.15f);
+        guideCard.addView(guideTitle);
+        guideCard.addView(guideBody, topMargin(6));
+        guideHint = text("FocusLock affects only the apps you select.", 11, Color.rgb(220, 235, 222), false);
+        guideCard.addView(guideHint, topMargin(6));
+        guideCard.setOnClickListener(v -> advanceGuideManually());
+        root.addView(guideCard, topMargin(22));
+        guideCard.setVisibility(getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false) ? View.GONE : View.VISIBLE);
 
         LinearLayout chooseHeader = row();
         chooseHeader.setGravity(Gravity.CENTER_VERTICAL);
@@ -266,6 +300,7 @@ public class MainActivity extends Activity {
         root.animate().alpha(1f).setDuration(500).start();
         headerLogo.animate().rotation(4f).scaleX(1.04f).scaleY(1.04f).setDuration(1200).withEndAction(() ->
                 headerLogo.animate().rotation(-3f).scaleX(1f).scaleY(1f).setDuration(1200).start()).start();
+        mainScroll.post(this::resumeGuide);
         return scroll;
     }
 
@@ -392,7 +427,11 @@ public class MainActivity extends Activity {
                 refreshSelectedCount();
                 markDirty();
                 check.animate().scaleX(checked ? 1.04f : 1f).scaleY(checked ? 1.04f : 1f).setDuration(180).start();
-                if (checked) maybeGuideToTime();
+                if (selectedAppCount() == 0) {
+                    updateGuideStep(2, appSectionAnchor);
+                } else if (checked) {
+                    maybeGuideToTime();
+                }
             });
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
             lp.width = 0;
@@ -412,18 +451,30 @@ public class MainActivity extends Activity {
 
     private void refreshSelectedCount() {
         if (selectedCount == null) return;
+        int count = selectedAppCount();
+        selectedCount.setText(count + (count == 1 ? " selected" : " selected"));
+    }
+
+    private int selectedAppCount() {
         int count = 0;
         for (CheckBox check : appChecks) if (check.isChecked()) count++;
-        selectedCount.setText(count + (count == 1 ? " selected" : " selected"));
+        return count;
     }
 
     private void startCommitment() {
         Set<String> selected = new HashSet<>();
         for (CheckBox check : appChecks) if (check.isChecked()) selected.add((String) check.getTag());
-        if (selected.isEmpty()) { toast("Choose at least one app first."); return; }
+        if (selected.isEmpty()) {
+            toast("Choose at least one app first.");
+            updateGuideStep(2, appSectionAnchor);
+            return;
+        }
         long grace = parseDuration(graceInput, graceSecondsInput, "use time");
         long duration = parseDuration(durationInput, durationSecondsInput, "pause time");
-        if (grace < 1 || duration < 1) return;
+        if (grace < 1 || duration < 1) {
+            updateGuideStep(3, settingsAnchor);
+            return;
+        }
         if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)) { toast("Let's finish the required permissions first."); startEasySetup(); return; }
         LockStore.configure(this, selected, grace, duration);
         LockStore.setEnabled(this, true);
@@ -432,13 +483,13 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 26) startForegroundService(monitor); else startService(monitor);
         toast("Your gentle boundary is active.");
         markSaved();
+        updateGuideStep(5, saveButton);
         getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("guide_complete", true).apply();
-        if (!getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("finish_seen", false)) {
-            getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("finish_seen", true).apply();
-            new AlertDialog.Builder(this).setTitle("Your first boundary is growing 🌱")
-                    .setMessage("That's it. FocusLock will now count only real time inside your selected apps and gently step in when the limit is reached.")
-                    .setPositiveButton("Got it", null).show();
-        }
+        guideHandler.postDelayed(() -> {
+            if (guideCard != null && !isFinishing()) {
+                guideCard.animate().alpha(0f).setDuration(300).withEndAction(() -> guideCard.setVisibility(View.GONE)).start();
+            }
+        }, 1800);
         refreshMasterButton();
         refreshStatus();
     }
@@ -503,6 +554,7 @@ public class MainActivity extends Activity {
 
     private void startEasySetup() {
         guidedSetup = true;
+        skipNotificationPrompt = false;
         continueEasySetup();
     }
 
@@ -520,7 +572,8 @@ public class MainActivity extends Activity {
             startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
             return;
         }
-        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+        if (Build.VERSION.SDK_INT >= 33 && !skipNotificationPrompt
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS);
             return;
         }
@@ -531,6 +584,7 @@ public class MainActivity extends Activity {
             return;
         }
         guidedSetup = false;
+        skipNotificationPrompt = false;
         toast("Everything is ready. You can start your boundary now.");
         scrollToBoundarySetup();
     }
@@ -575,8 +629,16 @@ public class MainActivity extends Activity {
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_NOTIFICATIONS) {
-            if (guidedSetup) continueEasySetup();
-            else if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) toast("Notifications are off, but FocusLock can still run.");
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (guidedSetup) {
+                if (!granted) {
+                    skipNotificationPrompt = true;
+                    toast("Notifications are off, but FocusLock can still run.");
+                }
+                continueEasySetup();
+            } else if (!granted) {
+                toast("Notifications are off, but FocusLock can still run.");
+            }
         }
     }
 
@@ -599,28 +661,134 @@ public class MainActivity extends Activity {
 
     private void scrollToBoundarySetup() {
         if (mainScroll == null || appSectionAnchor == null) return;
-        mainScroll.post(() -> mainScroll.smoothScrollTo(0, Math.max(0, appSectionAnchor.getTop() - dp(18))));
-        appSectionAnchor.setAlpha(.35f);
-        appSectionAnchor.animate().alpha(1f).setStartDelay(250).setDuration(650).start();
-        if (!getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("app_tip_seen", false)) {
-            getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("app_tip_seen", true).apply();
-            new Handler().postDelayed(() -> new AlertDialog.Builder(this)
-                    .setTitle("Step 2 — choose what to protect")
-                    .setMessage("Tap one or more apps. Only those apps will use the boundary you create; everything else stays untouched.")
-                    .setPositiveButton("Choose apps", null).show(), 750);
-        }
+        updateGuideStep(2, appSectionAnchor);
     }
 
     private void maybeGuideToTime() {
         if (getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false)) return;
-        if (getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("time_tip_seen", false)) return;
-        getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("time_tip_seen", true).apply();
-        new Handler().postDelayed(() -> new AlertDialog.Builder(this)
-                .setTitle("Step 3 — choose your boundary")
-                .setMessage("Set how long the app may be used, then how long it should pause. Tap Save changes when you're ready.")
-                .setPositiveButton("Set the time", (d, w) -> {
-                    if (settingsAnchor != null) mainScroll.smoothScrollTo(0, Math.max(0, settingsAnchor.getTop() - dp(24)));
-                }).show(), 240);
+        if (currentGuideStep >= 3 || selectedAppCount() == 0) return;
+        guideHandler.postDelayed(() -> {
+            if (selectedAppCount() > 0 && currentGuideStep < 3) updateGuideStep(3, settingsAnchor);
+        }, 420);
+    }
+
+    private void maybeGuideToSave() {
+        if (getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false)) return;
+        if (currentGuideStep != 3 || selectedAppCount() == 0) return;
+        guideHandler.postDelayed(() -> {
+            if (currentGuideStep == 3 && readDurationSilently(graceInput, graceSecondsInput) > 0
+                    && readDurationSilently(durationInput, durationSecondsInput) > 0) {
+                updateGuideStep(4, saveButton);
+            }
+        }, 850);
+    }
+
+    private void resumeGuide() {
+        if (guideCard == null) return;
+        if (getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false)) {
+            guideCard.setVisibility(View.GONE);
+            return;
+        }
+        boolean permissionsReady = usageAccessEnabled() && Settings.canDrawOverlays(this)
+                && (Build.VERSION.SDK_INT < 33 || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED);
+        if (!permissionsReady || !adultProtectionActive()) updateGuideStep(1, permissionSectionAnchor);
+        else if (newGuideIntro || selectedAppCount() == 0) {
+            newGuideIntro = false;
+            updateGuideStep(2, appSectionAnchor);
+        }
+        else updateGuideStep(3, settingsAnchor);
+    }
+
+    private void restartGuide() {
+        getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit()
+                .putBoolean("guide_complete", false)
+                .remove("app_tip_seen")
+                .remove("time_tip_seen")
+                .remove("finish_seen")
+                .apply();
+        currentGuideStep = 0;
+        boolean notificationsReady = Build.VERSION.SDK_INT < 33
+                || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        if (!usageAccessEnabled() || !Settings.canDrawOverlays(this) || !notificationsReady || !adultProtectionActive()) {
+            updateGuideStep(1, permissionSectionAnchor);
+            guideHandler.postDelayed(this::startEasySetup, 450);
+        } else {
+            updateGuideStep(2, appSectionAnchor);
+        }
+    }
+
+    private void advanceGuideManually() {
+        if (currentGuideStep == 1) {
+            startEasySetup();
+        } else if (currentGuideStep == 2 && selectedAppCount() > 0) {
+            updateGuideStep(3, settingsAnchor);
+        } else if (currentGuideStep == 3 && readDurationSilently(graceInput, graceSecondsInput) > 0
+                && readDurationSilently(durationInput, durationSecondsInput) > 0) {
+            updateGuideStep(4, saveButton);
+        }
+    }
+
+    private void updateGuideStep(int step, View target) {
+        if (guideCard == null || target == null || contentRoot == null) return;
+        currentGuideStep = step;
+        guideCard.animate().cancel();
+        guideCard.setAlpha(1f);
+        guideCard.setVisibility(View.VISIBLE);
+        int guideGreen = step == 5 ? GREEN : Color.rgb(39, 91, 59);
+        guideCard.setBackground(shape(guideGreen, guideGreen, 20));
+        if (step == 1) {
+            guideTitle.setText("STEP 1 OF 4");
+            guideBody.setText("Allow the setup requests ↓");
+            guideHint.setText("Tap this green guide or “Guide me through setup,” then approve each Android screen.");
+        } else if (step == 2) {
+            guideTitle.setText("STEP 2 OF 4");
+            guideBody.setText("Choose at least one app ↓");
+            guideHint.setText(selectedAppCount() == 0
+                    ? "Tap an app below. Only apps you select will be affected."
+                    : "You already have an app selected. Tap this card to continue.");
+        } else if (step == 3) {
+            guideTitle.setText("STEP 3 OF 4");
+            guideBody.setText("Now set both timers ↓");
+            guideHint.setText("USE FOR is time before blocking; PAUSE FOR is lock time. If the values already look right, tap this card.");
+        } else if (step == 4) {
+            guideTitle.setText("STEP 4 OF 4");
+            guideBody.setText("Tap “Save changes & start” ↓");
+            guideHint.setText("This activates the boundary. The button fades after your changes are saved.");
+        } else {
+            guideTitle.setText("YOU’RE READY  ✓");
+            guideBody.setText("Your boundary is active");
+            guideHint.setText("FocusLock will guide you again whenever you tap “How it works?”.");
+        }
+
+        ViewGroup parent = (ViewGroup) guideCard.getParent();
+        if (parent != null) parent.removeView(guideCard);
+        int index = contentRoot.indexOfChild(target);
+        contentRoot.addView(guideCard, Math.max(0, index), topMargin(12));
+        guideCard.setTranslationY(dp(10));
+        guideCard.animate().translationY(0f).setDuration(280).start();
+        mainScroll.postDelayed(() -> mainScroll.smoothScrollTo(0, Math.max(0, guideCard.getTop() - dp(16))), 90);
+        if (step == 5) target.animate().alpha(.38f).setDuration(360).start();
+        else pulseTarget(target);
+    }
+
+    private void pulseTarget(View target) {
+        target.animate().cancel();
+        target.setAlpha(.55f);
+        target.setScaleX(.98f);
+        target.setScaleY(.98f);
+        target.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(180).setDuration(520).start();
+    }
+
+    private long readDurationSilently(EditText minutesInput, EditText secondsInput) {
+        if (minutesInput == null || secondsInput == null) return -1;
+        try {
+            int minutes = Integer.parseInt(minutesInput.getText().toString().trim());
+            int seconds = Integer.parseInt(secondsInput.getText().toString().trim());
+            if (minutes >= 0 && seconds >= 0 && seconds <= 59 && (minutes > 0 || seconds > 0)) {
+                return (minutes * 60L + seconds) * 1000L;
+            }
+        } catch (Exception ignored) {}
+        return -1;
     }
 
     private void refreshAnalytics() {
@@ -689,7 +857,10 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 21) input.setBackgroundTintList(null);
         input.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { markDirty(); }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                markDirty();
+                maybeGuideToSave();
+            }
             @Override public void afterTextChanged(Editable s) {}
         });
         return input;
