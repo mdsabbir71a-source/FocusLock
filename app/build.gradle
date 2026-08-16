@@ -8,8 +8,8 @@ android {
         applicationId 'com.focuslock.app'
         minSdk 26
         targetSdk 33
-        versionCode 9
-        versionName '0.9-test'
+        versionCode 10
+        versionName '0.10-test'
     }
 
     compileOptions {
