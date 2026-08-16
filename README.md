@@ -18,7 +18,7 @@ Version 0.11 removes FocusLock's local VPN service and uses Android Private DNS 
 
 Version 0.12 replaces the manual Private DNS flow with FocusLock Safe Browser. Adult-domain rules and strict Google, Bing, DuckDuckGo, and Yahoo search parameters apply automatically inside the browser, with no VPN, DNS setup, or special permission. The browser also disables file/content access, third-party cookies, mixed HTTP content, geolocation, popup windows, and WebView debugging. Protection is intentionally limited to FocusLock Safe Browser; other browsers and apps remain unaffected.
 
-Version 0.13 provides two separate test APKs. The **Private DNS APK** opens Android Private DNS, copies `family.cloudflare-dns.com`, and uses no VPN indicator after the one-time paste-and-save setup. The **DNS-only VPN APK** uses a one-tap local VPN with Cloudflare Family (`1.1.1.3`); Android displays its required VPN/key indicator. Each APK shows only its own protection method for a clean comparison.
+Version 0.14 keeps only the DNS-only VPN method. The main FocusLock switch now controls the entire app: OFF stops selected-app monitoring and DNS protection, while ON starts both and opens Android's approval only when needed. The progress drawer has a redesigned focus-garden summary, clearer statistics, and milestone feedback based only on private on-device analytics.
 
 ## MVP behavior
 
