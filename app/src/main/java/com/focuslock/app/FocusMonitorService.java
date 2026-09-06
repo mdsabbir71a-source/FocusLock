@@ -48,12 +48,8 @@ public class FocusMonitorService extends Service {
                 boolean newlyLocked = LockStore.addUsage(FocusMonitorService.this, currentPackage, elapsed);
                 if ((newlyLocked || LockStore.isLocked(FocusMonitorService.this, currentPackage)) && now - lastKick > 1200) {
                     lastKick = now;
-                    block(currentPackage);
-                } else if (!LockStore.isLocked(FocusMonitorService.this, currentPackage)) {
-                    BlockOverlay.hide(FocusMonitorService.this);
+                    kickOut(currentPackage);
                 }
-            } else {
-                BlockOverlay.hide(FocusMonitorService.this);
             }
             handler.postDelayed(this, 350);
         }
@@ -74,8 +70,11 @@ public class FocusMonitorService extends Service {
         }
     }
 
-    private void block(String blockedPackage) {
-        BlockOverlay.show(this, blockedPackage);
+    private void kickOut(String blockedPackage) {
+        startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        handler.postDelayed(() -> startActivity(new Intent(this, BlockActivity.class)
+                .putExtra("blocked_package", blockedPackage)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)), 120);
     }
 
     private void createChannel() {
@@ -85,6 +84,6 @@ public class FocusMonitorService extends Service {
         }
     }
 
-    @Override public void onDestroy() { handler.removeCallbacks(check); BlockOverlay.hide(this); super.onDestroy(); }
+    @Override public void onDestroy() { handler.removeCallbacks(check); super.onDestroy(); }
     @Override public IBinder onBind(Intent intent) { return null; }
 }

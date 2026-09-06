@@ -1,43 +1,44 @@
 # FocusLock for Android
 
-FocusLock lets a person choose distracting apps, set an allowed amount of actual foreground use, and receive a full-screen on-device pause when an app reaches that limit.
+FocusLock lets a user choose distracting apps, give each app an allowed amount of actual foreground usage, and then block that app for a chosen duration when its allowance is consumed.
 
-## What FocusLock does
+Version 0.5 introduces a calm, light interface inspired by the supplied FocusLock concept: warmer surfaces, clearer permission cards, a visual app grid, compact boundary controls, and a dedicated breathing-focused pause screen. The underlying per-app timing and blocking behavior is unchanged.
 
-- Counts time only while a user-selected app is in the foreground.
-- Draws the pause screen directly above a locked app using Android's **Display over other apps** approval.
-- Keeps the monitoring service visible as an Android foreground service while a boundary is active.
-- Restarts an enabled boundary after the phone restarts or FocusLock is updated.
-- Stores selected apps, timers, and progress locally on the device.
+Version 0.6 adds Easy Setup. FocusLock guides the user through Android's special Usage Access and overlay screens, requests ordinary notification permission with a system popup, and offers one-tap Adult Protection through a DNS-only local VPN. Only DNS requests enter the VPN; ordinary app traffic stays on its normal connection. Cloudflare Family (`1.1.1.3`) supplies adult-domain and malware filtering. Because Android permits only one selected VPN, this mode cannot run alongside another VPN; the original Private DNS configuration remains recognized as an alternative.
 
-FocusLock does not include a VPN, content filter, adult-content browser, accessibility service, cloud analytics, or account system in this release.
+Version 0.7 adds a first-launch permission walkthrough, a master on/off control, a simpler botanical dashboard, lightweight native animations, and eleven rotating gentle reminders on the blocked-app screen.
 
-## Android approvals
+Version 0.8 introduces the minimalist botanical pause logo, automatically scrolls to app and timer selection after onboarding, supports minute-and-second limits, and makes the boundary button reactivate after every unsaved app or time change before fading once saved.
 
-FocusLock asks for only the approvals needed for its core focus-limit feature:
+Version 0.9 simplifies the dashboard into three guided steps, adds first-boundary coaching, introduces private on-device progress analytics (pauses, protected time, and active-day streak), and upgrades the blocker with eight rotating faceless nature line-art scenes plus floating, breathing, pulse, and staggered entrance animations.
 
-1. **Usage Access** — to identify foreground time for apps the user selected. FocusLock does not read messages, typed text, or screen content.
-2. **Display over other apps** — to show the lock screen above a selected app when its time is finished.
-3. **Notifications** — optional but recommended so Android can display the active-boundary notification.
+Version 0.10 adds a persistent four-step walkthrough that moves with the user from permissions to app selection, timer setup, and saving. Selecting the first app automatically reveals the timer step, valid timer edits reveal the final save step, and the walkthrough can be replayed from **How it works?** without changing saved settings.
 
-The user can disable any approval in Android Settings. Android manufacturers can still apply additional battery restrictions, so the app includes device-setup guidance rather than promising perfect behavior on every phone.
+Version 0.11 removes FocusLock's local VPN service and uses Android Private DNS for optional adult-site and malware filtering instead. Android shows one system confirmation because ordinary apps cannot change device-wide DNS secretly. This avoids the VPN icon, VPN tunnel, and conflict with the phone's VPN slot. Progress analytics now live in an animated right-side drawer, and the main screen has a shorter, clearer setup structure.
 
-## Production release
+Version 0.12 replaces the manual Private DNS flow with FocusLock Safe Browser. Adult-domain rules and strict Google, Bing, DuckDuckGo, and Yahoo search parameters apply automatically inside the browser, with no VPN, DNS setup, or special permission. The browser also disables file/content access, third-party cookies, mixed HTTP content, geolocation, popup windows, and WebView debugging. Protection is intentionally limited to FocusLock Safe Browser; other browsers and apps remain unaffected.
 
-The Play-ready release uses API level 36 and must be signed with the FocusLock production key. Copy `release-signing.properties.example` to `release-signing.properties` locally, create a secure keystore, and keep both passwords and the keystore in a password manager and offline backup. Never commit them.
+## MVP behavior
 
-For GitHub Actions, configure these repository secrets before producing the final Play upload:
+1. Allow **Usage Access** and **Display Over Other Apps** from the buttons in FocusLock.
+2. Select one or more installed apps.
+3. Enter allowed foreground usage in minutes and a lock duration in minutes.
+4. Tap **Start commitment**.
+5. Only time actually spent inside each selected app counts. When an app consumes its allowance, it is sent to the background and locked for the configured period.
 
-- `FOCUSLOCK_KEYSTORE_BASE64`
-- `FOCUSLOCK_KEYSTORE_PASSWORD`
-- `FOCUSLOCK_KEY_ALIAS`
-- `FOCUSLOCK_KEY_PASSWORD`
+## Run it
 
-The workflow publishes a debug APK for internal testing on each push, and a signed release Android App Bundle only when manually dispatched with the signing secrets available.
+Open this folder in a recent Android Studio version, allow Gradle sync to finish, connect an Android 8.0+ phone, and click **Run**.
 
-## Before Google Play production
+## Build an APK without Android Studio
 
-- Complete internal and closed testing across major Android brands.
-- Create the Google Play listing, Data Safety declaration, app-content rating, privacy policy, support email, and permission declaration for `QUERY_ALL_PACKAGES`.
-- Configure Play App Signing before the first production upload. The key used for the first public release must be retained for future updates.
-- Do not sell subscriptions until a complete Google Play Billing and verified entitlement flow has been implemented and tested.
+Upload the contents of this folder to a GitHub repository. The included GitHub Actions workflow builds automatically. Open the repository's **Actions** tab, select **Build FocusLock APK**, open the latest successful run, and download the **FocusLock-APK** artifact.
+
+## Important production notes
+
+- The private-test build avoids Accessibility permission. It uses event-based Usage Access to identify only newly opened apps, preventing false lock screens on Home or unrelated apps.
+- Display Over Other Apps permission allows the foreground monitor to open the dedicated lock activity when a blocked app is launched; it no longer leaves a persistent overlay on screen.
+- `QUERY_ALL_PACKAGES` is restricted by Google Play policy. Before publishing, replace the general app picker with a curated social-app list or submit the required policy declaration.
+- A technically determined user can disable Accessibility permission or uninstall the app. Device-owner mode would be needed for a tamper-resistant parental-control edition.
+- Battery-optimization behavior differs by manufacturer, so test on Samsung, Xiaomi, Oppo/Realme, and Pixel devices.
+- Safe Browser protection is automatic but applies only inside FocusLock Safe Browser. It does not alter or monitor Chrome, other browsers, or unrelated apps.

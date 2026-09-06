@@ -57,11 +57,13 @@ public class MainActivity extends Activity {
     private final List<CheckBox> appChecks = new ArrayList<>();
     private TextView status;
     private TextView selectedCount;
+    private TextView adultStatus;
     private EditText graceInput;
     private EditText graceSecondsInput;
     private EditText durationInput;
     private EditText durationSecondsInput;
     private LinearLayout permissionRow;
+    private Button protectionButton;
     private Button masterButton;
     private ImageView headerLogo;
     private Button saveButton;
@@ -103,13 +105,10 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         refreshStatus();
+        refreshAdultStatus();
         refreshPermissionCards();
         refreshMasterButton();
         refreshAnalytics();
-        if (LockStore.isEnabled(this) && !LockStore.packages(this).isEmpty()
-                && usageAccessEnabled() && Settings.canDrawOverlays(this)) {
-            startSavedMonitoring();
-        }
         if (waitingForSpecialPermission != 0) {
             int returningFrom = waitingForSpecialPermission;
             waitingForSpecialPermission = 0;
@@ -188,9 +187,26 @@ public class MainActivity extends Activity {
         status.setBackground(shape(Color.WHITE, BORDER, 16));
         root.addView(status, topMargin(10));
 
-        TextView approvalsLabel = section("STEP 1  •  REQUIRED APPROVALS");
-        permissionSectionAnchor = approvalsLabel;
-        root.addView(approvalsLabel, topMargin(26));
+        TextView protectionLabel = section("STEP 1  •  SET UP");
+        permissionSectionAnchor = protectionLabel;
+        root.addView(protectionLabel, topMargin(26));
+        LinearLayout protection = column();
+        protection.setPadding(dp(16), dp(15), dp(16), dp(15));
+        protection.setBackground(shape(SOFT_VIOLET, BORDER, 20));
+        TextView protectionTitle = text("🍃  FocusLock Safe Browser", 15, INK, true);
+        protection.addView(protectionTitle);
+        adultStatus = text("Checking device protection…", 11, VIOLET, true);
+        protection.addView(adultStatus, topMargin(5));
+        TextView protectionCopy = text("Adult-domain blocking and strict search filtering turn on automatically inside this browser. No VPN, DNS setup, or extra permission.", 12, MUTED, false);
+        protectionCopy.setLineSpacing(0, 1.15f);
+        protection.addView(protectionCopy, topMargin(8));
+        protectionButton = button("Open Safe Browser  →", VIOLET, Color.WHITE);
+        protectionButton.setOnClickListener(v -> startActivity(new Intent(this, SafeBrowserActivity.class)));
+        protection.addView(protectionButton, topMargin(12));
+        root.addView(protection, topMargin(9));
+        reveal(protection, 320);
+
+        root.addView(section("REQUIRED APPROVALS"), topMargin(16));
         permissionRow = row();
         root.addView(permissionRow, topMargin(9));
         refreshPermissionCards();
@@ -276,7 +292,7 @@ public class MainActivity extends Activity {
         if (isFinishing()) return;
         new AlertDialog.Builder(this)
                 .setTitle("Welcome to FocusLock 🌿")
-                .setMessage("FocusLock needs two Android approvals: Usage Access so it can count time only in the apps you choose, and Display over other apps so it can show the lock screen when a selected app reaches its limit. FocusLock does not read what you type, messages, or screen content. You can turn either approval off anytime in Android Settings.")
+                .setMessage("Let's prepare app blocking now. FocusLock will guide each required Android approval. The Safe Browser needs no additional setup.")
                 .setPositiveButton("Begin setup", (dialog, which) -> {
                     getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("welcome_seen", true).apply();
                     startEasySetup();
@@ -509,6 +525,13 @@ public class MainActivity extends Activity {
         scrollToBoundarySetup();
     }
 
+    private void refreshAdultStatus() {
+        if (adultStatus == null) return;
+        adultStatus.setText("●  AUTOMATICALLY ACTIVE INSIDE SAFE BROWSER");
+        adultStatus.setTextColor(GREEN);
+        if (protectionButton != null) protectionButton.setText("Open Safe Browser  →");
+    }
+
     @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_NOTIFICATIONS) {
@@ -622,7 +645,7 @@ public class MainActivity extends Activity {
         if (step == 1) {
             guideTitle.setText("STEP 1 OF 4");
             guideBody.setText("Allow the setup requests ↓");
-            guideHint.setText("Approve the two app-limit permissions. You can turn them off in Android Settings at any time.");
+            guideHint.setText("Approve the app-limit permissions. Safe Browser protection is already automatic.");
         } else if (step == 2) {
             guideTitle.setText("STEP 2 OF 4");
             guideBody.setText("Choose at least one app ↓");
