@@ -2,15 +2,15 @@ plugins { id 'com.android.application' }
 
 android {
     namespace 'com.focuslock.app'
-    compileSdk 35
-    buildToolsVersion '35.0.0'
+    compileSdk 36
+    buildToolsVersion '36.0.0'
 
     defaultConfig {
         applicationId 'com.focuslock.app'
         minSdk 26
-        targetSdk 35
-        versionCode 123
-        versionName '1.0.23'
+        targetSdk 36
+        versionCode 124
+        versionName '1.0.24'
         buildConfigField 'String', 'SUPABASE_URL', '"https://sfrwqrjwyzhabmquythi.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_Y3Xl3f_pmMX3bZblCvjXmw_c2l1iPM7"'
         buildConfigField 'String', 'PUBLIC_SITE_URL', '"https://focuslock-app.mdsabbir71a.chatgpt.site"'
