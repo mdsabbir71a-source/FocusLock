@@ -13,18 +13,28 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 
 public class FocusMonitorService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private long lastKick;
     private long lastEventQuery;
     private long lastTick;
+    private long lastHeartbeat;
     private String currentPackage;
+    private String ownPackage;
 
     @Override public void onCreate() {
         super.onCreate();
-        lastEventQuery = System.currentTimeMillis() - 5000;
-        lastTick = System.currentTimeMillis();
+        if (!AccessStore.isAllowed(this) || !RemoteConfigStore.appBlockingEnabled(this)) { stopSelf(); return; }
+        // Start from the moment the service is created. Looking back over a day
+        // can mistake a stale Chrome (or another selected app) event for the
+        // app that is actually on screen and immediately kick the user out of
+        // the save screen. The next foreground event will identify the real app.
+        ownPackage = getPackageName();
+        currentPackage = ownPackage;
+        lastEventQuery = System.currentTimeMillis();
+        lastTick = SystemClock.elapsedRealtime();
         createChannel();
         Intent open = new Intent(this, MainActivity.class);
         PendingIntent pending = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
@@ -34,16 +44,34 @@ public class FocusMonitorService extends Service {
                 .setContentText("Only your selected apps will be blocked")
                 .setContentIntent(pending).setOngoing(true).build();
         startForeground(7, notification);
+        MonitorHealthStore.heartbeat(this);
+        ProtectionRestarter.schedule(this, 15 * 60_000L);
         handler.post(check);
+    }
+
+    @Override public int onStartCommand(Intent intent, int flags, int startId) {
+        if (!ProtectionRestarter.shouldMonitor(this)) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        MonitorHealthStore.heartbeat(this);
+        return START_STICKY;
     }
 
     private final Runnable check = new Runnable() {
         @Override public void run() {
-            if (!LockStore.isEnabled(FocusMonitorService.this)) { stopSelf(); return; }
+            if (!AccessStore.isAllowed(FocusMonitorService.this)
+                    || !RemoteConfigStore.appBlockingEnabled(FocusMonitorService.this)
+                    || !LockStore.isEnabled(FocusMonitorService.this)) { stopSelf(); return; }
             long now = System.currentTimeMillis();
             updateForegroundPackage(now);
-            long elapsed = now - lastTick;
-            lastTick = now;
+            long elapsedNow = SystemClock.elapsedRealtime();
+            long elapsed = elapsedNow - lastTick;
+            lastTick = elapsedNow;
+            if (now - lastHeartbeat >= 5_000L) {
+                lastHeartbeat = now;
+                MonitorHealthStore.heartbeat(FocusMonitorService.this);
+            }
             if (currentPackage != null && LockStore.isSelected(FocusMonitorService.this, currentPackage)) {
                 boolean newlyLocked = LockStore.addUsage(FocusMonitorService.this, currentPackage, elapsed);
                 if ((newlyLocked || LockStore.isLocked(FocusMonitorService.this, currentPackage)) && now - lastKick > 1200) {
@@ -57,8 +85,9 @@ public class FocusMonitorService extends Service {
 
     private void updateForegroundPackage(long now) {
         UsageStatsManager manager = (UsageStatsManager) getSystemService(Context.USAGE_STATS_SERVICE);
-        UsageEvents events = manager.queryEvents(lastEventQuery, now);
-        lastEventQuery = now + 1;
+        UsageEvents events = manager.queryEvents(Math.min(lastEventQuery, now), now);
+        lastEventQuery = now;
+        if (events == null) return;
         UsageEvents.Event event = new UsageEvents.Event();
         while (events.hasNextEvent()) {
             events.getNextEvent(event);
@@ -84,6 +113,16 @@ public class FocusMonitorService extends Service {
         }
     }
 
-    @Override public void onDestroy() { handler.removeCallbacks(check); super.onDestroy(); }
+    @Override public void onTaskRemoved(Intent rootIntent) {
+        if (ProtectionRestarter.shouldMonitor(this)) ProtectionRestarter.schedule(this, 5_000L);
+        super.onTaskRemoved(rootIntent);
+    }
+
+    @Override public void onDestroy() {
+        handler.removeCallbacks(check);
+        MonitorHealthStore.clear(this);
+        if (ProtectionRestarter.shouldMonitor(this)) ProtectionRestarter.schedule(this, 5_000L);
+        super.onDestroy();
+    }
     @Override public IBinder onBind(Intent intent) { return null; }
 }

@@ -1,44 +1,105 @@
 # FocusLock for Android
 
-FocusLock lets a user choose distracting apps, give each app an allowed amount of actual foreground usage, and then block that app for a chosen duration when its allowance is consumed.
+FocusLock lets a user choose distracting apps, set an actual foreground-use allowance, and lock only those apps for a chosen period when the allowance is used. The master switch controls selected-app monitoring.
 
-Version 0.5 introduces a calm, light interface inspired by the supplied FocusLock concept: warmer surfaces, clearer permission cards, a visual app grid, compact boundary controls, and a dedicated breathing-focused pause screen. The underlying per-app timing and blocking behavior is unchanged.
+## Version 1.0.23
 
-Version 0.6 adds Easy Setup. FocusLock guides the user through Android's special Usage Access and overlay screens, requests ordinary notification permission with a system popup, and offers one-tap Adult Protection through a DNS-only local VPN. Only DNS requests enter the VPN; ordinary app traffic stays on its normal connection. Cloudflare Family (`1.1.1.3`) supplies adult-domain and malware filtering. Because Android permits only one selected VPN, this mode cannot run alongside another VPN; the original Private DNS configuration remains recognized as an alternative.
+The timer actions now use vibration feedback compatible with Android 8 and later.
+The previous APK made runtime reads of API 30-only fields, which could crash both
+Apply time and Save & start on Android 8–10. Save also uses the guarded monitor
+starter and no longer opens a notification permission prompt during the action.
+See `RELEASE_NOTES_1.0.23.md` for the evidence, validation, and build method.
 
-Version 0.7 adds a first-launch permission walkthrough, a master on/off control, a simpler botanical dashboard, lightweight native animations, and eleven rotating gentle reminders on the blocked-app screen.
+## Version 1.0.22 (previous attempt)
 
-Version 0.8 introduces the minimalist botanical pause logo, automatically scrolls to app and timer selection after onboarding, supports minute-and-second limits, and makes the boundary button reactivate after every unsaved app or time change before fading once saved.
+### Timer-save redirect fix
 
-Version 0.9 simplifies the dashboard into three guided steps, adds first-boundary coaching, introduces private on-device progress analytics (pauses, protected time, and active-day streak), and upgrades the blocker with eight rotating faceless nature line-art scenes plus floating, breathing, pulse, and staggered entrance animations.
+- Saving a timer no longer opens Chrome or any external browser.
+- Remote update prompts are no longer shown as a side effect of app resume or a timer save.
+- Updates are no longer opened automatically while the setup screen is active; the normal website/download flow remains unchanged.
+- Existing account, selected apps, timer values, and permissions are preserved.
 
-Version 0.10 adds a persistent four-step walkthrough that moves with the user from permissions to app selection, timer setup, and saving. Selecting the first app automatically reveals the timer step, valid timer edits reveal the final save step, and the walkthrough can be replayed from **How it works?** without changing saved settings.
+### Cause
 
-Version 0.11 removes FocusLock's local VPN service and uses Android Private DNS for optional adult-site and malware filtering instead. Android shows one system confirmation because ordinary apps cannot change device-wide DNS secretly. This avoids the VPN icon, VPN tunnel, and conflict with the phone's VPN slot. Progress analytics now live in an animated right-side drawer, and the main screen has a shorter, clearer setup structure.
+The previous build refreshed remote configuration asynchronously in `MainActivity.onResume()`. When that request completed, it could show an update dialog whose **Update now** action launched the configured website with `ACTION_VIEW`. The callback could complete at the same time the user pressed **Save & start**, making the browser look like part of applying the timer. The timer persistence itself was not redirecting anywhere.
 
-Version 0.12 replaces the manual Private DNS flow with FocusLock Safe Browser. Adult-domain rules and strict Google, Bing, DuckDuckGo, and Yahoo search parameters apply automatically inside the browser, with no VPN, DNS setup, or special permission. The browser also disables file/content access, third-party cookies, mixed HTTP content, geolocation, popup windows, and WebView debugging. Protection is intentionally limited to FocusLock Safe Browser; other browsers and apps remain unaffected.
+### Account and session reliability
 
-## MVP behavior
+- Restored the in-app Account section with account details, subscription/access status, FAQ, Privacy Policy, Terms, Contact us, password/email changes, sign-out, and account deletion.
+- Hardened Supabase JWT handling with strict token validation, URL-safe Base64 padding, signed expiry (`exp`) support, and safe recovery from malformed sessions.
+- Serialised refresh-token rotation and retry a request once after an expired access token, preventing launch-time requests from invalidating one another.
+- Invalid sessions are cleared cleanly with a clear sign-in prompt; temporary server/network failures keep the cached access state intact.
+- FocusLock branding remains the app's own; no Supabase branding is shown in the product UI.
 
-1. Allow **Usage Access** and **Display Over Other Apps** from the buttons in FocusLock.
-2. Select one or more installed apps.
-3. Enter allowed foreground usage in minutes and a lock duration in minutes.
-4. Tap **Start commitment**.
-5. Only time actually spent inside each selected app counts. When an app consumes its allowance, it is sent to the background and locked for the configured period.
+## Version 1.0.20
 
-## Run it
+### Save-screen stability
 
-Open this folder in a recent Android Studio version, allow Gradle sync to finish, connect an Android 8.0+ phone, and click **Run**.
+- Starting protection no longer replays stale foreground-app events, so saving a timer cannot unexpectedly hand control back to Chrome or another selected app.
+- Remote update prompts wait until a later launch instead of interrupting the Save & start action.
 
-## Build an APK without Android Studio
+## Version 1.0.19
 
-Upload the contents of this folder to a GitHub repository. The included GitHub Actions workflow builds automatically. Open the repository's **Actions** tab, select **Build FocusLock APK**, open the latest successful run, and download the **FocusLock-APK** artifact.
+- Android 8.0+ (`minSdk 26`), targeting Android 15 (`targetSdk 35`).
+- Email/password and Google sign-in through Supabase.
+- A compact focus-plan home screen with guided permissions, priority app tiles, an expandable full app list, and a fixed Save action.
+- Polished minute/second wheel timers use animated **Use limit** and **Lock length** tabs so only one clear choice is visible at a time.
+- Purposeful motion includes staggered screen entrances, tactile app and timer feedback, animated protection states, botanical background movement, pulsing coach marks, and a save-success leaf burst.
+- Free access for every signed-in account. Billing can be connected later without changing account IDs.
+- Password recovery, email/password updates, permanent account deletion, legal links, and support contact.
+- Encrypted Android-Keystore sessions, row-level security, redacted opt-in diagnostics, consent history, remote announcements, and signed update notices.
+- No Accessibility service and no `QUERY_ALL_PACKAGES` permission.
+- A real monitor heartbeat, sticky-service recovery, boot restore, and a periodic watchdog keep selected-app blocking active after Android/OEM process termination.
+- The status card now reports the actual monitor health instead of only the saved switch state, and repairs a stopped monitor automatically.
+- The master switch pauses or restarts selected-app monitoring.
+- Adult-content protection and all VPN functionality have been completely removed.
+- Analytics and progress tracking are not part of the interface or account sync.
+- FocusLock remains available in the normal Android app drawer and does not request or create a Home-screen shortcut.
+- Both timer values stay visible with quick adjustment buttons plus an exact Hours / Minutes / Seconds scroll picker, animated digits, live preview, and light haptic feedback.
+- The first-run guide now spotlights both timer cards in order: **Use limit**, then **Lock length**, before guiding the user to save.
+- Authentication now begins with a calm animated welcome and only two choices: **Continue with Google** or **Sign up with email**. Email creation and returning-user login use a separate, focused screen.
+- Removed the optional Focus Reset puzzle gate so FocusLock controls open normally while protection is active.
+- The welcome screen now makes **Continue with Google** the colored primary action, with **Sign up with email** as the quiet secondary action.
+- Removed the blocking agreement dialog from signup/login; Terms and Privacy Policy remain linked on the auth screen and consent is recorded quietly when continuing.
+- Deepened the green Google sign-in button to better match the FocusLock brand.
+- Fresh setups now start with a 1-minute use limit and a 10-minute lock length; existing saved timers are preserved.
+- Frequently selected apps are remembered locally and surfaced earlier in the app list.
+- The Account section now includes account details, subscription status, FAQ, privacy, terms, contact support, password/email changes, sign out, and account deletion.
 
-## Important production notes
+## User setup
 
-- The private-test build avoids Accessibility permission. It uses event-based Usage Access to identify only newly opened apps, preventing false lock screens on Home or unrelated apps.
-- Display Over Other Apps permission allows the foreground monitor to open the dedicated lock activity when a blocked app is launched; it no longer leaves a persistent overlay on screen.
-- `QUERY_ALL_PACKAGES` is restricted by Google Play policy. Before publishing, replace the general app picker with a curated social-app list or submit the required policy declaration.
-- A technically determined user can disable Accessibility permission or uninstall the app. Device-owner mode would be needed for a tamper-resistant parental-control edition.
-- Battery-optimization behavior differs by manufacturer, so test on Samsung, Xiaomi, Oppo/Realme, and Pixel devices.
-- Safe Browser protection is automatic but applies only inside FocusLock Safe Browser. It does not alter or monitor Chrome, other browsers, or unrelated apps.
+1. Sign in and review the linked Privacy Policy and Terms.
+2. Allow Usage Access, Display Over Other Apps, notifications, and background reliability when Android asks.
+3. Select one or more apps and set an allowed foreground-use time plus lock duration.
+4. Save the commitment and turn FocusLock on.
+
+Only time actually spent in a selected app counts. When the allowance expires, FocusLock sends that app to the background and displays the countdown screen when it is opened again.
+
+## Build locally
+
+Open this folder in a recent Android Studio, let Gradle sync, connect an Android 8.0+ phone, and click **Run**. Release builds require these environment variables:
+
+- `FOCUSLOCK_KEYSTORE_PATH`
+- `FOCUSLOCK_KEYSTORE_PASSWORD`
+- `FOCUSLOCK_KEY_ALIAS`
+- `FOCUSLOCK_KEY_PASSWORD`
+
+Never commit the production keystore or its passphrase. Every public update must use the same certificate.
+
+## GitHub Actions
+
+The included workflow builds a debug APK on pushes and pull requests. A manual `workflow_dispatch` run can also build a production-signed APK after these GitHub repository secrets are configured:
+
+- `FOCUSLOCK_KEYSTORE_BASE64`
+- `FOCUSLOCK_KEYSTORE_PASSWORD`
+- `FOCUSLOCK_KEY_ALIAS`
+- `FOCUSLOCK_KEY_PASSWORD`
+
+## Privacy and operational notes
+
+- Selected package names and browsing activity are not uploaded. Account identity, entitlement, device/app version, aggregate daily progress, consent records, and optional redacted diagnostics can sync to Supabase.
+- Users can disable permissions or uninstall the app. FocusLock is a self-control tool, not tamper-resistant device management.
+- Battery behavior differs by manufacturer. Test on Pixel, Samsung, Xiaomi, Oppo/Realme, and other target devices before a broad launch.
+- FocusLock asks Android to exclude it from battery optimization because selected-app monitoring must remain active while the main screen is closed. Users can revoke this in Android settings.
+- The client contains only a Supabase publishable key. Service-role credentials belong only in protected server functions.
+- A custom SMTP provider and CAPTCHA are recommended once sign-up volume grows; neither is required for the initial free beta.

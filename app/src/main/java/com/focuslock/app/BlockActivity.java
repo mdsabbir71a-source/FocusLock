@@ -20,17 +20,17 @@ import android.widget.TextView;
 
 public class BlockActivity extends Activity {
     private static final String[] REMINDERS = {
-            "This boundary is doing what you asked. Take a breath — the app will return when the pause is complete.",
-            "A quiet minute can protect an entire afternoon. Let this pause make room for what matters.",
-            "You are not missing out. You are choosing where your attention gets to grow.",
-            "The urge will pass like weather. Breathe slowly and let it move through you.",
-            "Your time is a garden. Every boundary leaves more space for something meaningful to grow.",
-            "Small pauses build strong habits. This moment counts, even if it feels ordinary.",
-            "You already made the hard decision earlier. Right now, simply let that decision support you.",
-            "Look away from the screen, soften your shoulders, and give your mind a little sunlight.",
-            "Nothing needs to be fixed in this moment. Inhale, exhale, and begin again gently.",
-            "Attention is precious. You are practicing how to spend it with intention.",
-            "A calmer mind begins with one protected moment. This is that moment."
+            "Take a breath. This urge will pass.",
+            "A quiet minute can protect your afternoon.",
+            "Choose where your attention grows.",
+            "Slow down. Let the moment pass.",
+            "Your time is worth protecting.",
+            "Small pauses build strong habits.",
+            "Let your earlier decision support you.",
+            "Look away. Relax your shoulders.",
+            "Inhale, exhale, begin again.",
+            "Spend your attention with intention.",
+            "One protected moment can reset your day."
     };
     private static final int INK = Color.rgb(17, 24, 39);
     private static final int MUTED = Color.rgb(107, 114, 128);
@@ -47,6 +47,7 @@ public class BlockActivity extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        if (!AccessStore.isAllowed(this) || !RemoteConfigStore.appBlockingEnabled(this)) { finish(); return; }
         blockedPackage = getIntent().getStringExtra("blocked_package");
         if (blockedPackage == null || !LockStore.isLocked(this, blockedPackage)) { finish(); return; }
         setContentView(buildUi());
@@ -63,7 +64,7 @@ public class BlockActivity extends Activity {
         root.setAlpha(0f);
         root.animate().alpha(1f).setDuration(450).start();
 
-        TextView top = text("🌿  Taking a quiet break from " + appName(), 11, MUTED, false);
+        TextView top = text("🌿  " + appName() + " is paused", 11, MUTED, false);
         top.setGravity(Gravity.CENTER);
         root.addView(top, matchWrap());
         Space upper = new Space(this);
@@ -82,12 +83,12 @@ public class BlockActivity extends Activity {
         artRow.addView(leafRight, new LinearLayout.LayoutParams(dp(42), ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(artRow, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(188)));
 
-        TextView title = text("Let your mind breathe", 28, INK, true);
+        TextView title = text("Time for a pause", 28, INK, true);
         title.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams titleLp = matchWrap(); titleLp.topMargin = dp(24);
         root.addView(title, titleLp);
 
-        timerText = text("Breathe  •  00:00 left", 13, Color.WHITE, true);
+        timerText = text("00:00 left", 13, Color.WHITE, true);
         timerText.setGravity(Gravity.CENTER);
         timerText.setPadding(dp(18), dp(10), dp(18), dp(10));
         timerText.setBackground(shape(INK, INK, 24));
@@ -99,8 +100,9 @@ public class BlockActivity extends Activity {
         reminderCard.setOrientation(LinearLayout.VERTICAL);
         reminderCard.setPadding(dp(18), dp(18), dp(18), dp(18));
         reminderCard.setBackground(shape(Color.WHITE, Color.rgb(220, 233, 220), 24));
-        reminderCard.addView(text("🍃  A GENTLE REMINDER", 10, Color.rgb(52, 116, 76), true));
-        TextView quote = text(REMINDERS[LockStore.nextReminderIndex(this, REMINDERS.length)], 14, INK, true);
+        reminderCard.addView(text("🍃  REMINDER", 10, Color.rgb(52, 116, 76), true));
+        String[] reminders = RemoteConfigStore.reminders(this, REMINDERS);
+        TextView quote = text(reminders[LockStore.nextReminderIndex(this, reminders.length)], 14, INK, true);
         quote.setLineSpacing(0, 1.22f);
         LinearLayout.LayoutParams quoteLp = matchWrap(); quoteLp.topMargin = dp(12);
         reminderCard.addView(quote, quoteLp);
@@ -115,7 +117,7 @@ public class BlockActivity extends Activity {
         LinearLayout.LayoutParams reminderLp = matchWrap(); reminderLp.topMargin = dp(30);
         root.addView(reminderCard, reminderLp);
 
-        TextView boundary = text("kind boundary  •  no override needed", 10, FAINT, false);
+        TextView boundary = text("Boundary active", 10, FAINT, false);
         boundary.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams boundaryLp = matchWrap(); boundaryLp.topMargin = dp(18);
         root.addView(boundary, boundaryLp);
@@ -123,7 +125,7 @@ public class BlockActivity extends Activity {
         Space lower = new Space(this);
         root.addView(lower, new LinearLayout.LayoutParams(1, 0, 1f));
         Button home = new Button(this);
-        home.setText("Return to Home");
+        home.setText("Go home");
         home.setAllCaps(false);
         home.setTextSize(13);
         home.setTextColor(INK);
@@ -131,7 +133,7 @@ public class BlockActivity extends Activity {
         home.setBackground(shape(Color.WHITE, BORDER, 26));
         home.setOnClickListener(v -> goHome());
         root.addView(home, matchWrap());
-        TextView active = text("🌿  Boundary active • we’ll let you know when it’s time", 10, FAINT, false);
+        TextView active = text("🌿  FocusLock is protecting your time", 10, FAINT, false);
         active.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams activeLp = matchWrap(); activeLp.topMargin = dp(10);
         root.addView(active, activeLp);
@@ -193,7 +195,7 @@ public class BlockActivity extends Activity {
     private void startTimer() {
         long remaining = Math.max(0, LockStore.lockedUntil(this, blockedPackage) - System.currentTimeMillis());
         timer = new CountDownTimer(remaining, 1000) {
-            @Override public void onTick(long left) { timerText.setText("Breathe  •  " + format(left) + " left"); }
+            @Override public void onTick(long left) { timerText.setText(format(left) + " left"); }
             @Override public void onFinish() { goHome(); }
         }.start();
     }
