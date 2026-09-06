@@ -1,0 +1,5 @@
+# Copy to release-signing.properties locally. Never commit the real file.
+storeFile=app/focuslock-release.keystore
+storePassword=replace-with-keystore-password
+keyAlias=focuslock
+keyPassword=replace-with-key-password
