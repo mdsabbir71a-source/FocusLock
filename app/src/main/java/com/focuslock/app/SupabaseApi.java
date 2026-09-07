@@ -1,7 +1,11 @@
 package com.focuslock.app;
 
+import android.app.AppOpsManager;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.PowerManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
@@ -285,19 +289,53 @@ public final class SupabaseApi {
         return session.expiresAt <= System.currentTimeMillis() + SESSION_REFRESH_WINDOW_MS;
     }
 
+    private static boolean hasUsageAccess(Context context) {
+        AppOpsManager appOps = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
+        ApplicationInfo info = context.getApplicationInfo();
+        return appOps != null && appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,
+                info.uid, context.getPackageName()) == AppOpsManager.MODE_ALLOWED;
+    }
+
     private static void syncAccountData(Context context, SecureSessionStore.Session session) {
         try {
             String installId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
             if (installId == null || installId.length() < 16) installId = "focuslock-install-" + session.userId;
+            boolean notificationsGranted = Build.VERSION.SDK_INT < 33
+                    || context.checkSelfPermission("android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED;
+            PowerManager power = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
             JSONObject device = new JSONObject()
                     .put("user_id", session.userId)
                     .put("install_id", installId)
                     .put("device_name", Build.MANUFACTURER + " " + Build.MODEL)
+                    .put("manufacturer", Build.MANUFACTURER)
+                    .put("model", Build.MODEL)
                     .put("platform", "android")
                     .put("app_version", BuildConfig.VERSION_NAME)
+                    .put("app_version_code", BuildConfig.VERSION_CODE)
+                    .put("android_version", Build.VERSION.RELEASE)
+                    .put("sdk_int", Build.VERSION.SDK_INT)
+                    .put("usage_access_granted", hasUsageAccess(context))
+                    .put("overlay_granted", Settings.canDrawOverlays(context))
+                    .put("battery_optimization_ignored", power != null && power.isIgnoringBatteryOptimizations(context.getPackageName()))
+                    .put("notifications_granted", notificationsGranted)
+                    .put("app_enabled", LockStore.isEnabled(context))
+                    .put("capabilities_updated_at", Instant.now().toString())
                     .put("last_seen_at", Instant.now().toString());
-            requestWithSession(context, "POST", "/rest/v1/devices?on_conflict=user_id,install_id", device.toString(), session,
-                    "resolution=merge-duplicates,return=minimal");
+
+            // PostgREST upserts with a composite conflict key failed silently on
+            // some installed builds. Resolve the row first, then create or update
+            // it explicitly so every signed-in device is visible to the owner.
+            String lookup = "/rest/v1/devices?select=id&user_id=eq." + encode(session.userId)
+                    + "&install_id=eq." + encode(installId) + "&limit=1";
+            Response existing = requestWithSession(context, "GET", lookup, null, session, null);
+            JSONArray rows = existing.ok() ? new JSONArray(existing.body) : new JSONArray();
+            if (rows.length() == 0) {
+                requestWithSession(context, "POST", "/rest/v1/devices", device.toString(), session, "return=minimal");
+            } else {
+                long deviceId = rows.getJSONObject(0).optLong("id", 0);
+                if (deviceId > 0) requestWithSession(context, "PATCH", "/rest/v1/devices?id=eq." + deviceId,
+                        device.toString(), session, "return=minimal");
+            }
 
             requestWithSession(context, "PATCH", "/rest/v1/profiles?user_id=eq." + encode(session.userId),
                     new JSONObject().put("last_seen_at", Instant.now().toString()).toString(), session,
