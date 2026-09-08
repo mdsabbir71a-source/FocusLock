@@ -19,6 +19,7 @@ import android.widget.Space;
 import android.widget.TextView;
 
 public class BlockActivity extends Activity {
+    private static volatile boolean visible;
     private static final String[] REMINDERS = {
             "Take a breath. This urge will pass.",
             "A quiet minute can protect your afternoon.",
@@ -53,6 +54,18 @@ public class BlockActivity extends Activity {
         setContentView(buildUi());
         startTimer();
         startAnimations();
+    }
+
+    public static boolean isVisible() { return visible; }
+
+    @Override protected void onResume() {
+        super.onResume();
+        visible = true;
+    }
+
+    @Override protected void onPause() {
+        visible = false;
+        super.onPause();
     }
 
     private LinearLayout buildUi() {
@@ -216,7 +229,7 @@ public class BlockActivity extends Activity {
     }
 
     @Override public void onBackPressed() { goHome(); }
-    @Override protected void onDestroy() { if (timer != null) timer.cancel(); super.onDestroy(); }
+    @Override protected void onDestroy() { visible = false; if (timer != null) timer.cancel(); super.onDestroy(); }
     private TextView text(String value, int size, int color, boolean bold) { TextView v = new TextView(this); v.setText(value); v.setTextSize(size); v.setTextColor(color); if (bold) v.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD); return v; }
     private GradientDrawable shape(int fill, int stroke, int radius) { GradientDrawable d = new GradientDrawable(); d.setColor(fill); d.setCornerRadius(dp(radius)); d.setStroke(dp(1), stroke); return d; }
     private LinearLayout.LayoutParams matchWrap() { return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); }
