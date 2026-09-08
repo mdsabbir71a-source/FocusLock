@@ -45,15 +45,17 @@ public class BlockActivity extends Activity {
     private LinearLayout reminderCard;
     private TextView leafLeft;
     private TextView leafRight;
+    private boolean smoothEntry;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         if (!AccessStore.isAllowed(this) || !RemoteConfigStore.appBlockingEnabled(this)) { finish(); return; }
         blockedPackage = getIntent().getStringExtra("blocked_package");
         if (blockedPackage == null || !LockStore.isLocked(this, blockedPackage)) { finish(); return; }
+        smoothEntry = getIntent().getBooleanExtra("smooth_entry", false);
         setContentView(buildUi());
         startTimer();
-        startAnimations();
+        if (!smoothEntry) startAnimations();
     }
 
     public static boolean isVisible() { return visible; }
@@ -74,8 +76,10 @@ public class BlockActivity extends Activity {
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(24), dp(22), dp(24), dp(24));
         root.setBackgroundColor(Color.rgb(248, 251, 246));
-        root.setAlpha(0f);
-        root.animate().alpha(1f).setDuration(450).start();
+        if (!smoothEntry) {
+            root.setAlpha(0f);
+            root.animate().alpha(1f).setDuration(450).start();
+        }
 
         TextView top = text("🌿  " + appName() + " is paused", 11, MUTED, false);
         top.setGravity(Gravity.CENTER);
