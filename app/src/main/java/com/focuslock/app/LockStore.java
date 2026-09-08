@@ -10,6 +10,7 @@ public final class LockStore {
     private static final String PACKAGES = "packages";
     private static final String ALLOWANCE = "allowance_ms";
     private static final String LOCK_DURATION = "lock_duration_ms";
+    private static final String LOCK_FOCUSLOCK = "lock_focuslock_with_apps";
     private static final String ENABLED = "enabled";
     private static final String REMINDER_INDEX = "reminder_index";
     private static final String ART_INDEX = "art_index";
@@ -51,8 +52,25 @@ public final class LockStore {
     public static long allowance(Context context) { return prefs(context).getLong(ALLOWANCE, 60_000L); }
     public static long lockDuration(Context context) { return prefs(context).getLong(LOCK_DURATION, 600_000L); }
     public static long usage(Context context, String pkg) { return prefs(context).getLong(usageKey(pkg), 0); }
-    public static long lockedUntil(Context context, String pkg) { return prefs(context).getLong(lockedKey(pkg), 0); }
-    public static boolean isLocked(Context context, String pkg) { return isEnabled(context) && isSelected(context, pkg) && System.currentTimeMillis() < lockedUntil(context, pkg); }
+    public static boolean lockFocusLock(Context context) { return prefs(context).getBoolean(LOCK_FOCUSLOCK, false); }
+    public static void setLockFocusLock(Context context, boolean enabled) { prefs(context).edit().putBoolean(LOCK_FOCUSLOCK, enabled).apply(); }
+
+    public static long lockedUntil(Context context, String pkg) {
+        if (context.getPackageName().equals(pkg) && lockFocusLock(context)) return latestSelectedLockEnd(context);
+        return prefs(context).getLong(lockedKey(pkg), 0);
+    }
+
+    public static boolean isLocked(Context context, String pkg) {
+        if (!isEnabled(context)) return false;
+        if (context.getPackageName().equals(pkg)) return lockFocusLock(context) && latestSelectedLockEnd(context) > System.currentTimeMillis();
+        return isSelected(context, pkg) && System.currentTimeMillis() < lockedUntil(context, pkg);
+    }
+
+    private static long latestSelectedLockEnd(Context context) {
+        long latest = 0;
+        for (String selected : packages(context)) latest = Math.max(latest, prefs(context).getLong(lockedKey(selected), 0));
+        return latest;
+    }
     public static long remainingAllowance(Context context, String pkg) { return Math.max(0, allowance(context) - usage(context, pkg)); }
 
     public static boolean addUsage(Context context, String pkg, long elapsedMs) {
