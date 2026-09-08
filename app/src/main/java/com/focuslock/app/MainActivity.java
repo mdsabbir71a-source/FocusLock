@@ -100,6 +100,7 @@ public class MainActivity extends Activity {
     private TextView useTimerValue;
     private TextView lockTimerValue;
     private CheckBox lockFocusLockCheck;
+    private View selfLockCard;
     private Button easySetupButton;
     private TextView permissionNote;
     private TextView setupTitle;
@@ -153,6 +154,7 @@ public class MainActivity extends Activity {
         refreshPermissionCards();
         refreshMasterButton();
         new Handler().postDelayed(this::maybeExplainBatteryReliability, 650L);
+        new Handler().postDelayed(this::maybeShowSelfLockGuide, 1100L);
         if (waitingForSpecialPermission != 0) {
             int returningFrom = waitingForSpecialPermission;
             waitingForSpecialPermission = 0;
@@ -240,6 +242,23 @@ public class MainActivity extends Activity {
         status.setPadding(0, dp(12), 0, dp(2));
         master.addView(status);
         root.addView(master, topMargin(18));
+
+        LinearLayout selfLockRow = row();
+        selfLockCard = selfLockRow;
+        selfLockRow.setGravity(Gravity.CENTER_VERTICAL);
+        selfLockRow.setPadding(dp(14), dp(11), dp(9), dp(11));
+        selfLockRow.setBackground(shape(Color.rgb(249, 252, 248), BORDER, 20));
+        LinearLayout selfLockCopy = column();
+        selfLockCopy.addView(text("Lock FocusLock during a pause", 13, INK, true));
+        selfLockCopy.addView(text("Optional · keep settings unavailable until the pause ends", 10, MUTED, false), topMargin(2));
+        selfLockRow.addView(selfLockCopy, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        lockFocusLockCheck = new CheckBox(this);
+        lockFocusLockCheck.setChecked(LockStore.lockFocusLock(this));
+        lockFocusLockCheck.setContentDescription("Lock FocusLock during a pause");
+        lockFocusLockCheck.setOnCheckedChangeListener((buttonView, checked) -> markDirty());
+        selfLockRow.addView(lockFocusLockCheck, new LinearLayout.LayoutParams(dp(44), ViewGroup.LayoutParams.WRAP_CONTENT));
+        selfLockRow.setOnClickListener(v -> lockFocusLockCheck.performClick());
+        root.addView(selfLockRow, topMargin(10));
 
         setupCard = column();
         setupCard.setPadding(dp(15), dp(14), dp(15), dp(14));
@@ -349,21 +368,6 @@ public class MainActivity extends Activity {
         settings.addView(lockTimerCard);
         guideLockTimerTarget = lockTimerCard;
         guideTimerTarget = useTimerCard;
-
-        LinearLayout selfLockRow = row();
-        selfLockRow.setGravity(Gravity.CENTER_VERTICAL);
-        selfLockRow.setPadding(dp(12), dp(10), dp(8), dp(10));
-        selfLockRow.setBackground(shape(Color.rgb(249, 252, 248), BORDER, 16));
-        LinearLayout selfLockCopy = column();
-        selfLockCopy.addView(text("Lock FocusLock during a pause", 12, INK, true));
-        selfLockCopy.addView(text("Keep this app unavailable until the selected app unlocks", 10, MUTED, false), topMargin(2));
-        selfLockRow.addView(selfLockCopy, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        lockFocusLockCheck = new CheckBox(this);
-        lockFocusLockCheck.setChecked(LockStore.lockFocusLock(this));
-        lockFocusLockCheck.setContentDescription("Lock FocusLock during a pause");
-        lockFocusLockCheck.setOnCheckedChangeListener((buttonView, checked) -> markDirty());
-        selfLockRow.addView(lockFocusLockCheck, new LinearLayout.LayoutParams(dp(44), ViewGroup.LayoutParams.WRAP_CONTENT));
-        settings.addView(selfLockRow, topMargin(9));
 
         timerSummary = text(timerSummaryText(LockStore.allowance(this), LockStore.lockDuration(this)), 12, VIOLET, true);
         timerSummary.setGravity(Gravity.CENTER);
@@ -1320,6 +1324,30 @@ public class MainActivity extends Activity {
                 .setMessage("Android may quietly stop FocusLock after a few hours to save battery. Tap Allow on the next Android screen so your selected-app boundary can keep running. This does not make other apps slower.")
                 .setPositiveButton("Allow", (dialog, which) -> requestBatteryReliability())
                 .setNegativeButton("Later", null)
+                .show();
+    }
+
+    private void maybeShowSelfLockGuide() {
+        if (isFinishing() || selfLockCard == null || lockFocusLockCheck == null) return;
+        SharedPreferences onboarding = getSharedPreferences("focuslock_onboarding", MODE_PRIVATE);
+        if (!onboarding.getBoolean("guide_complete", false)
+                || onboarding.getBoolean("self_lock_guide_seen", false)
+                || LockStore.lockFocusLock(this)
+                || LockStore.isLocked(this, getPackageName())) return;
+        onboarding.edit().putBoolean("self_lock_guide_seen", true).apply();
+        new AlertDialog.Builder(this)
+                .setTitle("Lock FocusLock too?")
+                .setMessage("When a selected app is paused, this option also keeps FocusLock unavailable until that pause ends. You can change it anytime just below Protection.")
+                .setPositiveButton("Turn on", (dialog, which) -> {
+                    lockFocusLockCheck.setChecked(true);
+                    markDirty();
+                    pulseTarget(selfLockCard);
+                    toast("Tap Save & start to apply this option.");
+                })
+                .setNegativeButton("Skip for now", (dialog, which) -> {
+                    lockFocusLockCheck.setChecked(false);
+                    toast("FocusLock will stay available during pauses.");
+                })
                 .show();
     }
 
