@@ -108,10 +108,17 @@ public class FocusMonitorService extends Service {
     }
 
     private void kickOut(String blockedPackage) {
-        startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-        handler.postDelayed(() -> startActivity(new Intent(this, BlockActivity.class)
+        Intent block = new Intent(this, BlockActivity.class)
                 .putExtra("blocked_package", blockedPackage)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)), 120);
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        if (ownPackage.equals(blockedPackage)) {
+            // FocusLock is already on screen: replace it directly with the
+            // existing pause screen instead of flashing Home first.
+            startActivity(block.putExtra("smooth_entry", true));
+            return;
+        }
+        startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        handler.postDelayed(() -> startActivity(block), 120);
     }
 
     private void createChannel() {
