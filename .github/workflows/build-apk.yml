@@ -96,7 +96,9 @@ jobs:
             ${{ runner.temp }}/focuslock-signing-details.txt
           retention-days: 7
       - name: Verify signature
-        run: apksigner verify --verbose app/build/outputs/apk/release/app-release.apk
+        run: |
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose app/build/outputs/apk/release/app-release.apk
       - uses: actions/upload-artifact@v4
         with:
           name: FocusLock-production-APK
