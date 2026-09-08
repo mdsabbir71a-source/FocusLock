@@ -72,7 +72,15 @@ public class FocusMonitorService extends Service {
                 lastHeartbeat = now;
                 MonitorHealthStore.heartbeat(FocusMonitorService.this);
             }
-            if (currentPackage != null && LockStore.isSelected(FocusMonitorService.this, currentPackage)) {
+            if (MainActivity.isVisible()
+                    && LockStore.isLocked(FocusMonitorService.this, ownPackage)
+                    && !BlockActivity.isVisible()
+                    && now - lastKick > 1200) {
+                // Usage events can report the just-closed app for one cycle.
+                // Prioritize FocusLock's visible screen so it never flashes Home.
+                lastKick = now;
+                kickOut(ownPackage);
+            } else if (currentPackage != null && LockStore.isSelected(FocusMonitorService.this, currentPackage)) {
                 boolean newlyLocked = LockStore.addUsage(FocusMonitorService.this, currentPackage, elapsed);
                 if ((newlyLocked || LockStore.isLocked(FocusMonitorService.this, currentPackage)) && now - lastKick > 1200) {
                     lastKick = now;
