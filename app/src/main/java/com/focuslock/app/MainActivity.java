@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class MainActivity extends Activity {
+    private static volatile boolean visible;
     private static final int INK = Color.rgb(17, 24, 39);
     private static final int MUTED = Color.rgb(107, 114, 128);
     private static final int FAINT = Color.rgb(156, 163, 175);
@@ -138,6 +139,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        visible = true;
         if (!SecureSessionStore.hasSession(this)) { openAuthentication(); return; }
         if (!AccessStore.isAllowed(this)) { stopProtectionForAccess(); openAuthentication(); return; }
         if (!LockStore.isEnabled(this)) {
@@ -172,6 +174,13 @@ public class MainActivity extends Activity {
             }, 300);
         }
     }
+
+    @Override protected void onPause() {
+        visible = false;
+        super.onPause();
+    }
+
+    public static boolean isVisible() { return visible; }
 
     private View buildUi() {
         screenRoot = new FrameLayout(this);
