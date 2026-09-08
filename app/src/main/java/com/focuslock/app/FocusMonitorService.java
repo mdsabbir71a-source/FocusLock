@@ -78,6 +78,13 @@ public class FocusMonitorService extends Service {
                     lastKick = now;
                     kickOut(currentPackage);
                 }
+            } else if (ownPackage.equals(currentPackage)
+                    && LockStore.isLocked(FocusMonitorService.this, ownPackage)
+                    && now - lastKick > 1200) {
+                // Optional self-lock: FocusLock stays unavailable only while one
+                // of the selected apps is still in its active pause period.
+                lastKick = now;
+                kickOut(ownPackage);
             }
             handler.postDelayed(this, 350);
         }
