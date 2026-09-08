@@ -99,6 +99,7 @@ public class MainActivity extends Activity {
     private View lockTimerCard;
     private TextView useTimerValue;
     private TextView lockTimerValue;
+    private CheckBox lockFocusLockCheck;
     private Button easySetupButton;
     private TextView permissionNote;
     private TextView setupTitle;
@@ -348,6 +349,21 @@ public class MainActivity extends Activity {
         settings.addView(lockTimerCard);
         guideLockTimerTarget = lockTimerCard;
         guideTimerTarget = useTimerCard;
+
+        LinearLayout selfLockRow = row();
+        selfLockRow.setGravity(Gravity.CENTER_VERTICAL);
+        selfLockRow.setPadding(dp(12), dp(10), dp(8), dp(10));
+        selfLockRow.setBackground(shape(Color.rgb(249, 252, 248), BORDER, 16));
+        LinearLayout selfLockCopy = column();
+        selfLockCopy.addView(text("Lock FocusLock during a pause", 12, INK, true));
+        selfLockCopy.addView(text("Keep this app unavailable until the selected app unlocks", 10, MUTED, false), topMargin(2));
+        selfLockRow.addView(selfLockCopy, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        lockFocusLockCheck = new CheckBox(this);
+        lockFocusLockCheck.setChecked(LockStore.lockFocusLock(this));
+        lockFocusLockCheck.setContentDescription("Lock FocusLock during a pause");
+        lockFocusLockCheck.setOnCheckedChangeListener((buttonView, checked) -> markDirty());
+        selfLockRow.addView(lockFocusLockCheck, new LinearLayout.LayoutParams(dp(44), ViewGroup.LayoutParams.WRAP_CONTENT));
+        settings.addView(selfLockRow, topMargin(9));
 
         timerSummary = text(timerSummaryText(LockStore.allowance(this), LockStore.lockDuration(this)), 12, VIOLET, true);
         timerSummary.setGravity(Gravity.CENTER);
@@ -1132,6 +1148,7 @@ public class MainActivity extends Activity {
             return;
         }
         LockStore.configure(this, selected, grace, duration);
+        LockStore.setLockFocusLock(this, lockFocusLockCheck != null && lockFocusLockCheck.isChecked());
         for (String packageName : selected) AppSelectionStore.record(this, packageName);
         LockStore.setEnabled(this, true);
         // Notification permission is handled by setup, not while saving a plan.
