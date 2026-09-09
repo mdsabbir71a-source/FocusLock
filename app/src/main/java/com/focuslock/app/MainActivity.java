@@ -157,6 +157,10 @@ public class MainActivity extends Activity {
         refreshMasterButton();
         new Handler().postDelayed(this::maybeExplainBatteryReliability, 650L);
         new Handler().postDelayed(this::maybeShowSelfLockGuide, 1100L);
+        // Re-check every time the signed-in main screen returns. This also
+        // catches permissions changed directly in Android Settings, rather
+        // than only Settings pages opened from FocusLock's setup cards.
+        new Handler().postDelayed(() -> SupabaseApi.syncDeviceState(this), 850L);
         if (waitingForSpecialPermission != 0) {
             int returningFrom = waitingForSpecialPermission;
             waitingForSpecialPermission = 0;
