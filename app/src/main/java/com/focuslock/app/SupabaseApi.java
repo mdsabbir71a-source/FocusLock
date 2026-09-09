@@ -208,6 +208,22 @@ public final class SupabaseApi {
         });
     }
 
+    /**
+     * Sends a fresh device snapshot without changing the user's access state.
+     * This is used after Android settings screens return and by the active
+     * monitor so the owner dashboard never has to guess a permission status.
+     */
+    public static void syncDeviceState(Context context) {
+        IO.execute(() -> {
+            try {
+                SecureSessionStore.Session session = freshSession(context);
+                syncAccountData(context, session);
+            } catch (Exception ignored) {
+                // Device telemetry must never interrupt FocusLock protection.
+            }
+        });
+    }
+
     public static void refreshRemoteConfig(Context context, Callback<Boolean> callback) {
         IO.execute(() -> {
             try {
