@@ -21,6 +21,7 @@ public class FocusMonitorService extends Service {
     private long lastEventQuery;
     private long lastTick;
     private long lastHeartbeat;
+    private long lastDeviceSync;
     private String currentPackage;
     private String ownPackage;
 
@@ -45,6 +46,8 @@ public class FocusMonitorService extends Service {
                 .setContentIntent(pending).setOngoing(true).build();
         startForeground(7, notification);
         MonitorHealthStore.heartbeat(this);
+        lastDeviceSync = System.currentTimeMillis();
+        SupabaseApi.syncDeviceState(this);
         ProtectionRestarter.schedule(this, 15 * 60_000L);
         handler.post(check);
     }
@@ -71,6 +74,10 @@ public class FocusMonitorService extends Service {
             if (now - lastHeartbeat >= 5_000L) {
                 lastHeartbeat = now;
                 MonitorHealthStore.heartbeat(FocusMonitorService.this);
+            }
+            if (now - lastDeviceSync >= 15 * 60_000L) {
+                lastDeviceSync = now;
+                SupabaseApi.syncDeviceState(FocusMonitorService.this);
             }
             if (MainActivity.isVisible()
                     && LockStore.isLocked(FocusMonitorService.this, ownPackage)
