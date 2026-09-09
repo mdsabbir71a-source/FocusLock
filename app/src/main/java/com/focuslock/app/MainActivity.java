@@ -171,6 +171,9 @@ public class MainActivity extends Activity {
                 } else {
                     continueEasySetup();
                 }
+                // This callback itself waits 300 ms, so 550 ms here gives Android
+                // about 850 ms in total before we capture a fresh snapshot.
+                new Handler().postDelayed(() -> SupabaseApi.syncDeviceState(this), 550L);
             }, 300);
         }
     }
