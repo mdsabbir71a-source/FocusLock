@@ -270,6 +270,14 @@ public class AuthActivity extends Activity {
         card.setTranslationY(dp(20));
         card.animate().alpha(1f).translationY(0f).setStartDelay(90).setDuration(380)
                 .setInterpolator(new DecelerateInterpolator()).start();
+        brandRow.setAlpha(0f);
+        brandRow.setTranslationY(-dp(8));
+        brandRow.animate().alpha(1f).translationY(0f).setStartDelay(110).setDuration(300)
+                .setInterpolator(new DecelerateInterpolator()).start();
+        title.setAlpha(0f);
+        title.setTranslationY(dp(10));
+        title.animate().alpha(1f).translationY(0f).setStartDelay(160).setDuration(340)
+                .setInterpolator(new DecelerateInterpolator()).start();
         startLogoMotion(logo);
     }
 
