@@ -134,6 +134,7 @@ public class MainActivity extends Activity {
             onboarding.edit().putBoolean("interactive_guide_v104_seen", true).putBoolean("guide_complete", false).apply();
         }
         setContentView(buildUi());
+        contentRoot.post(this::animateMainEntrance);
         if (!welcomed) new Handler().postDelayed(this::showFirstLaunchSetup, 550);
     }
 
@@ -1078,6 +1079,24 @@ public class MainActivity extends Activity {
                         setupCard.setAlpha(1f);
                         setupCard.setTranslationY(0f);
                     }).start();
+        }
+    }
+
+    private void animateMainEntrance() {
+        if (contentRoot == null) return;
+        int count = contentRoot.getChildCount();
+        for (int i = 0; i < count; i++) {
+            View child = contentRoot.getChildAt(i);
+            if (child == null) continue;
+            child.setAlpha(0f);
+            child.setTranslationY(dp(14));
+            child.setScaleX(.985f);
+            child.setScaleY(.985f);
+            child.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f)
+                    .setStartDelay(Math.min(560L, i * 55L))
+                    .setDuration(320L)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .start();
         }
     }
 
