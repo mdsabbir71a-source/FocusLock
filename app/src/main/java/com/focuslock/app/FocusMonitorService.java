@@ -24,6 +24,7 @@ public class FocusMonitorService extends Service {
     private long lastDeviceSync;
     private String currentPackage;
     private String ownPackage;
+    private UsageStatsManager usageStatsManager;
 
     @Override public void onCreate() {
         super.onCreate();
@@ -34,6 +35,7 @@ public class FocusMonitorService extends Service {
         // the save screen. The next foreground event will identify the real app.
         ownPackage = getPackageName();
         currentPackage = ownPackage;
+        usageStatsManager = (UsageStatsManager) getSystemService(Context.USAGE_STATS_SERVICE);
         lastEventQuery = System.currentTimeMillis();
         lastTick = SystemClock.elapsedRealtime();
         createChannel();
@@ -107,8 +109,8 @@ public class FocusMonitorService extends Service {
     };
 
     private void updateForegroundPackage(long now) {
-        UsageStatsManager manager = (UsageStatsManager) getSystemService(Context.USAGE_STATS_SERVICE);
-        UsageEvents events = manager.queryEvents(Math.min(lastEventQuery, now), now);
+        if (usageStatsManager == null) return;
+        UsageEvents events = usageStatsManager.queryEvents(Math.min(lastEventQuery, now), now);
         lastEventQuery = now;
         if (events == null) return;
         UsageEvents.Event event = new UsageEvents.Event();
@@ -132,7 +134,7 @@ public class FocusMonitorService extends Service {
             startActivity(block.putExtra("smooth_entry", true));
             return;
         }
-        startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
         handler.postDelayed(() -> startActivity(block), 120);
     }
 
