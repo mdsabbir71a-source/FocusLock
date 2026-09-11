@@ -9,8 +9,8 @@ android {
         applicationId 'com.focuslock.app'
         minSdk 26
         targetSdk 36
-        versionCode 133
-        versionName '1.0.33'
+        versionCode 134
+        versionName '1.0.34'
         buildConfigField 'String', 'SUPABASE_URL', '"https://sfrwqrjwyzhabmquythi.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_Y3Xl3f_pmMX3bZblCvjXmw_c2l1iPM7"'
         buildConfigField 'String', 'PUBLIC_SITE_URL', '"https://focuslock-app.mdsabbir71a.chatgpt.site"'
