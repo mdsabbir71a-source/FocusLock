@@ -24,7 +24,6 @@ public class FocusMonitorService extends Service {
     private long lastDeviceSync;
     private String currentPackage;
     private String ownPackage;
-    private UsageStatsManager usageStatsManager;
 
     @Override public void onCreate() {
         super.onCreate();
@@ -35,7 +34,6 @@ public class FocusMonitorService extends Service {
         // the save screen. The next foreground event will identify the real app.
         ownPackage = getPackageName();
         currentPackage = ownPackage;
-        usageStatsManager = (UsageStatsManager) getSystemService(Context.USAGE_STATS_SERVICE);
         lastEventQuery = System.currentTimeMillis();
         lastTick = SystemClock.elapsedRealtime();
         createChannel();
@@ -109,8 +107,8 @@ public class FocusMonitorService extends Service {
     };
 
     private void updateForegroundPackage(long now) {
-        if (usageStatsManager == null) return;
-        UsageEvents events = usageStatsManager.queryEvents(Math.min(lastEventQuery, now), now);
+        UsageStatsManager manager = (UsageStatsManager) getSystemService(Context.USAGE_STATS_SERVICE);
+        UsageEvents events = manager.queryEvents(Math.min(lastEventQuery, now), now);
         lastEventQuery = now;
         if (events == null) return;
         UsageEvents.Event event = new UsageEvents.Event();
