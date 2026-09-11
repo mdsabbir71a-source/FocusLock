@@ -64,7 +64,7 @@ public final class AmbientNatureView extends View {
             float py = y[i] * h + bob;
             drawLeaf(canvas, px, py, size[i], drift * 18f);
         }
-        if (running) postInvalidateOnAnimation();
+        if (running) postInvalidateDelayed(40L);
     }
 
     private void drawLeaf(Canvas canvas, float cx, float cy, float radius, float rotation) {
