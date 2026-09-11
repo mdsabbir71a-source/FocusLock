@@ -46,10 +46,6 @@ public class BlockActivity extends Activity {
     private TextView leafLeft;
     private TextView leafRight;
     private boolean smoothEntry;
-    private TextView topText;
-    private TextView titleText;
-    private TextView boundaryText;
-    private Button homeButton;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -86,7 +82,6 @@ public class BlockActivity extends Activity {
         }
 
         TextView top = text("🌿  " + appName() + " is paused", 11, MUTED, false);
-        topText = top;
         top.setGravity(Gravity.CENTER);
         root.addView(top, matchWrap());
         Space upper = new Space(this);
@@ -106,7 +101,6 @@ public class BlockActivity extends Activity {
         root.addView(artRow, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(188)));
 
         TextView title = text("Time for a pause", 28, INK, true);
-        titleText = title;
         title.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams titleLp = matchWrap(); titleLp.topMargin = dp(24);
         root.addView(title, titleLp);
@@ -141,7 +135,6 @@ public class BlockActivity extends Activity {
         root.addView(reminderCard, reminderLp);
 
         TextView boundary = text("Boundary active", 10, FAINT, false);
-        boundaryText = boundary;
         boundary.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams boundaryLp = matchWrap(); boundaryLp.topMargin = dp(18);
         root.addView(boundary, boundaryLp);
@@ -190,21 +183,11 @@ public class BlockActivity extends Activity {
             breathing.playTogether(x, y);
             breathing.start();
         }
-        animateEntrance(topText, 70L, 10);
-        animateEntrance(logoCard, 130L, 18);
-        animateEntrance(titleText, 210L, 14);
-        animateEntrance(timerText, 290L, 12);
         if (reminderCard != null) {
             reminderCard.setAlpha(0f);
             reminderCard.setTranslationY(dp(28));
-            reminderCard.setScaleX(.97f);
-            reminderCard.setScaleY(.97f);
-            reminderCard.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f)
-                    .setStartDelay(380).setDuration(550)
-                    .setInterpolator(new AccelerateDecelerateInterpolator()).start();
+            reminderCard.animate().alpha(1f).translationY(0f).setStartDelay(220).setDuration(550).start();
         }
-        animateEntrance(boundaryText, 520L, 8);
-        animateEntrance(homeButton, 590L, 12);
         if (timerText != null) {
             ObjectAnimator pulse = ObjectAnimator.ofFloat(timerText, "alpha", 1f, .72f);
             pulse.setDuration(1100);
@@ -214,14 +197,6 @@ public class BlockActivity extends Activity {
         }
         animateLeaf(leafLeft, -14f, -12f, 1700);
         animateLeaf(leafRight, 13f, 10f, 2100);
-    }
-
-    private void animateEntrance(android.view.View view, long delay, int distance) {
-        if (view == null) return;
-        view.setAlpha(0f);
-        view.setTranslationY(dp(distance));
-        view.animate().alpha(1f).translationY(0f).setStartDelay(delay).setDuration(360)
-                .setInterpolator(new AccelerateDecelerateInterpolator()).start();
     }
 
     private void animateLeaf(TextView leaf, float move, float rotation, long duration) {
