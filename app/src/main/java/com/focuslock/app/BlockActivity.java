@@ -149,19 +149,6 @@ public class BlockActivity extends Activity {
         home.setPadding(dp(16), dp(13), dp(16), dp(13));
         home.setBackground(shape(Color.WHITE, BORDER, 26));
         home.setOnClickListener(v -> goHome());
-        home.setOnTouchListener((view, event) -> {
-            if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
-                view.animate().cancel();
-                view.animate().scaleX(.97f).scaleY(.97f).setDuration(80).start();
-            } else if (event.getAction() == android.view.MotionEvent.ACTION_UP
-                    || event.getAction() == android.view.MotionEvent.ACTION_CANCEL) {
-                view.animate().cancel();
-                view.animate().scaleX(1f).scaleY(1f)
-                        .setInterpolator(new AccelerateDecelerateInterpolator()).setDuration(160).start();
-            }
-            return false;
-        });
-        homeButton = home;
         root.addView(home, matchWrap());
         TextView active = text("🌿  FocusLock is protecting your time", 10, FAINT, false);
         active.setGravity(Gravity.CENTER);
