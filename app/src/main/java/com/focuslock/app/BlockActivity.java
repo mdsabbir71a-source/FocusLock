@@ -5,10 +5,13 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;\nimport android.graphics.BitmapFactory;\nimport android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.os.CountDownTimer;\nimport android.util.Base64;
+import android.os.CountDownTimer;
+import android.util.Base64;
 import android.view.Gravity;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
@@ -16,7 +19,10 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Space;
-import android.widget.TextView;\n\nimport java.io.ByteArrayOutputStream;\nimport java.io.InputStream;
+import android.widget.TextView;
+
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 
 public class BlockActivity extends Activity {
     private static volatile boolean visible;
@@ -94,8 +100,13 @@ public class BlockActivity extends Activity {
         artRow.addView(leafLeft, new LinearLayout.LayoutParams(dp(42), ViewGroup.LayoutParams.WRAP_CONTENT));
         logoCard = new LinearLayout(this);
         logoCard.setGravity(Gravity.CENTER);
-        NatureLineArtView illustration = new NatureLineArtView(this, LockStore.nextArtIndex(this, 8));
-        logoCard.addView(illustration, new LinearLayout.LayoutParams(dp(145), dp(178)));
+        ImageView mascot = new ImageView(this);
+        Bitmap mascotBitmap = loadMeditationMascot();
+        if (mascotBitmap != null) mascot.setImageBitmap(mascotBitmap);
+        else mascot.setImageResource(R.drawable.focuslock_logo);
+        mascot.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        mascot.setContentDescription("FocusLock meditation mascot");
+        logoCard.addView(mascot, new LinearLayout.LayoutParams(dp(145), dp(178)));
         artRow.addView(logoCard, new LinearLayout.LayoutParams(dp(150), dp(184)));
         artRow.addView(leafRight, new LinearLayout.LayoutParams(dp(42), ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(artRow, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(188)));
