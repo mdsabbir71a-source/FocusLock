@@ -286,14 +286,14 @@ public class BlockActivity extends Activity {
         }
 
         private float[] orbitTarget(int i) {
-            float centerX = cardX + cardW / 2f;
-            float centerY = cardY + cardH / 2f;
-            float radiusX = cardW * (.60f + (i % 3) * .07f);
-            float radiusY = cardH * (.73f + (i % 2) * .16f);
+            float centerX = getWidth() / 2f;
+            float centerY = getHeight() / 2f;
+            float radiusX = getWidth() * (.36f + (i % 3) * .045f);
+            float radiusY = getHeight() * (.31f + (i % 4) * .025f);
             float angle = phase[i] + i * .72f;
             return new float[] {
                     centerX + (float) Math.cos(angle) * radiusX,
-                    centerY + (float) Math.sin(angle) * radiusY
+                    centerY + (float) Math.sin(angle * 1.13f) * radiusY
             };
         }
 
