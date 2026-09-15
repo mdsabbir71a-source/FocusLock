@@ -47,8 +47,10 @@ public class BlockActivity extends Activity {
     private CountDownTimer timer;
     private LinearLayout timerCard;
     private LinearLayout reminderCard;
-    private View leafLeft;
-    private View leafRight;
+    private View topLeafLeft;
+    private View topLeafRight;
+    private View bottomLeafLeft;
+    private View bottomLeafRight;
     private boolean smoothEntry;
 
     @Override protected void onCreate(Bundle state) {
@@ -89,8 +91,17 @@ public class BlockActivity extends Activity {
         top.setLetterSpacing(.14f);
         top.setGravity(Gravity.CENTER);
         root.addView(top, matchWrap());
-        Space upper = new Space(this);
-        root.addView(upper, new LinearLayout.LayoutParams(1, 0, .9f));
+
+        FrameLayout topGarden = new FrameLayout(this);
+        topLeafLeft = new LeafAccentView(this, false, Color.rgb(93, 157, 107));
+        topLeafRight = new LeafAccentView(this, true, Color.rgb(147, 196, 156));
+        FrameLayout.LayoutParams topLeftLp = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.START | Gravity.CENTER_VERTICAL);
+        topLeftLp.leftMargin = dp(38);
+        FrameLayout.LayoutParams topRightLp = new FrameLayout.LayoutParams(dp(42), dp(42), Gravity.END | Gravity.CENTER_VERTICAL);
+        topRightLp.rightMargin = dp(42);
+        topGarden.addView(topLeafLeft, topLeftLp);
+        topGarden.addView(topLeafRight, topRightLp);
+        root.addView(topGarden, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(112)));
 
         TextView status = text(appName() + " is paused", 14, MUTED, false);
         status.setGravity(Gravity.CENTER);
@@ -105,7 +116,7 @@ public class BlockActivity extends Activity {
         timerCard.setOrientation(LinearLayout.VERTICAL);
         timerCard.setGravity(Gravity.CENTER);
         timerCard.setPadding(dp(24), dp(18), dp(24), dp(18));
-        timerCard.setBackground(shape(VIOLET, VIOLET, 30));
+        timerCard.setBackground(brandTimerShape());
         TextView timerLabel = text("UNLOCKS IN", 10, Color.rgb(224, 244, 228), true);
         timerLabel.setLetterSpacing(.12f);
         timerLabel.setGravity(Gravity.CENTER);
@@ -115,20 +126,8 @@ public class BlockActivity extends Activity {
         timerText.setIncludeFontPadding(false);
         LinearLayout.LayoutParams timerValueLp = matchWrap(); timerValueLp.topMargin = dp(8);
         timerCard.addView(timerText, timerValueLp);
-        FrameLayout timerStage = new FrameLayout(this);
-        timerStage.setPadding(dp(10), dp(12), dp(10), dp(12));
-        leafLeft = new LeafAccentView(this, false);
-        leafRight = new LeafAccentView(this, true);
-        FrameLayout.LayoutParams leftLp = new FrameLayout.LayoutParams(dp(42), dp(42), Gravity.START | Gravity.TOP);
-        leftLp.leftMargin = dp(2);
-        FrameLayout.LayoutParams rightLp = new FrameLayout.LayoutParams(dp(42), dp(42), Gravity.END | Gravity.BOTTOM);
-        rightLp.rightMargin = dp(2);
-        FrameLayout.LayoutParams cardLp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
-        timerStage.addView(timerCard, cardLp);
-        timerStage.addView(leafLeft, leftLp);
-        timerStage.addView(leafRight, rightLp);
-        LinearLayout.LayoutParams timerStageLp = matchWrap(); timerStageLp.topMargin = dp(18);
-        root.addView(timerStage, timerStageLp);
+        LinearLayout.LayoutParams timerCardLp = matchWrap(); timerCardLp.topMargin = dp(18);
+        root.addView(timerCard, timerCardLp);
 
         reminderCard = new LinearLayout(this);
         reminderCard.setOrientation(LinearLayout.VERTICAL);
@@ -148,8 +147,19 @@ public class BlockActivity extends Activity {
         LinearLayout.LayoutParams boundaryLp = matchWrap(); boundaryLp.topMargin = dp(18);
         root.addView(boundary, boundaryLp);
 
+        FrameLayout bottomGarden = new FrameLayout(this);
+        bottomLeafLeft = new LeafAccentView(this, true, Color.rgb(126, 181, 137));
+        bottomLeafRight = new LeafAccentView(this, false, Color.rgb(83, 147, 98));
+        FrameLayout.LayoutParams bottomLeftLp = new FrameLayout.LayoutParams(dp(52), dp(52), Gravity.START | Gravity.CENTER_VERTICAL);
+        bottomLeftLp.leftMargin = dp(18);
+        FrameLayout.LayoutParams bottomRightLp = new FrameLayout.LayoutParams(dp(46), dp(46), Gravity.END | Gravity.CENTER_VERTICAL);
+        bottomRightLp.rightMargin = dp(24);
+        bottomGarden.addView(bottomLeafLeft, bottomLeftLp);
+        bottomGarden.addView(bottomLeafRight, bottomRightLp);
+        root.addView(bottomGarden, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(94)));
+
         Space lower = new Space(this);
-        root.addView(lower, new LinearLayout.LayoutParams(1, 0, 1f));
+        root.addView(lower, new LinearLayout.LayoutParams(1, 0, .35f));
         Button home = new Button(this);
         home.setText("Return to home");
         home.setAllCaps(false);
@@ -192,8 +202,10 @@ public class BlockActivity extends Activity {
             pulse.setInterpolator(new AccelerateDecelerateInterpolator());
             pulse.start();
         }
-        driftLeaf(leafLeft, -10f, -8f, 2200);
-        driftLeaf(leafRight, 9f, 7f, 2600);
+        driftLeaf(topLeafLeft, -10f, -7f, 2200);
+        driftLeaf(topLeafRight, 9f, 8f, 2700);
+        driftLeaf(bottomLeafLeft, 10f, -8f, 2500);
+        driftLeaf(bottomLeafRight, -8f, 7f, 2900);
     }
 
     private void driftLeaf(View leaf, float vertical, float angle, long duration) {
@@ -224,13 +236,13 @@ public class BlockActivity extends Activity {
     private static final class LeafAccentView extends View {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final boolean mirrored;
-        LeafAccentView(android.content.Context context, boolean mirrored) {
+        LeafAccentView(android.content.Context context, boolean mirrored, int color) {
             super(context);
             this.mirrored = mirrored;
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeWidth(3.4f);
             paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setColor(Color.rgb(202, 236, 211));
+            paint.setColor(color);
         }
         @Override protected void onDraw(Canvas canvas) {
             float w = getWidth(), h = getHeight();
@@ -269,6 +281,13 @@ public class BlockActivity extends Activity {
     @Override public void onBackPressed() { goHome(); }
     @Override protected void onDestroy() { visible = false; if (timer != null) timer.cancel(); super.onDestroy(); }
     private TextView text(String value, int size, int color, boolean bold) { TextView v = new TextView(this); v.setText(value); v.setTextSize(size); v.setTextColor(color); if (bold) v.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD); return v; }
+    private GradientDrawable brandTimerShape() {
+        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[] { INK, Color.rgb(19, 38, 36), VIOLET });
+        d.setCornerRadius(dp(30));
+        d.setStroke(dp(1), Color.rgb(64, 136, 85));
+        return d;
+    }
     private GradientDrawable shape(int fill, int stroke, int radius) { GradientDrawable d = new GradientDrawable(); d.setColor(fill); d.setCornerRadius(dp(radius)); d.setStroke(dp(1), stroke); return d; }
     private LinearLayout.LayoutParams matchWrap() { return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); }
     private LinearLayout.LayoutParams weighted() { LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f); p.setMargins(dp(3), 0, dp(3), 0); return p; }
