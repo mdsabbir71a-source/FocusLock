@@ -12,8 +12,10 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.os.SystemClock;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -47,10 +49,7 @@ public class BlockActivity extends Activity {
     private CountDownTimer timer;
     private LinearLayout timerCard;
     private LinearLayout reminderCard;
-    private View topLeafLeft;
-    private View topLeafRight;
-    private View bottomLeafLeft;
-    private View bottomLeafRight;
+    private LeafBreezeView leafBreeze;
     private boolean smoothEntry;
 
     @Override protected void onCreate(Bundle state) {
@@ -76,7 +75,14 @@ public class BlockActivity extends Activity {
         super.onPause();
     }
 
-    private LinearLayout buildUi() {
+    @Override public boolean dispatchTouchEvent(MotionEvent event) {
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN && leafBreeze != null) {
+            leafBreeze.gatherAt(event.getX(), event.getY());
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
+    private ViewGroup buildUi() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -92,16 +98,8 @@ public class BlockActivity extends Activity {
         top.setGravity(Gravity.CENTER);
         root.addView(top, matchWrap());
 
-        FrameLayout topGarden = new FrameLayout(this);
-        topLeafLeft = new LeafAccentView(this, false, Color.rgb(93, 157, 107));
-        topLeafRight = new LeafAccentView(this, true, Color.rgb(147, 196, 156));
-        FrameLayout.LayoutParams topLeftLp = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.START | Gravity.CENTER_VERTICAL);
-        topLeftLp.leftMargin = dp(38);
-        FrameLayout.LayoutParams topRightLp = new FrameLayout.LayoutParams(dp(42), dp(42), Gravity.END | Gravity.CENTER_VERTICAL);
-        topRightLp.rightMargin = dp(42);
-        topGarden.addView(topLeafLeft, topLeftLp);
-        topGarden.addView(topLeafRight, topRightLp);
-        root.addView(topGarden, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(112)));
+        Space upper = new Space(this);
+        root.addView(upper, new LinearLayout.LayoutParams(1, 0, .9f));
 
         TextView status = text(appName() + " is paused", 14, MUTED, false);
         status.setGravity(Gravity.CENTER);
@@ -147,19 +145,8 @@ public class BlockActivity extends Activity {
         LinearLayout.LayoutParams boundaryLp = matchWrap(); boundaryLp.topMargin = dp(18);
         root.addView(boundary, boundaryLp);
 
-        FrameLayout bottomGarden = new FrameLayout(this);
-        bottomLeafLeft = new LeafAccentView(this, true, Color.rgb(126, 181, 137));
-        bottomLeafRight = new LeafAccentView(this, false, Color.rgb(83, 147, 98));
-        FrameLayout.LayoutParams bottomLeftLp = new FrameLayout.LayoutParams(dp(52), dp(52), Gravity.START | Gravity.CENTER_VERTICAL);
-        bottomLeftLp.leftMargin = dp(18);
-        FrameLayout.LayoutParams bottomRightLp = new FrameLayout.LayoutParams(dp(46), dp(46), Gravity.END | Gravity.CENTER_VERTICAL);
-        bottomRightLp.rightMargin = dp(24);
-        bottomGarden.addView(bottomLeafLeft, bottomLeftLp);
-        bottomGarden.addView(bottomLeafRight, bottomRightLp);
-        root.addView(bottomGarden, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(94)));
-
         Space lower = new Space(this);
-        root.addView(lower, new LinearLayout.LayoutParams(1, 0, .35f));
+        root.addView(lower, new LinearLayout.LayoutParams(1, 0, 1f));
         Button home = new Button(this);
         home.setText("Return to home");
         home.setAllCaps(false);
@@ -173,7 +160,20 @@ public class BlockActivity extends Activity {
         active.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams activeLp = matchWrap(); activeLp.topMargin = dp(10);
         root.addView(active, activeLp);
-        return root;
+
+        FrameLayout scene = new FrameLayout(this);
+        scene.addView(root, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        leafBreeze = new LeafBreezeView(this);
+        leafBreeze.setClickable(false);
+        scene.addView(leafBreeze, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        scene.post(() -> {
+            int[] card = new int[2];
+            int[] overlay = new int[2];
+            timerCard.getLocationInWindow(card);
+            leafBreeze.getLocationInWindow(overlay);
+            leafBreeze.setTimerBounds(card[0] - overlay[0], card[1] - overlay[1], timerCard.getWidth(), timerCard.getHeight());
+        });
+        return scene;
     }
 
     private void startAnimations() {
@@ -202,24 +202,7 @@ public class BlockActivity extends Activity {
             pulse.setInterpolator(new AccelerateDecelerateInterpolator());
             pulse.start();
         }
-        driftLeaf(topLeafLeft, -10f, -7f, 2200);
-        driftLeaf(topLeafRight, 9f, 8f, 2700);
-        driftLeaf(bottomLeafLeft, 10f, -8f, 2500);
-        driftLeaf(bottomLeafRight, -8f, 7f, 2900);
-    }
 
-    private void driftLeaf(View leaf, float vertical, float angle, long duration) {
-        if (leaf == null) return;
-        ObjectAnimator y = ObjectAnimator.ofFloat(leaf, "translationY", 0f, vertical);
-        ObjectAnimator r = ObjectAnimator.ofFloat(leaf, "rotation", -angle, angle);
-        y.setDuration(duration); r.setDuration(duration + 180);
-        y.setRepeatCount(ObjectAnimator.INFINITE); r.setRepeatCount(ObjectAnimator.INFINITE);
-        y.setRepeatMode(ObjectAnimator.REVERSE); r.setRepeatMode(ObjectAnimator.REVERSE);
-        y.setInterpolator(new AccelerateDecelerateInterpolator());
-        r.setInterpolator(new AccelerateDecelerateInterpolator());
-        AnimatorSet drift = new AnimatorSet();
-        drift.playTogether(y, r);
-        drift.start();
     }
 
     private LinearLayout breathStep(String label, String value) {
@@ -233,25 +216,89 @@ public class BlockActivity extends Activity {
         return step;
     }
 
-    private static final class LeafAccentView extends View {
+    private static final class LeafBreezeView extends View {
+        private static final int COUNT = 11;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final boolean mirrored;
-        LeafAccentView(android.content.Context context, boolean mirrored, int color) {
+        private final float[] x = new float[COUNT];
+        private final float[] y = new float[COUNT];
+        private final float[] phase = new float[COUNT];
+        private final float[] speed = new float[COUNT];
+        private float cardX, cardY, cardW, cardH;
+        private float gatherX, gatherY;
+        private long gatherUntil;
+        private long lastFrame;
+
+        LeafBreezeView(android.content.Context context) {
             super(context);
-            this.mirrored = mirrored;
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(3.4f);
-            paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setColor(color);
+            paint.setTextSize(dp(context, 24));
+            paint.setTypeface(android.graphics.Typeface.DEFAULT);
+            for (int i = 0; i < COUNT; i++) {
+                phase[i] = (float) (Math.PI * 2d * i / COUNT);
+                speed[i] = .45f + (i % 4) * .07f;
+            }
         }
+
+        void setTimerBounds(float x, float y, float w, float h) {
+            cardX = x; cardY = y; cardW = w; cardH = h;
+            for (int i = 0; i < COUNT; i++) {
+                float[] target = orbitTarget(i);
+                this.x[i] = target[0];
+                this.y[i] = target[1];
+            }
+            invalidate();
+        }
+
+        void gatherAt(float x, float y) {
+            gatherX = x; gatherY = y;
+            gatherUntil = SystemClock.uptimeMillis() + 850L;
+            invalidate();
+        }
+
         @Override protected void onDraw(Canvas canvas) {
-            float w = getWidth(), h = getHeight();
-            canvas.save();
-            if (mirrored) canvas.scale(-1f, 1f, w / 2f, h / 2f);
-            canvas.rotate(-28f, w / 2f, h / 2f);
-            canvas.drawOval(w * .22f, h * .10f, w * .73f, h * .72f, paint);
-            canvas.drawLine(w * .18f, h * .83f, w * .64f, h * .40f, paint);
-            canvas.restore();
+            super.onDraw(canvas);
+            if (cardW == 0f || cardH == 0f) return;
+            long now = SystemClock.uptimeMillis();
+            float dt = lastFrame == 0 ? .016f : Math.min(.05f, (now - lastFrame) / 1000f);
+            lastFrame = now;
+            boolean gathering = now < gatherUntil;
+            for (int i = 0; i < COUNT; i++) {
+                phase[i] += dt * speed[i];
+                float targetX;
+                float targetY;
+                if (gathering) {
+                    float spreadX = (i % 4 - 1.5f) * dp(getContext(), 10);
+                    float spreadY = (i / 4 - 1f) * dp(getContext(), 9);
+                    targetX = gatherX + spreadX;
+                    targetY = gatherY + spreadY;
+                } else {
+                    float[] target = orbitTarget(i);
+                    targetX = target[0];
+                    targetY = target[1];
+                }
+                float pull = gathering ? .15f : .045f;
+                x[i] += (targetX - x[i]) * pull;
+                y[i] += (targetY - y[i]) * pull;
+                paint.setAlpha(110 + (i % 4) * 30);
+                paint.setTextSize(dp(getContext(), 19 + (i % 3) * 3));
+                canvas.drawText("🍃", x[i], y[i], paint);
+            }
+            postInvalidateDelayed(16);
+        }
+
+        private float[] orbitTarget(int i) {
+            float centerX = cardX + cardW / 2f;
+            float centerY = cardY + cardH / 2f;
+            float radiusX = cardW * (.60f + (i % 3) * .07f);
+            float radiusY = cardH * (.73f + (i % 2) * .16f);
+            float angle = phase[i] + i * .72f;
+            return new float[] {
+                    centerX + (float) Math.cos(angle) * radiusX,
+                    centerY + (float) Math.sin(angle) * radiusY
+            };
+        }
+
+        private static float dp(android.content.Context context, float value) {
+            return value * context.getResources().getDisplayMetrics().density;
         }
     }
 
@@ -283,7 +330,7 @@ public class BlockActivity extends Activity {
     private TextView text(String value, int size, int color, boolean bold) { TextView v = new TextView(this); v.setText(value); v.setTextSize(size); v.setTextColor(color); if (bold) v.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD); return v; }
     private GradientDrawable brandTimerShape() {
         GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[] { INK, Color.rgb(19, 38, 36), VIOLET });
+                new int[] { Color.rgb(12, 16, 22), INK, Color.rgb(18, 33, 27) });
         d.setCornerRadius(dp(30));
         d.setStroke(dp(1), Color.rgb(64, 136, 85));
         return d;
