@@ -5,14 +5,18 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Space;
@@ -43,6 +47,8 @@ public class BlockActivity extends Activity {
     private CountDownTimer timer;
     private LinearLayout timerCard;
     private LinearLayout reminderCard;
+    private View leafLeft;
+    private View leafRight;
     private boolean smoothEntry;
 
     @Override protected void onCreate(Bundle state) {
@@ -109,19 +115,30 @@ public class BlockActivity extends Activity {
         timerText.setIncludeFontPadding(false);
         LinearLayout.LayoutParams timerValueLp = matchWrap(); timerValueLp.topMargin = dp(8);
         timerCard.addView(timerText, timerValueLp);
-        LinearLayout.LayoutParams timerCardLp = matchWrap(); timerCardLp.topMargin = dp(24);
-        root.addView(timerCard, timerCardLp);
+        FrameLayout timerStage = new FrameLayout(this);
+        timerStage.setPadding(dp(10), dp(12), dp(10), dp(12));
+        leafLeft = new LeafAccentView(this, false);
+        leafRight = new LeafAccentView(this, true);
+        FrameLayout.LayoutParams leftLp = new FrameLayout.LayoutParams(dp(42), dp(42), Gravity.START | Gravity.TOP);
+        leftLp.leftMargin = dp(2);
+        FrameLayout.LayoutParams rightLp = new FrameLayout.LayoutParams(dp(42), dp(42), Gravity.END | Gravity.BOTTOM);
+        rightLp.rightMargin = dp(2);
+        timerStage.addView(leafLeft, leftLp);
+        timerStage.addView(leafRight, rightLp);
+        FrameLayout.LayoutParams cardLp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        timerStage.addView(timerCard, cardLp);
+        LinearLayout.LayoutParams timerStageLp = matchWrap(); timerStageLp.topMargin = dp(18);
+        root.addView(timerStage, timerStageLp);
 
         reminderCard = new LinearLayout(this);
         reminderCard.setOrientation(LinearLayout.VERTICAL);
         reminderCard.setPadding(dp(20), dp(18), dp(20), dp(18));
         reminderCard.setBackground(shape(Color.WHITE, Color.rgb(220, 233, 220), 24));
-        reminderCard.addView(text("REMINDER", 10, VIOLET, true));
         String[] reminders = RemoteConfigStore.reminders(this, REMINDERS);
         TextView quote = text(reminders[LockStore.nextReminderIndex(this, reminders.length)], 16, INK, true);
         quote.setGravity(Gravity.CENTER);
         quote.setLineSpacing(0, 1.24f);
-        LinearLayout.LayoutParams quoteLp = matchWrap(); quoteLp.topMargin = dp(10);
+        LinearLayout.LayoutParams quoteLp = matchWrap();
         reminderCard.addView(quote, quoteLp);
         LinearLayout.LayoutParams reminderLp = matchWrap(); reminderLp.topMargin = dp(22);
         root.addView(reminderCard, reminderLp);
@@ -175,6 +192,22 @@ public class BlockActivity extends Activity {
             pulse.setInterpolator(new AccelerateDecelerateInterpolator());
             pulse.start();
         }
+        driftLeaf(leafLeft, -10f, -8f, 2200);
+        driftLeaf(leafRight, 9f, 7f, 2600);
+    }
+
+    private void driftLeaf(View leaf, float vertical, float angle, long duration) {
+        if (leaf == null) return;
+        ObjectAnimator y = ObjectAnimator.ofFloat(leaf, "translationY", 0f, vertical);
+        ObjectAnimator r = ObjectAnimator.ofFloat(leaf, "rotation", -angle, angle);
+        y.setDuration(duration); r.setDuration(duration + 180);
+        y.setRepeatCount(ObjectAnimator.INFINITE); r.setRepeatCount(ObjectAnimator.INFINITE);
+        y.setRepeatMode(ObjectAnimator.REVERSE); r.setRepeatMode(ObjectAnimator.REVERSE);
+        y.setInterpolator(new AccelerateDecelerateInterpolator());
+        r.setInterpolator(new AccelerateDecelerateInterpolator());
+        AnimatorSet drift = new AnimatorSet();
+        drift.playTogether(y, r);
+        drift.start();
     }
 
     private LinearLayout breathStep(String label, String value) {
@@ -186,6 +219,28 @@ public class BlockActivity extends Activity {
         step.addView(text(label, 9, FAINT, false));
         step.addView(text(value, 14, INK, true));
         return step;
+    }
+
+    private static final class LeafAccentView extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final boolean mirrored;
+        LeafAccentView(android.content.Context context, boolean mirrored) {
+            super(context);
+            this.mirrored = mirrored;
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(3f);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setColor(Color.rgb(104, 160, 117));
+        }
+        @Override protected void onDraw(Canvas canvas) {
+            float w = getWidth(), h = getHeight();
+            canvas.save();
+            if (mirrored) canvas.scale(-1f, 1f, w / 2f, h / 2f);
+            canvas.rotate(-28f, w / 2f, h / 2f);
+            canvas.drawOval(w * .22f, h * .10f, w * .73f, h * .72f, paint);
+            canvas.drawLine(w * .18f, h * .83f, w * .64f, h * .40f, paint);
+            canvas.restore();
+        }
     }
 
     private void startTimer() {
