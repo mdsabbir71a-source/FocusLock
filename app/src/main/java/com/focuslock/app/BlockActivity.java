@@ -93,7 +93,7 @@ public class BlockActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(24), dp(22), dp(24), dp(24));
-        root.setBackgroundColor(Color.rgb(246, 250, 246));
+        root.setBackgroundColor(Color.TRANSPARENT);
         if (!smoothEntry) {
             root.setAlpha(0f);
             root.animate().alpha(1f).setDuration(450).start();
@@ -173,10 +173,11 @@ public class BlockActivity extends Activity {
         root.addView(active, activeLp);
 
         FrameLayout scene = new FrameLayout(this);
-        scene.addView(root, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        scene.setBackgroundColor(Color.rgb(246, 250, 246));
         leafBreeze = new LeafBreezeView(this);
         leafBreeze.setClickable(false);
         scene.addView(leafBreeze, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        scene.addView(root, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         scene.post(() -> {
             int[] card = new int[2];
             int[] overlay = new int[2];
@@ -291,10 +292,10 @@ public class BlockActivity extends Activity {
     }
 
     private static final class LeafBreezeView extends View {
-        private static final int COUNT = 6;
-        private static final long LIFETIME_MS = 13200L;
+        private static final int COUNT = 5;
+        private static final long LIFETIME_MS = 11000L;
         private static final long STAGGER_MS = 2200L;
-        private static final String[] NATURE = { "🌱", "🌿", "☘️", "🍀", "🍁", "🍂", "🍃", "🌾", "🥬", "🌵", "🌳", "🌲", "🌴", "🌸", "🌺", "🌷", "🌹", "🌻", "🌼", "💐", "🥀", "🍄", "🌰", "🌞", "🌙", "⭐" };
+        private static final String[] NATURE = { "🌱", "🌿", "☘️", "🍀", "🍁", "🍂", "🍃", "🌾", "🥬", "🌵", "🌳", "🌲", "🌴", "🌸", "🌺", "🌷", "🌹", "🌻", "🌼", "💐", "🥀", "🍄", "🌰", "🌞", "🌙", "⭐", "🫧", "💧", "✨", "💨" };
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint ripplePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final float[] x = new float[COUNT];
@@ -302,8 +303,10 @@ public class BlockActivity extends Activity {
         private final long[] bornAt = new long[COUNT];
         private float cardW, cardH;
         private float gatherX, gatherY;
+        private float touchEmojiX, touchEmojiY;
         private long gatherUntil;
         private long rippleStarted;
+        private long touchEmojiUntil;
         private long lastFrame;
 
         LeafBreezeView(android.content.Context context) {
@@ -328,8 +331,10 @@ public class BlockActivity extends Activity {
         void gatherAt(float x, float y) {
             gatherX = x; gatherY = y;
             long now = SystemClock.uptimeMillis();
-            gatherUntil = now + 850L;
+            gatherUntil = now + 700L;
             rippleStarted = now;
+            touchEmojiX = x; touchEmojiY = y;
+            touchEmojiUntil = now + 900L;
             invalidate();
         }
 
@@ -341,13 +346,17 @@ public class BlockActivity extends Activity {
             lastFrame = now;
             boolean gathering = now < gatherUntil;
             for (int i = 0; i < COUNT; i++) {
-                if (now - bornAt[i] >= LIFETIME_MS) bornAt[i] = now;
+                if (now - bornAt[i] >= LIFETIME_MS) {
+                    bornAt[i] = now;
+                    float[] start = breezeTarget(i, 0f);
+                    x[i] = start[0]; y[i] = start[1];
+                }
                 float life = lifeProgress(i, now);
                 float targetX;
                 float targetY;
                 if (gathering) {
-                    float spreadX = (i % 3 - 1f) * dp(getContext(), 16);
-                    float spreadY = (i / 3 - .5f) * dp(getContext(), 16);
+                    float spreadX = (i % 3 - 1f) * dp(getContext(), 15);
+                    float spreadY = (i / 3 - .5f) * dp(getContext(), 15);
                     targetX = gatherX + spreadX;
                     targetY = gatherY + spreadY;
                 } else {
@@ -355,14 +364,13 @@ public class BlockActivity extends Activity {
                     targetX = target[0];
                     targetY = target[1];
                 }
-                float pull = gathering ? .15f : .042f;
+                float pull = gathering ? .14f : .060f;
                 x[i] += (targetX - x[i]) * pull;
                 y[i] += (targetY - y[i]) * pull;
-                float fade = Math.min(1f, Math.min(life / .16f, (1f - life) / .16f));
-                paint.setAlpha((int) (fade * (130 + (i % 3) * 28)));
+                float fade = Math.min(1f, Math.min(life / .18f, (1f - life) / .18f));
+                paint.setAlpha((int) (fade * (125 + (i % 3) * 30)));
                 paint.setTextSize(dp(getContext(), 20 + (i % 4) * 3));
-                int emojiIndex = (int) ((bornAt[i] / STAGGER_MS + i) % NATURE.length);
-                if (emojiIndex < 0) emojiIndex += NATURE.length;
+                int emojiIndex = Math.floorMod((int) (bornAt[i] / STAGGER_MS) + i * 5, NATURE.length);
                 canvas.drawText(NATURE[emojiIndex], x[i], y[i], paint);
             }
             long rippleAge = now - rippleStarted;
@@ -374,6 +382,13 @@ public class BlockActivity extends Activity {
                 ripplePaint.setAlpha((int) ((1f - fraction) * 55));
                 canvas.drawCircle(gatherX, gatherY, dp(getContext(), 6 + 76 * fraction), ripplePaint);
             }
+            if (now < touchEmojiUntil) {
+                float fraction = 1f - (touchEmojiUntil - now) / 900f;
+                paint.setAlpha((int) ((1f - fraction) * 255));
+                paint.setTextSize(dp(getContext(), 25 + 7 * fraction));
+                int touchIndex = Math.floorMod((int) (rippleStarted / STAGGER_MS), NATURE.length);
+                canvas.drawText(NATURE[touchIndex], touchEmojiX - dp(getContext(), 12), touchEmojiY + dp(getContext(), 8) - dp(getContext(), 14 * fraction), paint);
+            }
             postInvalidateDelayed(16);
         }
 
@@ -383,13 +398,13 @@ public class BlockActivity extends Activity {
 
         private float[] breezeTarget(int i, float life) {
             float w = getWidth(), h = getHeight();
-            float wave = (float) Math.sin(life * Math.PI * 2f + i * 1.37f) * dp(getContext(), 26);
+            float wave = (float) Math.sin(life * Math.PI * 2f + i * 1.37f) * dp(getContext(), 18);
             switch (i % 5) {
-                case 0: return new float[] { -dp(getContext(), 28) + (w + dp(getContext(), 56)) * life, h * .18f + wave };
-                case 1: return new float[] { w + dp(getContext(), 28) - (w + dp(getContext(), 56)) * life, h * .32f - wave };
-                case 2: return new float[] { w * life, h * .76f - h * .56f * life + wave };
-                case 3: return new float[] { w - w * life, h * .70f - h * .52f * life - wave };
-                default: return new float[] { w * .50f + (life - .5f) * w * .64f, -dp(getContext(), 20) + h * .54f * life + wave };
+                case 0: return new float[] { -dp(getContext(), 30) + (w + dp(getContext(), 60)) * life, h * .20f + wave };
+                case 1: return new float[] { w + dp(getContext(), 30) - (w + dp(getContext(), 60)) * life, h * .35f - wave };
+                case 2: return new float[] { -dp(getContext(), 32) + (w + dp(getContext(), 52)) * life, h * .78f - h * .58f * life + wave };
+                case 3: return new float[] { w + dp(getContext(), 32) - (w + dp(getContext(), 52)) * life, h * .72f - h * .55f * life - wave };
+                default: return new float[] { w * .50f + (life - .5f) * w * .65f, -dp(getContext(), 28) + (h + dp(getContext(), 56)) * life + wave };
             }
         }
 
