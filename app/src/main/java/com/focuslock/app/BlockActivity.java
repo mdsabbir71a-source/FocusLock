@@ -41,10 +41,8 @@ public class BlockActivity extends Activity {
     private String blockedPackage;
     private TextView timerText;
     private CountDownTimer timer;
-    private LinearLayout logoCard;
+    private LinearLayout timerCard;
     private LinearLayout reminderCard;
-    private TextView leafLeft;
-    private TextView leafRight;
     private boolean smoothEntry;
 
     @Override protected void onCreate(Bundle state) {
@@ -81,60 +79,54 @@ public class BlockActivity extends Activity {
             root.animate().alpha(1f).setDuration(450).start();
         }
 
-        TextView top = text("🌿  " + appName() + " is paused", 11, MUTED, false);
+        TextView top = text("FOCUSLOCK", 11, VIOLET, true);
+        top.setLetterSpacing(.14f);
         top.setGravity(Gravity.CENTER);
         root.addView(top, matchWrap());
         Space upper = new Space(this);
-        root.addView(upper, new LinearLayout.LayoutParams(1, 0, .8f));
+        root.addView(upper, new LinearLayout.LayoutParams(1, 0, .9f));
 
-        LinearLayout artRow = new LinearLayout(this);
-        artRow.setGravity(Gravity.CENTER);
-        leafLeft = text("🍃", 24, VIOLET, false);
-        leafRight = text("🌿", 22, VIOLET, false);
-        artRow.addView(leafLeft, new LinearLayout.LayoutParams(dp(42), ViewGroup.LayoutParams.WRAP_CONTENT));
-        logoCard = new LinearLayout(this);
-        logoCard.setGravity(Gravity.CENTER);
-        NatureLineArtView illustration = new NatureLineArtView(this, LockStore.nextArtIndex(this, 8));
-        logoCard.addView(illustration, new LinearLayout.LayoutParams(dp(145), dp(178)));
-        artRow.addView(logoCard, new LinearLayout.LayoutParams(dp(150), dp(184)));
-        artRow.addView(leafRight, new LinearLayout.LayoutParams(dp(42), ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(artRow, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(188)));
+        TextView status = text(appName() + " is paused", 14, MUTED, false);
+        status.setGravity(Gravity.CENTER);
+        root.addView(status, matchWrap());
 
-        TextView title = text("Time for a pause", 28, INK, true);
+        TextView title = text("Take a quiet moment", 28, INK, true);
         title.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams titleLp = matchWrap(); titleLp.topMargin = dp(24);
+        LinearLayout.LayoutParams titleLp = matchWrap(); titleLp.topMargin = dp(12);
         root.addView(title, titleLp);
 
-        timerText = text("00:00 left", 13, Color.WHITE, true);
+        timerCard = new LinearLayout(this);
+        timerCard.setOrientation(LinearLayout.VERTICAL);
+        timerCard.setGravity(Gravity.CENTER);
+        timerCard.setPadding(dp(24), dp(18), dp(24), dp(18));
+        timerCard.setBackground(shape(INK, INK, 30));
+        TextView timerLabel = text("UNLOCKS IN", 10, Color.rgb(206, 235, 214), true);
+        timerLabel.setLetterSpacing(.12f);
+        timerLabel.setGravity(Gravity.CENTER);
+        timerCard.addView(timerLabel, matchWrap());
+        timerText = text("00:00", 52, Color.WHITE, true);
         timerText.setGravity(Gravity.CENTER);
-        timerText.setPadding(dp(18), dp(10), dp(18), dp(10));
-        timerText.setBackground(shape(INK, INK, 24));
-        LinearLayout.LayoutParams timerLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        timerLp.topMargin = dp(14);
-        root.addView(timerText, timerLp);
+        timerText.setIncludeFontPadding(false);
+        LinearLayout.LayoutParams timerValueLp = matchWrap(); timerValueLp.topMargin = dp(8);
+        timerCard.addView(timerText, timerValueLp);
+        LinearLayout.LayoutParams timerCardLp = matchWrap(); timerCardLp.topMargin = dp(24);
+        root.addView(timerCard, timerCardLp);
 
         reminderCard = new LinearLayout(this);
         reminderCard.setOrientation(LinearLayout.VERTICAL);
-        reminderCard.setPadding(dp(18), dp(18), dp(18), dp(18));
+        reminderCard.setPadding(dp(20), dp(18), dp(20), dp(18));
         reminderCard.setBackground(shape(Color.WHITE, Color.rgb(220, 233, 220), 24));
-        reminderCard.addView(text("🍃  REMINDER", 10, Color.rgb(52, 116, 76), true));
+        reminderCard.addView(text("REMINDER", 10, VIOLET, true));
         String[] reminders = RemoteConfigStore.reminders(this, REMINDERS);
-        TextView quote = text(reminders[LockStore.nextReminderIndex(this, reminders.length)], 14, INK, true);
-        quote.setLineSpacing(0, 1.22f);
-        LinearLayout.LayoutParams quoteLp = matchWrap(); quoteLp.topMargin = dp(12);
+        TextView quote = text(reminders[LockStore.nextReminderIndex(this, reminders.length)], 16, INK, true);
+        quote.setGravity(Gravity.CENTER);
+        quote.setLineSpacing(0, 1.24f);
+        LinearLayout.LayoutParams quoteLp = matchWrap(); quoteLp.topMargin = dp(10);
         reminderCard.addView(quote, quoteLp);
-        LinearLayout breath = new LinearLayout(this);
-        breath.setOrientation(LinearLayout.HORIZONTAL);
-        breath.setGravity(Gravity.CENTER);
-        breath.addView(breathStep("INHALE", "4s"), weighted());
-        breath.addView(breathStep("HOLD", "4s"), weighted());
-        breath.addView(breathStep("EXHALE", "6s"), weighted());
-        LinearLayout.LayoutParams breathLp = matchWrap(); breathLp.topMargin = dp(18);
-        reminderCard.addView(breath, breathLp);
-        LinearLayout.LayoutParams reminderLp = matchWrap(); reminderLp.topMargin = dp(30);
+        LinearLayout.LayoutParams reminderLp = matchWrap(); reminderLp.topMargin = dp(22);
         root.addView(reminderCard, reminderLp);
 
-        TextView boundary = text("Boundary active", 10, FAINT, false);
+        TextView boundary = text("Protection is active", 11, FAINT, false);
         boundary.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams boundaryLp = matchWrap(); boundaryLp.topMargin = dp(18);
         root.addView(boundary, boundaryLp);
@@ -142,7 +134,7 @@ public class BlockActivity extends Activity {
         Space lower = new Space(this);
         root.addView(lower, new LinearLayout.LayoutParams(1, 0, 1f));
         Button home = new Button(this);
-        home.setText("Go home");
+        home.setText("Return to home");
         home.setAllCaps(false);
         home.setTextSize(13);
         home.setTextColor(INK);
@@ -150,7 +142,7 @@ public class BlockActivity extends Activity {
         home.setBackground(shape(Color.WHITE, BORDER, 26));
         home.setOnClickListener(v -> goHome());
         root.addView(home, matchWrap());
-        TextView active = text("🌿  FocusLock is protecting your time", 10, FAINT, false);
+        TextView active = text("FocusLock is protecting your time", 10, FAINT, false);
         active.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams activeLp = matchWrap(); activeLp.topMargin = dp(10);
         root.addView(active, activeLp);
@@ -158,9 +150,9 @@ public class BlockActivity extends Activity {
     }
 
     private void startAnimations() {
-        if (logoCard != null) {
-            ObjectAnimator x = ObjectAnimator.ofFloat(logoCard, "scaleX", 1f, 1.07f);
-            ObjectAnimator y = ObjectAnimator.ofFloat(logoCard, "scaleY", 1f, 1.07f);
+        if (timerCard != null) {
+            ObjectAnimator x = ObjectAnimator.ofFloat(timerCard, "scaleX", 1f, 1.018f);
+            ObjectAnimator y = ObjectAnimator.ofFloat(timerCard, "scaleY", 1f, 1.018f);
             x.setDuration(1800); y.setDuration(1800);
             x.setRepeatCount(ObjectAnimator.INFINITE); y.setRepeatCount(ObjectAnimator.INFINITE);
             x.setRepeatMode(ObjectAnimator.REVERSE); y.setRepeatMode(ObjectAnimator.REVERSE);
@@ -172,30 +164,17 @@ public class BlockActivity extends Activity {
         }
         if (reminderCard != null) {
             reminderCard.setAlpha(0f);
-            reminderCard.setTranslationY(dp(28));
-            reminderCard.animate().alpha(1f).translationY(0f).setStartDelay(220).setDuration(550).start();
+            reminderCard.setTranslationY(dp(16));
+            reminderCard.animate().alpha(1f).translationY(0f).setStartDelay(180).setDuration(420).start();
         }
         if (timerText != null) {
-            ObjectAnimator pulse = ObjectAnimator.ofFloat(timerText, "alpha", 1f, .72f);
-            pulse.setDuration(1100);
+            ObjectAnimator pulse = ObjectAnimator.ofFloat(timerText, "alpha", 1f, .86f);
+            pulse.setDuration(1400);
             pulse.setRepeatCount(ObjectAnimator.INFINITE);
             pulse.setRepeatMode(ObjectAnimator.REVERSE);
+            pulse.setInterpolator(new AccelerateDecelerateInterpolator());
             pulse.start();
         }
-        animateLeaf(leafLeft, -14f, -12f, 1700);
-        animateLeaf(leafRight, 13f, 10f, 2100);
-    }
-
-    private void animateLeaf(TextView leaf, float move, float rotation, long duration) {
-        if (leaf == null) return;
-        ObjectAnimator y = ObjectAnimator.ofFloat(leaf, "translationY", 0f, move);
-        ObjectAnimator r = ObjectAnimator.ofFloat(leaf, "rotation", -rotation, rotation);
-        y.setDuration(duration); r.setDuration(duration + 250);
-        y.setRepeatCount(ObjectAnimator.INFINITE); r.setRepeatCount(ObjectAnimator.INFINITE);
-        y.setRepeatMode(ObjectAnimator.REVERSE); r.setRepeatMode(ObjectAnimator.REVERSE);
-        AnimatorSet set = new AnimatorSet();
-        set.playTogether(y, r);
-        set.start();
     }
 
     private LinearLayout breathStep(String label, String value) {
