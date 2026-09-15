@@ -5,10 +5,10 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
+import android.graphics.Bitmap;\nimport android.graphics.BitmapFactory;\nimport android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.os.CountDownTimer;
+import android.os.CountDownTimer;\nimport android.util.Base64;
 import android.view.Gravity;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
@@ -16,7 +16,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Space;
-import android.widget.TextView;
+import android.widget.TextView;\n\nimport java.io.ByteArrayOutputStream;\nimport java.io.InputStream;
 
 public class BlockActivity extends Activity {
     private static volatile boolean visible;
@@ -155,6 +155,19 @@ public class BlockActivity extends Activity {
         LinearLayout.LayoutParams activeLp = matchWrap(); activeLp.topMargin = dp(10);
         root.addView(active, activeLp);
         return root;
+    }
+
+    private Bitmap loadMeditationMascot() {
+        try (InputStream input = getResources().openRawResource(R.raw.focuslock_meditation_mascot);
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[2048];
+            int count;
+            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+            byte[] image = Base64.decode(output.toString("US-ASCII"), Base64.DEFAULT);
+            return BitmapFactory.decodeByteArray(image, 0, image.length);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private void startAnimations() {
