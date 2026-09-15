@@ -8,6 +8,9 @@ import android.content.pm.PackageManager;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.RectF;
+import android.graphics.LinearGradient;
+import android.graphics.Shader;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -46,6 +49,9 @@ public class BlockActivity extends Activity {
     private static final int BORDER = Color.rgb(220, 233, 220);
     private String blockedPackage;
     private TextView timerText;
+    private TextView lockIcon;
+    private ProgressRingView timerRing;
+    private long timerDurationMs;
     private CountDownTimer timer;
     private LinearLayout timerCard;
     private LinearLayout reminderCard;
@@ -110,22 +116,32 @@ public class BlockActivity extends Activity {
         LinearLayout.LayoutParams titleLp = matchWrap(); titleLp.topMargin = dp(12);
         root.addView(title, titleLp);
 
+        FrameLayout timerStage = new FrameLayout(this);
+        timerRing = new ProgressRingView(this);
+        FrameLayout.LayoutParams ringLp = new FrameLayout.LayoutParams(dp(232), dp(232), Gravity.CENTER);
+        timerStage.addView(timerRing, ringLp);
+
         timerCard = new LinearLayout(this);
         timerCard.setOrientation(LinearLayout.VERTICAL);
         timerCard.setGravity(Gravity.CENTER);
-        timerCard.setPadding(dp(24), dp(18), dp(24), dp(18));
-        timerCard.setBackground(brandTimerShape());
-        TextView timerLabel = text("UNLOCKS IN", 10, Color.rgb(224, 244, 228), true);
+        timerCard.setPadding(dp(16), dp(16), dp(16), dp(16));
+        timerCard.setBackground(circleTimerShape());
+        TextView timerLabel = text("UNLOCKS IN", 10, Color.rgb(184, 231, 196), true);
         timerLabel.setLetterSpacing(.12f);
         timerLabel.setGravity(Gravity.CENTER);
         timerCard.addView(timerLabel, matchWrap());
-        timerText = text("00:00", 52, Color.WHITE, true);
+        timerText = new GradientTimerText(this);
+        timerText.setText("00:00");
+        timerText.setTextSize(42);
+        timerText.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         timerText.setGravity(Gravity.CENTER);
         timerText.setIncludeFontPadding(false);
         LinearLayout.LayoutParams timerValueLp = matchWrap(); timerValueLp.topMargin = dp(8);
         timerCard.addView(timerText, timerValueLp);
-        LinearLayout.LayoutParams timerCardLp = matchWrap(); timerCardLp.topMargin = dp(18);
-        root.addView(timerCard, timerCardLp);
+        FrameLayout.LayoutParams cardLp = new FrameLayout.LayoutParams(dp(196), dp(196), Gravity.CENTER);
+        timerStage.addView(timerCard, cardLp);
+        LinearLayout.LayoutParams timerStageLp = matchWrap(); timerStageLp.height = dp(236); timerStageLp.topMargin = dp(12);
+        root.addView(timerStage, timerStageLp);
 
         reminderCard = new LinearLayout(this);
         reminderCard.setOrientation(LinearLayout.VERTICAL);
@@ -137,7 +153,11 @@ public class BlockActivity extends Activity {
         quote.setLineSpacing(0, 1.24f);
         LinearLayout.LayoutParams quoteLp = matchWrap();
         reminderCard.addView(quote, quoteLp);
-        LinearLayout.LayoutParams reminderLp = matchWrap(); reminderLp.topMargin = dp(22);
+        TextView hint = text("Try a stretch, water, or three slow breaths.", 12, MUTED, false);
+        hint.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams hintLp = matchWrap(); hintLp.topMargin = dp(10);
+        reminderCard.addView(hint, hintLp);
+        LinearLayout.LayoutParams reminderLp = matchWrap(); reminderLp.topMargin = dp(18);
         root.addView(reminderCard, reminderLp);
 
         TextView boundary = text("Protection is active", 11, FAINT, false);
@@ -202,6 +222,27 @@ public class BlockActivity extends Activity {
             pulse.setInterpolator(new AccelerateDecelerateInterpolator());
             pulse.start();
         }
+        if (lockIcon != null) {
+            ObjectAnimator bounceY = ObjectAnimator.ofFloat(lockIcon, "translationY", 0f, dp(-7), 0f);
+            ObjectAnimator bounceX = ObjectAnimator.ofFloat(lockIcon, "scaleX", 1f, 1.10f, 1f);
+            ObjectAnimator bounceScaleY = ObjectAnimator.ofFloat(lockIcon, "scaleY", 1f, 1.10f, 1f);
+            bounceY.setDuration(2500); bounceX.setDuration(2500); bounceScaleY.setDuration(2500);
+            bounceY.setRepeatCount(ObjectAnimator.INFINITE); bounceX.setRepeatCount(ObjectAnimator.INFINITE); bounceScaleY.setRepeatCount(ObjectAnimator.INFINITE);
+            AnimatorSet bounce = new AnimatorSet();
+            bounce.playTogether(bounceY, bounceX, bounceScaleY);
+            bounce.setInterpolator(new AccelerateDecelerateInterpolator());
+            bounce.start();
+        }
+        if (timerRing != null) {
+            ObjectAnimator ringPulse = ObjectAnimator.ofFloat(timerRing, "scaleX", 1f, 1.035f, 1f);
+            ObjectAnimator ringPulseY = ObjectAnimator.ofFloat(timerRing, "scaleY", 1f, 1.035f, 1f);
+            ringPulse.setDuration(2800); ringPulseY.setDuration(2800);
+            ringPulse.setRepeatCount(ObjectAnimator.INFINITE); ringPulseY.setRepeatCount(ObjectAnimator.INFINITE);
+            AnimatorSet ringBreath = new AnimatorSet();
+            ringBreath.playTogether(ringPulse, ringPulseY);
+            ringBreath.setInterpolator(new AccelerateDecelerateInterpolator());
+            ringBreath.start();
+        }
 
     }
 
@@ -214,6 +255,48 @@ public class BlockActivity extends Activity {
         step.addView(text(label, 9, FAINT, false));
         step.addView(text(value, 14, INK, true));
         return step;
+    }
+
+    private static final class GradientTimerText extends TextView {
+        private final Paint shaderPaint = new Paint();
+        GradientTimerText(android.content.Context context) { super(context); }
+        @Override protected void onDraw(Canvas canvas) {
+            shaderPaint.set(getPaint());
+            shaderPaint.setShader(new LinearGradient(0, 0, getWidth(), 0,
+                    Color.WHITE, Color.rgb(188, 235, 200), Shader.TileMode.CLAMP));
+            getPaint().setShader(shaderPaint.getShader());
+            super.onDraw(canvas);
+            getPaint().setShader(null);
+        }
+    }
+
+    private static final class ProgressRingView extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float progress = 1f;
+        ProgressRingView(android.content.Context context) { super(context); }
+        void setProgress(float value) { progress = value; invalidate(); }
+        @Override protected void onDraw(Canvas canvas) {
+            float centerX = getWidth() / 2f, centerY = getHeight() / 2f;
+            float radius = Math.min(getWidth(), getHeight()) / 2f - dp(getContext(), 12);
+            RectF oval = new RectF(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setStrokeWidth(dp(getContext(), 13));
+            paint.setColor(Color.argb(32, 52, 116, 76));
+            canvas.drawArc(oval, -90f, 360f, false, paint);
+            paint.setStrokeWidth(dp(getContext(), 22));
+            paint.setColor(Color.argb(30, 79, 172, 104));
+            canvas.drawArc(oval, -90f, 360f * progress, false, paint);
+            paint.setStrokeWidth(dp(getContext(), 7));
+            paint.setShader(new LinearGradient(0, 0, getWidth(), getHeight(),
+                    new int[] { Color.rgb(76, 157, 98), Color.rgb(188, 235, 200), Color.rgb(52, 116, 76) },
+                    null, Shader.TileMode.CLAMP));
+            canvas.drawArc(oval, -90f, 360f * progress, false, paint);
+            paint.setShader(null);
+        }
+        private static float dp(android.content.Context context, float value) {
+            return value * context.getResources().getDisplayMetrics().density;
+        }
     }
 
     private static final class LeafBreezeView extends View {
@@ -304,10 +387,17 @@ public class BlockActivity extends Activity {
 
     private void startTimer() {
         long remaining = Math.max(0, LockStore.lockedUntil(this, blockedPackage) - System.currentTimeMillis());
+        timerDurationMs = Math.max(1L, remaining);
+        updateTimer(remaining);
         timer = new CountDownTimer(remaining, 1000) {
-            @Override public void onTick(long left) { timerText.setText(format(left) + " left"); }
+            @Override public void onTick(long left) { updateTimer(left); }
             @Override public void onFinish() { goHome(); }
         }.start();
+    }
+
+    private void updateTimer(long remaining) {
+        if (timerText != null) timerText.setText(format(remaining));
+        if (timerRing != null) timerRing.setProgress(Math.max(0f, Math.min(1f, remaining / (float) timerDurationMs)));
     }
 
     private String appName() {
@@ -328,11 +418,11 @@ public class BlockActivity extends Activity {
     @Override public void onBackPressed() { goHome(); }
     @Override protected void onDestroy() { visible = false; if (timer != null) timer.cancel(); super.onDestroy(); }
     private TextView text(String value, int size, int color, boolean bold) { TextView v = new TextView(this); v.setText(value); v.setTextSize(size); v.setTextColor(color); if (bold) v.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD); return v; }
-    private GradientDrawable brandTimerShape() {
+    private GradientDrawable circleTimerShape() {
         GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[] { Color.rgb(12, 16, 22), INK, Color.rgb(18, 33, 27) });
-        d.setCornerRadius(dp(30));
-        d.setStroke(dp(1), Color.rgb(64, 136, 85));
+                new int[] { Color.rgb(9, 13, 18), INK, Color.rgb(17, 31, 25) });
+        d.setShape(GradientDrawable.OVAL);
+        d.setStroke(dp(1), Color.rgb(65, 139, 86));
         return d;
     }
     private GradientDrawable shape(int fill, int stroke, int radius) { GradientDrawable d = new GradientDrawable(); d.setColor(fill); d.setCornerRadius(dp(radius)); d.setStroke(dp(1), stroke); return d; }
