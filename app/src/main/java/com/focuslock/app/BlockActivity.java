@@ -79,7 +79,7 @@ public class BlockActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(24), dp(22), dp(24), dp(24));
-        root.setBackgroundColor(Color.rgb(248, 251, 246));
+        root.setBackgroundColor(Color.rgb(246, 250, 246));
         if (!smoothEntry) {
             root.setAlpha(0f);
             root.animate().alpha(1f).setDuration(450).start();
@@ -105,8 +105,8 @@ public class BlockActivity extends Activity {
         timerCard.setOrientation(LinearLayout.VERTICAL);
         timerCard.setGravity(Gravity.CENTER);
         timerCard.setPadding(dp(24), dp(18), dp(24), dp(18));
-        timerCard.setBackground(shape(INK, INK, 30));
-        TextView timerLabel = text("UNLOCKS IN", 10, Color.rgb(206, 235, 214), true);
+        timerCard.setBackground(shape(VIOLET, VIOLET, 30));
+        TextView timerLabel = text("UNLOCKS IN", 10, Color.rgb(224, 244, 228), true);
         timerLabel.setLetterSpacing(.12f);
         timerLabel.setGravity(Gravity.CENTER);
         timerCard.addView(timerLabel, matchWrap());
@@ -123,10 +123,10 @@ public class BlockActivity extends Activity {
         leftLp.leftMargin = dp(2);
         FrameLayout.LayoutParams rightLp = new FrameLayout.LayoutParams(dp(42), dp(42), Gravity.END | Gravity.BOTTOM);
         rightLp.rightMargin = dp(2);
-        timerStage.addView(leafLeft, leftLp);
-        timerStage.addView(leafRight, rightLp);
         FrameLayout.LayoutParams cardLp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
         timerStage.addView(timerCard, cardLp);
+        timerStage.addView(leafLeft, leftLp);
+        timerStage.addView(leafRight, rightLp);
         LinearLayout.LayoutParams timerStageLp = matchWrap(); timerStageLp.topMargin = dp(18);
         root.addView(timerStage, timerStageLp);
 
@@ -154,9 +154,9 @@ public class BlockActivity extends Activity {
         home.setText("Return to home");
         home.setAllCaps(false);
         home.setTextSize(13);
-        home.setTextColor(INK);
+        home.setTextColor(VIOLET);
         home.setPadding(dp(16), dp(13), dp(16), dp(13));
-        home.setBackground(shape(Color.WHITE, BORDER, 26));
+        home.setBackground(shape(Color.rgb(238, 247, 239), Color.rgb(194, 222, 199), 26));
         home.setOnClickListener(v -> goHome());
         root.addView(home, matchWrap());
         TextView active = text("FocusLock is protecting your time", 10, FAINT, false);
@@ -228,9 +228,9 @@ public class BlockActivity extends Activity {
             super(context);
             this.mirrored = mirrored;
             paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(3f);
+            paint.setStrokeWidth(3.4f);
             paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setColor(Color.rgb(104, 160, 117));
+            paint.setColor(Color.rgb(202, 236, 211));
         }
         @Override protected void onDraw(Canvas canvas) {
             float w = getWidth(), h = getHeight();
