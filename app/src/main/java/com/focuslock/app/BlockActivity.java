@@ -371,7 +371,8 @@ public class BlockActivity extends Activity {
                 paint.setAlpha((int) (fade * (125 + (i % 3) * 30)));
                 paint.setTextSize(dp(getContext(), 20 + (i % 4) * 3));
                 int emojiIndex = Math.floorMod((int) (bornAt[i] / STAGGER_MS) + i * 5, NATURE.length);
-                canvas.drawText(NATURE[emojiIndex], x[i], y[i], paint);
+                String emoji = i == 0 ? "🫧" : NATURE[emojiIndex];
+                canvas.drawText(emoji, x[i], y[i], paint);
             }
             long rippleAge = now - rippleStarted;
             if (rippleAge >= 0 && rippleAge < 800L) {
