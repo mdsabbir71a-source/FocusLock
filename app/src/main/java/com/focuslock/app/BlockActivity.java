@@ -300,29 +300,33 @@ public class BlockActivity extends Activity {
     }
 
     private static final class LeafBreezeView extends View {
-        private static final int COUNT = 11;
+        private static final int COUNT = 9;
+        private static final String[] NATURE = { "🌱", "🌿", "☘️", "🍀", "🍁", "🍂", "🍃", "🌾", "🌵", "🌳", "🌲", "🌴", "🌸", "🌺", "🌷", "🌹", "🌻", "🌼", "💐", "🥀", "🍄", "🌰", "🌞", "🌙", "⭐", "🫧", "✨", "💧" };
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint ripplePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final float[] x = new float[COUNT];
         private final float[] y = new float[COUNT];
         private final float[] phase = new float[COUNT];
         private final float[] speed = new float[COUNT];
-        private float cardX, cardY, cardW, cardH;
+        private float cardW, cardH;
         private float gatherX, gatherY;
         private long gatherUntil;
+        private long rippleStarted;
         private long lastFrame;
 
         LeafBreezeView(android.content.Context context) {
             super(context);
-            paint.setTextSize(dp(context, 24));
             paint.setTypeface(android.graphics.Typeface.DEFAULT);
+            ripplePaint.setStyle(Paint.Style.STROKE);
+            ripplePaint.setStrokeWidth(dp(context, 2));
             for (int i = 0; i < COUNT; i++) {
                 phase[i] = (float) (Math.PI * 2d * i / COUNT);
-                speed[i] = .45f + (i % 4) * .07f;
+                speed[i] = .32f + (i % 4) * .055f;
             }
         }
 
         void setTimerBounds(float x, float y, float w, float h) {
-            cardX = x; cardY = y; cardW = w; cardH = h;
+            cardW = w; cardH = h;
             for (int i = 0; i < COUNT; i++) {
                 float[] target = orbitTarget(i);
                 this.x[i] = target[0];
@@ -333,7 +337,9 @@ public class BlockActivity extends Activity {
 
         void gatherAt(float x, float y) {
             gatherX = x; gatherY = y;
-            gatherUntil = SystemClock.uptimeMillis() + 850L;
+            long now = SystemClock.uptimeMillis();
+            gatherUntil = now + 850L;
+            rippleStarted = now;
             invalidate();
         }
 
@@ -344,13 +350,14 @@ public class BlockActivity extends Activity {
             float dt = lastFrame == 0 ? .016f : Math.min(.05f, (now - lastFrame) / 1000f);
             lastFrame = now;
             boolean gathering = now < gatherUntil;
+            int cycle = (int) (now / 2200L);
             for (int i = 0; i < COUNT; i++) {
                 phase[i] += dt * speed[i];
                 float targetX;
                 float targetY;
                 if (gathering) {
-                    float spreadX = (i % 4 - 1.5f) * dp(getContext(), 10);
-                    float spreadY = (i / 4 - 1f) * dp(getContext(), 9);
+                    float spreadX = (i % 3 - 1f) * dp(getContext(), 16);
+                    float spreadY = (i / 3 - 1f) * dp(getContext(), 14);
                     targetX = gatherX + spreadX;
                     targetY = gatherY + spreadY;
                 } else {
@@ -358,12 +365,22 @@ public class BlockActivity extends Activity {
                     targetX = target[0];
                     targetY = target[1];
                 }
-                float pull = gathering ? .15f : .045f;
+                float pull = gathering ? .15f : .035f;
                 x[i] += (targetX - x[i]) * pull;
                 y[i] += (targetY - y[i]) * pull;
-                paint.setAlpha(110 + (i % 4) * 30);
-                paint.setTextSize(dp(getContext(), 19 + (i % 3) * 3));
-                canvas.drawText("🍃", x[i], y[i], paint);
+                float fade = .48f + .34f * (float) Math.sin(phase[i] * 1.6f + i);
+                paint.setAlpha((int) (Math.max(.20f, fade) * 255));
+                paint.setTextSize(dp(getContext(), 20 + (i % 4) * 3));
+                canvas.drawText(NATURE[(i + cycle) % NATURE.length], x[i], y[i], paint);
+            }
+            long rippleAge = now - rippleStarted;
+            if (rippleAge >= 0 && rippleAge < 800L) {
+                float fraction = rippleAge / 800f;
+                ripplePaint.setColor(Color.rgb(83, 156, 103));
+                ripplePaint.setAlpha((int) ((1f - fraction) * 105));
+                canvas.drawCircle(gatherX, gatherY, dp(getContext(), 18 + 120 * fraction), ripplePaint);
+                ripplePaint.setAlpha((int) ((1f - fraction) * 55));
+                canvas.drawCircle(gatherX, gatherY, dp(getContext(), 6 + 76 * fraction), ripplePaint);
             }
             postInvalidateDelayed(16);
         }
