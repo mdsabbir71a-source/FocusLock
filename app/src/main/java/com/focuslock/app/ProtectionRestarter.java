@@ -10,10 +10,10 @@ import android.os.Build;
 import android.os.SystemClock;
 import android.provider.Settings;
 
-/** Provides a lightweight watchdog for Android/OEM process termination. */
+/** Lightweight watchdog and safe service starter for Android/OEM process termination. */
 public final class ProtectionRestarter {
     private static final String ACTION_WATCHDOG = "com.focuslock.app.MONITOR_WATCHDOG";
-    private static final long WATCHDOG_MS = 15 * 60_000L;
+    private static final long WATCHDOG_MS = 5 * 60_000L;
 
     private ProtectionRestarter() {}
 
@@ -31,16 +31,23 @@ public final class ProtectionRestarter {
             cancel(context);
             return;
         }
-        if (!MonitorHealthStore.isHealthy(context)) {
-            Intent service = new Intent(context, FocusMonitorService.class);
-            try {
-                if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(service);
-                else context.startService(service);
-            } catch (RuntimeException error) {
-                DiagnosticStore.record(context, "monitor_restart_deferred", error.getClass().getSimpleName());
-            }
-        }
+        if (!MonitorHealthStore.isHealthy(context)) startMonitor(context, "watchdog");
         schedule(context, WATCHDOG_MS);
+    }
+
+    public static void startMonitor(Context context, String source) {
+        if (!shouldMonitor(context)) return;
+        Intent service = new Intent(context, FocusMonitorService.class);
+        try {
+            if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(service);
+            else context.startService(service);
+        } catch (RuntimeException error) {
+            // Android 12+ can reject starts originating from the background.
+            // This is recorded for opted-in diagnostics and retried from the
+            // next user-visible app session instead of interrupting the user.
+            DiagnosticStore.record(context, "monitor_start_deferred",
+                    source + ":" + error.getClass().getSimpleName());
+        }
     }
 
     public static void schedule(Context context, long delayMs) {
