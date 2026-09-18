@@ -102,9 +102,6 @@ public final class FocusAccessibilityService extends AccessibilityService {
         if (now - lastBlock < BLOCK_COOLDOWN_MS) return;
         if (own.equals(target) && BlockActivity.isVisible()) return;
         lastBlock = now;
-        if (!own.equals(target)) {
-            performGlobalAction(GLOBAL_ACTION_HOME);
-        }
         Intent block = new Intent(this, BlockActivity.class)
                 .putExtra("blocked_package", target)
                 .putExtra("smooth_entry", own.equals(target))
@@ -124,7 +121,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
                         && !BlockActivity.isVisible()) {
                     BlockOverlay.show(FocusAccessibilityService.this, target);
                 }
-            }, 500L);
+            }, 700L);
         }
     }
 
