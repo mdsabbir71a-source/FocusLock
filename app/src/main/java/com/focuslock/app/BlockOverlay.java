@@ -64,17 +64,23 @@ public final class BlockOverlay {
             label.setGravity(Gravity.CENTER);
             panel.addView(label, match());
 
-            TextView title = text(context, "Time for a pause", 27, Color.rgb(17, 24, 39), true);
-            title.setGravity(Gravity.CENTER);
-            LinearLayout.LayoutParams titleLp = match();
-            titleLp.topMargin = dp(context, 20);
-            panel.addView(title, titleLp);
+            TextView breeze = text(context, "🍃        🫧        🍃", 18, Color.rgb(52, 116, 76), false);
+            breeze.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams breezeLp = match();
+            breezeLp.topMargin = dp(context, 14);
+            panel.addView(breeze, breezeLp);
 
-            TextView app = text(context, "Your selected app is locked", 13, Color.rgb(107, 114, 128), false);
+            TextView app = text(context, appName(context, packageName) + " is paused", 13, Color.rgb(107, 114, 128), false);
             app.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams appLp = match();
-            appLp.topMargin = dp(context, 8);
+            appLp.topMargin = dp(context, 26);
             panel.addView(app, appLp);
+
+            TextView title = text(context, "Take a quiet moment", 27, Color.rgb(17, 24, 39), true);
+            title.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams titleLp = match();
+            titleLp.topMargin = dp(context, 10);
+            panel.addView(title, titleLp);
 
             countdown = text(context, "00:00", 50, Color.WHITE, true);
             countdown.setGravity(Gravity.CENTER);
@@ -84,7 +90,7 @@ public final class BlockOverlay {
             timeLp.topMargin = dp(context, 30);
             panel.addView(countdown, timeLp);
 
-            TextView note = text(context, "A short pause protects your attention.", 14, Color.rgb(17, 24, 39), true);
+            TextView note = text(context, "You chose focus. Let this moment pass.", 14, Color.rgb(17, 24, 39), true);
             note.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams noteLp = match();
             noteLp.topMargin = dp(context, 24);
@@ -156,6 +162,15 @@ public final class BlockOverlay {
         view.setTextColor(color);
         if (bold) view.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
         return view;
+    }
+
+    private static String appName(Context context, String packageName) {
+        try {
+            return context.getPackageManager().getApplicationLabel(
+                    context.getPackageManager().getApplicationInfo(packageName, 0)).toString();
+        } catch (Exception ignored) {
+            return "Your app";
+        }
     }
 
     private static LinearLayout.LayoutParams match() {
