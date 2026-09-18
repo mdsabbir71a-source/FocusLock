@@ -157,6 +157,7 @@ public class MainActivity extends Activity {
         refreshMasterButton();
         new Handler().postDelayed(this::maybeExplainBatteryReliability, 650L);
         new Handler().postDelayed(this::maybeShowSelfLockGuide, 1100L);
+        new Handler().postDelayed(this::maybeShowXiaomiReliabilityForExistingUser, 1450L);
         // Re-check every time the signed-in main screen returns. This also
         // catches permissions changed directly in Android Settings, rather
         // than only Settings pages opened from FocusLock's setup cards.
@@ -1276,6 +1277,14 @@ public class MainActivity extends Activity {
     private boolean xiaomiAutoStartPromptHandled() {
         return getSharedPreferences("focuslock_reliability", MODE_PRIVATE)
                 .getBoolean("xiaomi_autostart_prompt_v151", false);
+    }
+
+    private void maybeShowXiaomiReliabilityForExistingUser() {
+        if (isFinishing() || !OemReliability.needsXiaomiAutoStartHelp()
+                || xiaomiAutoStartPromptHandled() || !LockStore.isEnabled(this)
+                || !usageAccessEnabled() || !Settings.canDrawOverlays(this)
+                || !batteryReliabilityEnabled() || !CompatibilityAccess.isEnabled(this)) return;
+        showXiaomiReliabilityStep();
     }
 
     /** A one-time, brand-specific step. Normal Android users never see it. */
