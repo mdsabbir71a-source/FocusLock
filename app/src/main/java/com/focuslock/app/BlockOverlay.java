@@ -2,11 +2,13 @@ package com.focuslock.app;
 
 import android.content.Context;
 import android.content.Intent;
+import android.animation.ObjectAnimator;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
@@ -15,9 +17,9 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 /**
- * Immediate overlay safety net for phones that restrict background activity
- * launches. BlockActivity dismisses this as soon as the regular lock screen is
- * visible, so the existing UI remains unchanged on normal devices.
+ * Emergency garden lock for phones that restrict background activity launches.
+ * It is deliberately delayed until the full BlockActivity has been retried, so
+ * users never see a mismatched legacy card during a normal lock.
  */
 public final class BlockOverlay {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
@@ -59,16 +61,22 @@ public final class BlockOverlay {
             panel.setPadding(dp(context, 28), dp(context, 28), dp(context, 28), dp(context, 28));
             panel.setBackgroundColor(Color.rgb(246, 250, 246));
 
-            TextView label = text(context, "FOCUSLOCK", 12, Color.rgb(52, 116, 76), true);
+            TextView label = text(context, "FOCUSLOCK", 11, Color.rgb(52, 116, 76), true);
             label.setLetterSpacing(.14f);
             label.setGravity(Gravity.CENTER);
             panel.addView(label, match());
 
-            TextView breeze = text(context, "🍃        🫧        🍃", 18, Color.rgb(52, 116, 76), false);
+            TextView breeze = text(context, "🍃     🫧     🌿     🍃", 20, Color.rgb(52, 116, 76), false);
             breeze.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams breezeLp = match();
             breezeLp.topMargin = dp(context, 14);
             panel.addView(breeze, breezeLp);
+            ObjectAnimator breezeDrift = ObjectAnimator.ofFloat(breeze, "translationX", 0f, dp(context, 13));
+            breezeDrift.setDuration(2_600L);
+            breezeDrift.setInterpolator(new AccelerateDecelerateInterpolator());
+            breezeDrift.setRepeatCount(ObjectAnimator.INFINITE);
+            breezeDrift.setRepeatMode(ObjectAnimator.REVERSE);
+            breezeDrift.start();
 
             TextView app = text(context, appName(context, packageName) + " is paused", 13, Color.rgb(107, 114, 128), false);
             app.setGravity(Gravity.CENTER);
@@ -76,24 +84,46 @@ public final class BlockOverlay {
             appLp.topMargin = dp(context, 26);
             panel.addView(app, appLp);
 
-            TextView title = text(context, "Take a quiet moment", 27, Color.rgb(17, 24, 39), true);
+            TextView title = text(context, "Take a quiet moment", 28, Color.rgb(17, 24, 39), true);
             title.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams titleLp = match();
             titleLp.topMargin = dp(context, 10);
             panel.addView(title, titleLp);
 
-            countdown = text(context, "00:00", 50, Color.WHITE, true);
+            TextView unlocks = text(context, "UNLOCKS IN", 10, Color.rgb(184, 231, 196), true);
+            unlocks.setLetterSpacing(.12f);
+            unlocks.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams unlocksLp = match();
+            unlocksLp.topMargin = dp(context, 24);
+            panel.addView(unlocks, unlocksLp);
+
+            countdown = text(context, "00:00", 43, Color.WHITE, true);
             countdown.setGravity(Gravity.CENTER);
-            countdown.setPadding(dp(context, 20), dp(context, 22), dp(context, 20), dp(context, 22));
-            countdown.setBackground(shape(context, Color.rgb(17, 24, 39), Color.rgb(52, 116, 76), 30));
+            countdown.setPadding(dp(context, 18), dp(context, 20), dp(context, 18), dp(context, 20));
+            countdown.setBackground(timerShape(context));
             LinearLayout.LayoutParams timeLp = match();
-            timeLp.topMargin = dp(context, 30);
+            timeLp.width = dp(context, 196);
+            timeLp.height = dp(context, 196);
+            timeLp.gravity = Gravity.CENTER_HORIZONTAL;
+            timeLp.topMargin = dp(context, 4);
             panel.addView(countdown, timeLp);
+            ObjectAnimator timerBreath = ObjectAnimator.ofFloat(countdown, "scaleX", 1f, 1.025f);
+            timerBreath.setDuration(1_800L);
+            timerBreath.setInterpolator(new AccelerateDecelerateInterpolator());
+            timerBreath.setRepeatCount(ObjectAnimator.INFINITE);
+            timerBreath.setRepeatMode(ObjectAnimator.REVERSE);
+            timerBreath.start();
+            ObjectAnimator timerBreathY = ObjectAnimator.ofFloat(countdown, "scaleY", 1f, 1.025f);
+            timerBreathY.setDuration(1_800L);
+            timerBreathY.setInterpolator(new AccelerateDecelerateInterpolator());
+            timerBreathY.setRepeatCount(ObjectAnimator.INFINITE);
+            timerBreathY.setRepeatMode(ObjectAnimator.REVERSE);
+            timerBreathY.start();
 
             TextView note = text(context, "You chose focus. Let this moment pass.", 14, Color.rgb(17, 24, 39), true);
             note.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams noteLp = match();
-            noteLp.topMargin = dp(context, 24);
+            noteLp.topMargin = dp(context, 20);
             panel.addView(note, noteLp);
 
             Button home = new Button(context);
@@ -109,7 +139,7 @@ public final class BlockOverlay {
                 context.startActivity(intent);
             });
             LinearLayout.LayoutParams homeLp = match();
-            homeLp.topMargin = dp(context, 42);
+            homeLp.topMargin = dp(context, 38);
             panel.addView(home, homeLp);
 
             int type = Build.VERSION.SDK_INT >= 26
@@ -183,6 +213,14 @@ public final class BlockOverlay {
         drawable.setColor(fill);
         drawable.setStroke(dp(context, 1), stroke);
         drawable.setCornerRadius(dp(context, radius));
+        return drawable;
+    }
+
+    private static GradientDrawable timerShape(Context context) {
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[] { Color.rgb(9, 13, 18), Color.rgb(17, 24, 39), Color.rgb(17, 31, 25) });
+        drawable.setShape(GradientDrawable.OVAL);
+        drawable.setStroke(dp(context, 1), Color.rgb(65, 139, 86));
         return drawable;
     }
 
