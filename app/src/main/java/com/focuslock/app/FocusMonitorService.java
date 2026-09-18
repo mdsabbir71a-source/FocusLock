@@ -56,7 +56,10 @@ public class FocusMonitorService extends Service {
         Intent open = new Intent(this, MainActivity.class);
         PendingIntent pending = PendingIntent.getActivity(this, 0, open,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification notification = new Notification.Builder(this, "focus_lock")
+        Notification.Builder notificationBuilder = Build.VERSION.SDK_INT >= 26
+                ? new Notification.Builder(this, "focus_lock")
+                : new Notification.Builder(this);
+        Notification notification = notificationBuilder
                 .setSmallIcon(android.R.drawable.ic_lock_lock)
                 .setContentTitle("FocusLock commitment active")
                 .setContentText("Only your selected apps will be blocked")
@@ -117,6 +120,16 @@ public class FocusMonitorService extends Service {
         if (now - lastDeviceSync >= 15 * 60_000L) {
             lastDeviceSync = now;
             SupabaseApi.syncDeviceState(this);
+        }
+
+        // Compatibility Mode supplies a direct, user-approved foreground signal.
+        // Do not count in both monitors or a limit would expire twice as fast.
+        if (CompatibilityAccess.isEnabled(this)) {
+            if (BlockOverlay.isShowing()
+                    && (currentPackage == null || !LockStore.isLocked(this, currentPackage))) {
+                BlockOverlay.hide();
+            }
+            return;
         }
 
         if (MainActivity.isVisible()
