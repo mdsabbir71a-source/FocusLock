@@ -167,6 +167,7 @@ public class MainActivity extends Activity {
             new Handler().postDelayed(() -> {
                 boolean allowed = returningFrom == 1 ? usageAccessEnabled() : Settings.canDrawOverlays(this);
                 if (returningFrom == 3) allowed = batteryReliabilityEnabled();
+                if (returningFrom == 4) allowed = CompatibilityAccess.isEnabled(this);
                 if (!allowed) {
                     guidedSetup = false;
                     toast(returningFrom == 3
@@ -481,7 +482,8 @@ public class MainActivity extends Activity {
         if (!RemoteConfigStore.appBlockingEnabled(this)) {
             stopService(new Intent(this, FocusMonitorService.class));
             ProtectionRestarter.cancel(this);
-        } else if (LockStore.isEnabled(this) && usageAccessEnabled() && Settings.canDrawOverlays(this)) {
+        } else if (LockStore.isEnabled(this) && usageAccessEnabled() && Settings.canDrawOverlays(this)
+                && CompatibilityAccess.isEnabled(this)) {
             startSavedMonitoring();
         }
     }
@@ -810,7 +812,8 @@ public class MainActivity extends Activity {
             ProtectionRestarter.cancel(this);
             toast("FocusLock is paused.");
         } else {
-            if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)) {
+            if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)
+                    || !CompatibilityAccess.isEnabled(this)) {
                 startEasySetup();
             } else {
                 startSavedMonitoring();
@@ -885,20 +888,31 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams third = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         third.leftMargin = dp(4);
         permissionRow.addView(batteryCard, third);
-        boolean approvalsReady = usage && overlay && battery;
+        boolean compatibility = CompatibilityAccess.isEnabled(this);
+        View compatibilityCard = permissionCard("Compatibility", "", compatibility, v -> {
+            waitingForSpecialPermission = 4;
+            showPermissionPrimer("Allow Compatibility Mode",
+                    "Turn on FocusLock. It only sees which app opens, never your text, passwords, or screen content.",
+                    () -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+        });
+        LinearLayout.LayoutParams fourth = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        fourth.leftMargin = dp(4);
+        permissionRow.addView(compatibilityCard, fourth);
+        boolean approvalsReady = usage && overlay && battery && compatibility;
         if (setupTitle != null) {
-            int ready = (usage ? 1 : 0) + (overlay ? 1 : 0) + (battery ? 1 : 0);
-            setupTitle.setText("Quick setup  ·  " + ready + "/3");
+            int ready = (usage ? 1 : 0) + (overlay ? 1 : 0) + (battery ? 1 : 0) + (compatibility ? 1 : 0);
+            setupTitle.setText("Quick setup  ·  " + ready + "/4");
         }
         setSetupCardVisible(!approvalsReady);
         if (easySetupButton != null) {
-            easySetupButton.setText(usage && overlay ? "Allow background use  →" : "Continue  →");
+            easySetupButton.setText(usage && overlay && battery ? "Allow compatibility mode  →" : "Continue  →");
             easySetupButton.setAlpha(1f);
             easySetupButton.setEnabled(!approvalsReady);
         }
         if (permissionNote != null) {
             permissionNote.setVisibility(approvalsReady ? View.GONE : View.VISIBLE);
-            permissionNote.setText(!battery && usage && overlay ? "Keeps protection reliable" : "About one minute");
+            permissionNote.setText(!compatibility && usage && overlay && battery
+                    ? "Keeps protection reliable on more phones" : "About one minute");
         }
     }
 
@@ -1161,7 +1175,8 @@ public class MainActivity extends Activity {
             updateGuideStep(3, settingsAnchor);
             return;
         }
-        if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)) {
+        if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)
+                || !CompatibilityAccess.isEnabled(this)) {
             commitmentInProgress = false;
             toast("Let's finish the required permissions first.");
             startEasySetup();
@@ -1194,7 +1209,8 @@ public class MainActivity extends Activity {
         } else if (packages.isEmpty()) {
             status.setText("○  Choose an app to begin");
             status.setTextColor(MUTED);
-        } else if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)) {
+        } else if (!usageAccessEnabled() || !Settings.canDrawOverlays(this)
+                || !CompatibilityAccess.isEnabled(this)) {
             status.setText("!  Setup needed");
             status.setTextColor(VIOLET);
         } else if (!MonitorHealthStore.isHealthy(this)) {
@@ -1232,6 +1248,13 @@ public class MainActivity extends Activity {
         if (!batteryReliabilityEnabled()) {
             waitingForSpecialPermission = 3;
             showPermissionPrimer("Keep FocusLock active", "Tap Allow on the next screen.", this::requestBatteryReliability);
+            return;
+        }
+        if (!CompatibilityAccess.isEnabled(this)) {
+            waitingForSpecialPermission = 4;
+            showPermissionPrimer("Allow Compatibility Mode",
+                    "Turn on FocusLock. It only sees which app opens, never your text, passwords, or screen content.",
+                    () -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
             return;
         }
         if (Build.VERSION.SDK_INT >= 33 && !skipNotificationPrompt
@@ -1413,7 +1436,7 @@ public class MainActivity extends Activity {
             return;
         }
         boolean permissionsReady = usageAccessEnabled() && Settings.canDrawOverlays(this)
-                && batteryReliabilityEnabled();
+                && batteryReliabilityEnabled() && CompatibilityAccess.isEnabled(this);
         if (!permissionsReady) updateGuideStep(1, permissionSectionAnchor);
         else if (newGuideIntro || selectedAppCount() == 0) {
             newGuideIntro = false;
@@ -1430,7 +1453,8 @@ public class MainActivity extends Activity {
                 .remove("finish_seen")
                 .apply();
         currentGuideStep = 0;
-        if (!usageAccessEnabled() || !Settings.canDrawOverlays(this) || !batteryReliabilityEnabled()) {
+        if (!usageAccessEnabled() || !Settings.canDrawOverlays(this) || !batteryReliabilityEnabled()
+                || !CompatibilityAccess.isEnabled(this)) {
             updateGuideStep(1, permissionSectionAnchor);
         } else {
             updateGuideStep(2, appSectionAnchor);
