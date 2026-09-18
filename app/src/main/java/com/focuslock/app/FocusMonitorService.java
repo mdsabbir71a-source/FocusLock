@@ -221,10 +221,6 @@ public class FocusMonitorService extends Service {
     }
 
     private void kickOut(String blockedPackage) {
-        // The overlay is shown first. On devices that restrict background
-        // activity launches it remains a complete lock surface; on normal
-        // devices BlockActivity replaces it immediately with the usual UI.
-        if (!ownPackage.equals(blockedPackage)) BlockOverlay.show(this, blockedPackage);
         Intent block = new Intent(this, BlockActivity.class)
                 .putExtra("blocked_package", blockedPackage)
                 .putExtra("smooth_entry", ownPackage.equals(blockedPackage))
@@ -233,6 +229,24 @@ public class FocusMonitorService extends Service {
             startActivity(block);
         } catch (RuntimeException error) {
             DiagnosticStore.record(this, "block_activity_restricted", error.getClass().getSimpleName());
+        }
+        // Never flash the older emergency surface before the real garden lock
+        // gets a chance to appear. A few Redmi builds resume activities more
+        // slowly than other brands, so retry first and use the fallback only
+        // when the activity was genuinely rejected.
+        if (!ownPackage.equals(blockedPackage)) {
+            handler.postDelayed(() -> {
+                if (LockStore.isLocked(FocusMonitorService.this, blockedPackage)
+                        && !BlockActivity.isVisible()) {
+                    try { startActivity(block); } catch (RuntimeException ignored) { }
+                }
+            }, 450L);
+            handler.postDelayed(() -> {
+                if (LockStore.isLocked(FocusMonitorService.this, blockedPackage)
+                        && !BlockActivity.isVisible()) {
+                    BlockOverlay.show(FocusMonitorService.this, blockedPackage);
+                }
+            }, 1_300L);
         }
     }
 
