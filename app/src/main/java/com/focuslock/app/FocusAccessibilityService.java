@@ -119,9 +119,15 @@ public final class FocusAccessibilityService extends AccessibilityService {
             handler.postDelayed(() -> {
                 if (LockStore.isLocked(FocusAccessibilityService.this, target)
                         && !BlockActivity.isVisible()) {
+                    try { startActivity(block); } catch (RuntimeException ignored) { }
+                }
+            }, 450L);
+            handler.postDelayed(() -> {
+                if (LockStore.isLocked(FocusAccessibilityService.this, target)
+                        && !BlockActivity.isVisible()) {
                     BlockOverlay.show(FocusAccessibilityService.this, target);
                 }
-            }, 700L);
+            }, 1_300L);
         }
     }
 
