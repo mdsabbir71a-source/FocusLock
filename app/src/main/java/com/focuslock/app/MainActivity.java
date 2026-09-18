@@ -168,6 +168,7 @@ public class MainActivity extends Activity {
                 boolean allowed = returningFrom == 1 ? usageAccessEnabled() : Settings.canDrawOverlays(this);
                 if (returningFrom == 3) allowed = batteryReliabilityEnabled();
                 if (returningFrom == 4) allowed = CompatibilityAccess.isEnabled(this);
+                if (returningFrom == 5) allowed = true; // Xiaomi exposes no readable Auto-start status.
                 if (!allowed) {
                     guidedSetup = false;
                     toast(returningFrom == 3
@@ -892,7 +893,7 @@ public class MainActivity extends Activity {
         View compatibilityCard = permissionCard("Compatibility", "", compatibility, v -> {
             waitingForSpecialPermission = 4;
             showPermissionPrimer("Allow Compatibility Mode",
-                    "Turn on FocusLock. It only sees which app opens, never your text, passwords, or screen content.",
+                    "Turn on FocusLock. It checks the active app only and never stores or sends text, messages, or passwords.",
                     () -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
         });
         LinearLayout.LayoutParams fourth = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
@@ -1253,8 +1254,12 @@ public class MainActivity extends Activity {
         if (!CompatibilityAccess.isEnabled(this)) {
             waitingForSpecialPermission = 4;
             showPermissionPrimer("Allow Compatibility Mode",
-                    "Turn on FocusLock. It only sees which app opens, never your text, passwords, or screen content.",
+                    "Turn on FocusLock. It checks the active app only and never stores or sends text, messages, or passwords.",
                     () -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+            return;
+        }
+        if (OemReliability.needsXiaomiAutoStartHelp() && !xiaomiAutoStartPromptHandled()) {
+            showXiaomiReliabilityStep();
             return;
         }
         if (Build.VERSION.SDK_INT >= 33 && !skipNotificationPrompt
@@ -1266,6 +1271,43 @@ public class MainActivity extends Activity {
         skipNotificationPrompt = false;
         toast("Setup complete.");
         scrollToBoundarySetup();
+    }
+
+    private boolean xiaomiAutoStartPromptHandled() {
+        return getSharedPreferences("focuslock_reliability", MODE_PRIVATE)
+                .getBoolean("xiaomi_autostart_prompt_v151", false);
+    }
+
+    /** A one-time, brand-specific step. Normal Android users never see it. */
+    private void showXiaomiReliabilityStep() {
+        if (isFinishing() || permissionPrimerShowing) return;
+        permissionPrimerShowing = true;
+        new AlertDialog.Builder(this)
+                .setTitle("One Redmi setting")
+                .setMessage("Redmi may stop protection in the background. On the next screen, turn on Auto-start for FocusLock. This takes one tap and helps your locks stay reliable.")
+                .setPositiveButton("Open Auto-start", (dialog, which) -> {
+                    permissionPrimerShowing = false;
+                    getSharedPreferences("focuslock_reliability", MODE_PRIVATE).edit()
+                            .putBoolean("xiaomi_autostart_prompt_v151", true).apply();
+                    waitingForSpecialPermission = 5;
+                    if (!OemReliability.openAutoStartSettings(this)) {
+                        waitingForSpecialPermission = 0;
+                        continueEasySetup();
+                    }
+                })
+                .setNegativeButton("Skip for now", (dialog, which) -> {
+                    permissionPrimerShowing = false;
+                    getSharedPreferences("focuslock_reliability", MODE_PRIVATE).edit()
+                            .putBoolean("xiaomi_autostart_prompt_v151", true).apply();
+                    continueEasySetup();
+                })
+                .setOnCancelListener(dialog -> {
+                    permissionPrimerShowing = false;
+                    getSharedPreferences("focuslock_reliability", MODE_PRIVATE).edit()
+                            .putBoolean("xiaomi_autostart_prompt_v151", true).apply();
+                    continueEasySetup();
+                })
+                .show();
     }
 
     private void showPermissionPrimer(String title, String message, Runnable action) {
