@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FocusLock</string>
-    <string name="accessibility_description">Optional selected-app detection for FocusLock. It observes only app window changes, cannot read screen content, and acts only on apps you selected.</string>
+    <string name="accessibility_description">Compatibility Mode checks the currently open app so FocusLock can reliably enforce limits on the apps you selected. FocusLock does not store or send screen text, messages, or passwords.</string>
 </resources>
