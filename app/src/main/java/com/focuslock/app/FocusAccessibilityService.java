@@ -7,6 +7,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
 
 /**
  * User-enabled compatibility monitor. It receives only window/app change events,
@@ -56,7 +57,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
                 && type != AccessibilityEvent.TYPE_WINDOWS_CHANGED) return;
         CharSequence packageName = event.getPackageName();
         if (packageName == null || packageName.length() == 0) return;
-        foregroundPackage = packageName.toString();
+        updateForegroundPackage(packageName.toString());
         handler.removeCallbacks(ticker);
         handler.post(ticker);
     }
@@ -75,9 +76,17 @@ public final class FocusAccessibilityService extends AccessibilityService {
         lastTick = now;
         if (!AccessStore.isAllowed(this) || !LockStore.isEnabled(this)
                 || !RemoteConfigStore.appBlockingEnabled(this)) return;
+        String activeWindow = activeWindowPackage();
+        if (activeWindow != null) updateForegroundPackage(activeWindow);
         String target = foregroundPackage;
         if (target == null || target.isEmpty()) return;
         String own = getPackageName();
+        // A lock for another app must never cover FocusLock when optional
+        // self-lock is off.
+        if (own.equals(target) && !LockStore.isLocked(this, own)) {
+            BlockOverlay.hide();
+            return;
+        }
         if (LockStore.isSelected(this, target)) {
             boolean newlyLocked = LockStore.addUsage(this, target, elapsed);
             if (newlyLocked || LockStore.isLocked(this, target)) block(target, own);
@@ -94,7 +103,6 @@ public final class FocusAccessibilityService extends AccessibilityService {
         if (own.equals(target) && BlockActivity.isVisible()) return;
         lastBlock = now;
         if (!own.equals(target)) {
-            BlockOverlay.show(this, target);
             performGlobalAction(GLOBAL_ACTION_HOME);
         }
         Intent block = new Intent(this, BlockActivity.class)
@@ -107,6 +115,36 @@ public final class FocusAccessibilityService extends AccessibilityService {
         } catch (RuntimeException error) {
             DiagnosticStore.record(this, "compatibility_block_restricted",
                     error.getClass().getSimpleName());
+        }
+        if (!own.equals(target)) {
+            // On normal phones the regular, branded lock screen is now visible.
+            // Use the simpler overlay only if Android actually rejects that launch.
+            handler.postDelayed(() -> {
+                if (LockStore.isLocked(FocusAccessibilityService.this, target)
+                        && !BlockActivity.isVisible()) {
+                    BlockOverlay.show(FocusAccessibilityService.this, target);
+                }
+            }, 500L);
+        }
+    }
+
+    private void updateForegroundPackage(String packageName) {
+        if (packageName == null || packageName.equals(foregroundPackage)) return;
+        foregroundPackage = packageName;
+        // Never charge time that elapsed while a different app was in front.
+        lastTick = SystemClock.elapsedRealtime();
+    }
+
+    private String activeWindowPackage() {
+        AccessibilityNodeInfo root = null;
+        try {
+            root = getRootInActiveWindow();
+            CharSequence packageName = root == null ? null : root.getPackageName();
+            return packageName == null || packageName.length() == 0 ? null : packageName.toString();
+        } catch (RuntimeException ignored) {
+            return null;
+        } finally {
+            if (root != null) root.recycle();
         }
     }
 }
