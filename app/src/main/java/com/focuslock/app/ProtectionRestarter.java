@@ -23,7 +23,8 @@ public final class ProtectionRestarter {
                 && RemoteConfigStore.appBlockingEnabled(context)
                 && !LockStore.packages(context).isEmpty()
                 && hasUsageAccess(context)
-                && Settings.canDrawOverlays(context);
+                && Settings.canDrawOverlays(context)
+                && CompatibilityAccess.isEnabled(context);
     }
 
     public static void ensureMonitorRunning(Context context) {
