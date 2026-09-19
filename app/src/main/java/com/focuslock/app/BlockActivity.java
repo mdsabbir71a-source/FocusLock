@@ -76,7 +76,7 @@ public class BlockActivity extends Activity {
         visible = true;
         // The normal lock screen is now visible, so remove the emergency overlay
         // used only on devices that restrict background activity launches.
-        BlockOverlay.hide();
+        GardenLockOverlay.hide();
     }
 
     @Override protected void onPause() {
