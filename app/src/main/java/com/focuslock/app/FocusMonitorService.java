@@ -43,7 +43,7 @@ public class FocusMonitorService extends Service {
     @Override public void onCreate() {
         super.onCreate();
         if (!ProtectionRestarter.shouldMonitor(this)) {
-            BlockOverlay.hide();
+            GardenLockOverlay.hide();
             stopSelf();
             return;
         }
@@ -76,7 +76,7 @@ public class FocusMonitorService extends Service {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         if (!ProtectionRestarter.shouldMonitor(this)) {
-            BlockOverlay.hide();
+            GardenLockOverlay.hide();
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -102,7 +102,7 @@ public class FocusMonitorService extends Service {
 
     private void monitorOnce() {
         if (!ProtectionRestarter.shouldMonitor(this)) {
-            BlockOverlay.hide();
+            GardenLockOverlay.hide();
             stopSelf();
             return;
         }
@@ -125,9 +125,9 @@ public class FocusMonitorService extends Service {
         // Compatibility Mode supplies a direct, user-approved foreground signal.
         // Do not count in both monitors or a limit would expire twice as fast.
         if (CompatibilityAccess.isEnabled(this)) {
-            if (BlockOverlay.isShowing()
+            if (GardenLockOverlay.isShowing()
                     && (currentPackage == null || !LockStore.isLocked(this, currentPackage))) {
-                BlockOverlay.hide();
+                GardenLockOverlay.hide();
             }
             return;
         }
@@ -153,9 +153,9 @@ public class FocusMonitorService extends Service {
                 && now - lastKick > 1_200L) {
             lastKick = now;
             kickOut(ownPackage);
-        } else if (BlockOverlay.isShowing()
+        } else if (GardenLockOverlay.isShowing()
                 && (currentPackage == null || !LockStore.isLocked(this, currentPackage))) {
-            BlockOverlay.hide();
+            GardenLockOverlay.hide();
         }
     }
 
@@ -230,10 +230,8 @@ public class FocusMonitorService extends Service {
         } catch (RuntimeException error) {
             DiagnosticStore.record(this, "block_activity_restricted", error.getClass().getSimpleName());
         }
-        // Never flash the older emergency surface before the real garden lock
-        // gets a chance to appear. A few Redmi builds resume activities more
-        // slowly than other brands, so retry first and use the fallback only
-        // when the activity was genuinely rejected.
+        // The full garden activity is always attempted first. This secondary
+        // garden surface is used only if Android genuinely rejects it.
         if (!ownPackage.equals(blockedPackage)) {
             handler.postDelayed(() -> {
                 if (LockStore.isLocked(FocusMonitorService.this, blockedPackage)
@@ -244,7 +242,7 @@ public class FocusMonitorService extends Service {
             handler.postDelayed(() -> {
                 if (LockStore.isLocked(FocusMonitorService.this, blockedPackage)
                         && !BlockActivity.isVisible()) {
-                    BlockOverlay.show(FocusMonitorService.this, blockedPackage);
+                    GardenLockOverlay.show(FocusMonitorService.this, blockedPackage);
                 }
             }, 1_300L);
         }
@@ -269,7 +267,7 @@ public class FocusMonitorService extends Service {
         if (ProtectionRestarter.shouldMonitor(this)) {
             ProtectionRestarter.schedule(this, 5_000L);
         } else {
-            BlockOverlay.hide();
+            GardenLockOverlay.hide();
         }
         super.onDestroy();
     }
