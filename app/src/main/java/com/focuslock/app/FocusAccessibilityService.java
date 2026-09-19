@@ -84,7 +84,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
         // A lock for another app must never cover FocusLock when optional
         // self-lock is off.
         if (own.equals(target) && !LockStore.isLocked(this, own)) {
-            BlockOverlay.hide();
+            GardenLockOverlay.hide();
             return;
         }
         if (LockStore.isSelected(this, target)) {
@@ -92,8 +92,8 @@ public final class FocusAccessibilityService extends AccessibilityService {
             if (newlyLocked || LockStore.isLocked(this, target)) block(target, own);
         } else if (own.equals(target) && LockStore.isLocked(this, own) && !BlockActivity.isVisible()) {
             block(own, own);
-        } else if (BlockOverlay.isShowing() && !LockStore.isLocked(this, target)) {
-            BlockOverlay.hide();
+        } else if (GardenLockOverlay.isShowing() && !LockStore.isLocked(this, target)) {
+            GardenLockOverlay.hide();
         }
     }
 
@@ -125,7 +125,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
             handler.postDelayed(() -> {
                 if (LockStore.isLocked(FocusAccessibilityService.this, target)
                         && !BlockActivity.isVisible()) {
-                    BlockOverlay.show(FocusAccessibilityService.this, target);
+                    GardenLockOverlay.show(FocusAccessibilityService.this, target);
                 }
             }, 1_300L);
         }
