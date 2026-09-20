@@ -73,7 +73,7 @@ public final class FocusWelcomeAnimationView extends View {
         drawContourLines(canvas, w, h, t);
 
         float cx = w * .5f;
-        float cy = h * .43f;
+        float cy = h * (fullPage ? .17f : .43f);
         line.setStrokeWidth(dp(1.4f));
         for (int i = 0; i < 3; i++) {
             int alpha = 55 - i * 12;
@@ -82,7 +82,7 @@ public final class FocusWelcomeAnimationView extends View {
             canvas.drawCircle(cx, cy, radius, line);
         }
 
-        drawGrowingPath(canvas, w, h, t);
+        if (!fullPage) drawGrowingPath(canvas, w, h, t);
         for (int i = 0; i < LEAF_COUNT; i++) drawFloatingLeaf(canvas, w, h, i, t);
         if (fullPage) drawPageBreeze(canvas, w, h, t);
 
@@ -90,6 +90,10 @@ public final class FocusWelcomeAnimationView extends View {
     }
 
     private void drawContourLines(Canvas canvas, float w, float h, float t) {
+        if (fullPage) {
+            drawFullPageContours(canvas, w, h, t);
+            return;
+        }
         line.setStrokeWidth(dp(1f));
         line.setColor(Color.argb(33, 39, 91, 59));
         float drift = (float) Math.sin(t * .24f) * dp(5);
@@ -99,6 +103,28 @@ public final class FocusWelcomeAnimationView extends View {
             path.moveTo(-dp(20), y + drift);
             path.cubicTo(w * .22f, y - dp(25), w * .42f, y + dp(28), w * .63f, y - dp(8));
             path.cubicTo(w * .79f, y - dp(31), w * .92f, y + dp(11), w + dp(20), y - dp(18));
+            canvas.drawPath(path, line);
+        }
+    }
+
+    /** Three quiet contour accents in separate corners keep the center clear. */
+    private void drawFullPageContours(Canvas canvas, float w, float h, float t) {
+        line.setStrokeWidth(dp(1.05f));
+        line.setColor(Color.argb(64, 39, 112, 64));
+        float sway = (float) Math.sin(t * .24f) * dp(5);
+        for (int i = 0; i < 3; i++) {
+            float d = i * dp(13);
+            path.reset();
+            path.moveTo(-dp(26), h * .27f + d + sway);
+            path.cubicTo(w * .07f, h * .26f + d, w * .18f, h * .21f + d, w * .31f, h * .25f + d);
+            canvas.drawPath(path, line);
+            path.reset();
+            path.moveTo(w + dp(26), h * .47f + d - sway);
+            path.cubicTo(w * .90f, h * .46f + d, w * .82f, h * .52f + d, w * .67f, h * .50f + d);
+            canvas.drawPath(path, line);
+            path.reset();
+            path.moveTo(-dp(24), h * .87f + d + sway);
+            path.cubicTo(w * .10f, h * .85f + d, w * .20f, h * .88f + d, w * .39f, h * .83f + d);
             canvas.drawPath(path, line);
         }
     }
