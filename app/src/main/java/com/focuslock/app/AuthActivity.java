@@ -126,45 +126,140 @@ public class AuthActivity extends Activity {
         scroll.addView(root, matchWrap());
 
         FrameLayout hero = new FrameLayout(this);
-        FocusWelcomeAnimationView heroAnimation = new FocusWelcomeAnimationView(this);
-        hero.addView(heroAnimation, new FrameLayout.LayoutParams(
+        hero.addView(new FocusWelcomeAnimationView(this), new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.focuslock_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(dp(76), dp(76));
+        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(dp(80), dp(80));
         logoParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        logoParams.topMargin = dp(42);
+        logoParams.topMargin = dp(58);
         hero.addView(logo, logoParams);
+
         TextView brand = text("FocusLock", 21, INK, true);
         brand.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams brandParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         brandParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        brandParams.topMargin = dp(130);
+        brandParams.topMargin = dp(146);
         hero.addView(brand, brandParams);
-        root.addView(hero, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(198)));
+        root.addView(hero, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(224)));
+
+        TextView title = text("Take back your attention.", 28, INK, true);
+        title.setGravity(Gravity.CENTER);
+        title.setLetterSpacing(-.018f);
+        root.addView(title);
+
+        TextView subtitle = text("One small boundary at a time.", 13, MUTED, false);
+        subtitle.setGravity(Gravity.CENTER);
+        root.addView(subtitle, topMargin(7));
+
+        advice = text(ENCOURAGEMENTS[adviceIndex], 12, GREEN, true);
+        advice.setGravity(Gravity.CENTER);
+        advice.setPadding(dp(15), dp(11), dp(15), dp(11));
+        advice.setBackground(shape(SOFT, BORDER, 18));
+        root.addView(advice, topMargin(18));
+        adviceHandler.postDelayed(advanceAdvice, 3800L);
+
+        LinearLayout actions = column();
+        google = button("G   Continue with Google", BRIGHT_GREEN, Color.WHITE, BRIGHT_GREEN);
+        google.setOnClickListener(v -> beginGoogle());
+        actions.addView(google);
+
+        signUp = button("Sign up with email   →", Color.WHITE, GREEN, BORDER);
+        signUp.setOnClickListener(v -> showEmailScreen(true));
+        actions.addView(signUp, topMargin(11));
+        root.addView(actions, topMargin(28));
+
+        status = statusText();
+        root.addView(status, topMargin(12));
+        root.addView(legalText(), topMargin(10));
+
+        setContentView(scroll);
+        animateLanding(root, hero, actions, returning);
+        startLogoMotion(logo);
+    }
+
+    private void showEmailScreen(boolean create) {
+        adviceHandler.removeCallbacksAndMessages(null);
+        emailScreenVisible = true;
+        captureDraft();
+        advice = null;
+        google = null;
+        signIn = null;
+        signUp = null;
+
+        // The same animated FocusLock artwork now runs behind the entire email
+        // experience, rather than stopping at the welcome header.
+        FrameLayout scene = new FrameLayout(this);
+        scene.setBackgroundColor(BACKGROUND);
+        FocusWelcomeAnimationView fullPageArt = new FocusWelcomeAnimationView(this);
+        fullPageArt.setAlpha(.92f);
+        scene.addView(fullPageArt, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        ScrollView scroll = screen();
+        scroll.setBackgroundColor(Color.TRANSPARENT);
+        LinearLayout root = column();
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        root.setPadding(dp(22), dp(12), dp(22), dp(30));
+        scroll.addView(root, matchWrap());
+        scene.addView(scroll, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        LinearLayout topBar = new LinearLayout(this);
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
+        topBar.setGravity(Gravity.CENTER_VERTICAL);
+        TextView back = text("←", 24, GREEN, false);
+        back.setGravity(Gravity.CENTER);
+        back.setPadding(dp(6), 0, dp(10), dp(2));
+        back.setContentDescription("Back");
+        back.setOnClickListener(v -> showLanding(true));
+        topBar.addView(back, new LinearLayout.LayoutParams(dp(44), dp(42)));
+        TextView topBrand = text("FOCUSLOCK", 12, GREEN, true);
+        topBrand.setLetterSpacing(.13f);
+        topBrand.setGravity(Gravity.CENTER);
+        topBar.addView(topBrand, new LinearLayout.LayoutParams(0, dp(42), 1f));
+        root.addView(topBar, matchWrap());
+
+        // This matches the logo, rings, leaves, and line art used at the top
+        // of the welcome screen, then the same art continues behind the form.
+        FrameLayout artHeader = new FrameLayout(this);
+        FocusWelcomeAnimationView headerArt = new FocusWelcomeAnimationView(this);
+        artHeader.addView(headerArt, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.focuslock_logo);
+        logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(dp(72), dp(72));
+        logoParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+        logoParams.topMargin = dp(36);
+        artHeader.addView(logo, logoParams);
+        TextView brand = text("FocusLock", 21, INK, true);
+        brand.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams brandParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        brandParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+        brandParams.topMargin = dp(124);
+        artHeader.addView(brand, brandParams);
+        root.addView(artHeader, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(182)));
 
         TextView title = text(create ? "Create your account" : "Welcome back", 27, INK, true);
         title.setGravity(Gravity.CENTER);
         title.setLetterSpacing(-.018f);
-        root.addView(title, topMargin(2));
-        TextView copy = text(create
+        root.addView(title, topMargin(4));
+        TextView subtitle = text(create
                 ? "Make a little more room for your attention."
                 : "Your focus plan is ready when you are.", 13, MUTED, false);
-        copy.setGravity(Gravity.CENTER);
-        root.addView(copy, topMargin(6));
+        subtitle.setGravity(Gravity.CENTER);
+        root.addView(subtitle, topMargin(6));
 
         LinearLayout card = column();
         card.setPadding(dp(18), dp(18), dp(18), dp(18));
         card.setBackground(shape(Color.argb(225, 255, 255, 255), BORDER, 26));
-        TextView formTitle = text(create ? "Create your account" : "Sign in to FocusLock", 19, INK, true);
-        card.addView(formTitle);
-        TextView formHint = text(create ? "Your focus plan will be ready in a moment." : "Continue where you left off.", 11, MUTED, false);
-        card.addView(formHint, topMargin(3));
-
-        card.addView(text("EMAIL ADDRESS", 10, GREEN, true), topMargin(18));
+        card.addView(text("EMAIL ADDRESS", 10, GREEN, true));
         email = input("you@example.com", false);
         email.setText(draftEmail);
         card.addView(email, topMargin(6));
@@ -186,7 +281,6 @@ public class AuthActivity extends Activity {
             forgot.setOnClickListener(v -> requestPasswordReset());
             card.addView(forgot);
         }
-
         TextView switchMode = text(create
                 ? "Already a member?  Log in"
                 : "New here?  Create an account", 12, GREEN, true);
@@ -202,23 +296,23 @@ public class AuthActivity extends Activity {
 
         setContentView(scene);
         root.setAlpha(0f);
-        root.setTranslationX(dp(22));
-        root.animate().alpha(1f).translationX(0f).setDuration(330)
+        root.setTranslationY(dp(12));
+        root.animate().alpha(1f).translationY(0f).setDuration(360)
+                .setInterpolator(new DecelerateInterpolator()).start();
+        artHeader.setAlpha(0f);
+        artHeader.setTranslationY(dp(-8));
+        artHeader.animate().alpha(1f).translationY(0f).setDuration(480)
                 .setInterpolator(new DecelerateInterpolator()).start();
         card.setAlpha(0f);
         card.setTranslationY(dp(20));
-        card.animate().alpha(1f).translationY(0f).setStartDelay(90).setDuration(380)
+        card.animate().alpha(1f).translationY(0f).setStartDelay(100).setDuration(420)
                 .setInterpolator(new DecelerateInterpolator()).start();
         startLogoMotion(logo);
-        hero.setAlpha(0f);
-        hero.setTranslationY(dp(12));
-        hero.animate().alpha(1f).translationY(0f).setDuration(460)
-                .setInterpolator(new DecelerateInterpolator()).start();
-        ObjectAnimator ambientBreath = ObjectAnimator.ofFloat(ambient, "alpha", .78f, 1f, .78f);
-        ambientBreath.setDuration(4200);
-        ambientBreath.setRepeatCount(ObjectAnimator.INFINITE);
-        ambientBreath.setInterpolator(new AccelerateDecelerateInterpolator());
-        ambientBreath.start();
+        ObjectAnimator artworkBreath = ObjectAnimator.ofFloat(fullPageArt, "alpha", .76f, 1f, .76f);
+        artworkBreath.setDuration(4300);
+        artworkBreath.setRepeatCount(ObjectAnimator.INFINITE);
+        artworkBreath.setInterpolator(new AccelerateDecelerateInterpolator());
+        artworkBreath.start();
     }
 
     private void authenticate(boolean create) {
