@@ -73,7 +73,7 @@ public final class FocusWelcomeAnimationView extends View {
         drawContourLines(canvas, w, h, t);
 
         float cx = w * .5f;
-        float cy = h * (fullPage ? .17f : .43f);
+        float cy = h * (fullPage ? .17f : .44f);
         line.setStrokeWidth(dp(1.4f));
         for (int i = 0; i < 3; i++) {
             int alpha = 55 - i * 12;
