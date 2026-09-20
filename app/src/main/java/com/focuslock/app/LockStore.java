@@ -75,9 +75,12 @@ public final class LockStore {
 
     public static boolean addUsage(Context context, String pkg, long elapsedMs) {
         if (!isEnabled(context) || !isSelected(context, pkg) || isLocked(context, pkg)) return false;
-        long total = usage(context, pkg) + Math.max(0, Math.min(elapsedMs, 1500));
+        long counted = Math.max(0, Math.min(elapsedMs, 1500));
+        FocusInsights.addScreenTime(context, counted);
+        long total = usage(context, pkg) + counted;
         if (total >= allowance(context)) {
             prefs(context).edit().putLong(usageKey(pkg), 0).putLong(lockedKey(pkg), System.currentTimeMillis() + lockDuration(context)).apply();
+            FocusInsights.recordPause(context, lockDuration(context));
             return true;
         }
         prefs(context).edit().putLong(usageKey(pkg), total).apply();
