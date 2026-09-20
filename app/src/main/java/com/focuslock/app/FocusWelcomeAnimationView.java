@@ -20,15 +20,22 @@ public final class FocusWelcomeAnimationView extends View {
     private final float[] phase = {0f, .8f, 1.7f, 2.6f, 3.4f, 4.1f};
     private boolean running;
     private final boolean fullPage;
+    private final boolean cleanHeader;
 
     public FocusWelcomeAnimationView(Context context) {
-        this(context, false);
+        this(context, false, true);
     }
 
-    /** Full-page mode adds subtle moving elements behind an entire auth page. */
+    /** Full-page mode draws the quiet background behind the complete auth page. */
     public FocusWelcomeAnimationView(Context context, boolean fullPage) {
+        this(context, fullPage, false);
+    }
+
+    /** Header-only artwork keeps the logo area clean and precisely framed. */
+    public FocusWelcomeAnimationView(Context context, boolean fullPage, boolean cleanHeader) {
         super(context);
         this.fullPage = fullPage;
+        this.cleanHeader = cleanHeader;
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         line.setStyle(Paint.Style.STROKE);
         line.setStrokeCap(Paint.Cap.ROUND);
@@ -70,7 +77,7 @@ public final class FocusWelcomeAnimationView extends View {
         fill.setColor(Color.argb(150, 228, 242, 224));
         canvas.drawCircle(w * .10f, h * .66f, dp(60), fill);
 
-        drawContourLines(canvas, w, h, t);
+        if (!cleanHeader) drawContourLines(canvas, w, h, t);
 
         float cx = w * .5f;
         float cy = h * (fullPage ? .17f : .44f);
@@ -82,8 +89,10 @@ public final class FocusWelcomeAnimationView extends View {
             canvas.drawCircle(cx, cy, radius, line);
         }
 
-        if (!fullPage) drawGrowingPath(canvas, w, h, t);
-        for (int i = 0; i < LEAF_COUNT; i++) drawFloatingLeaf(canvas, w, h, i, t);
+        if (!fullPage && !cleanHeader) drawGrowingPath(canvas, w, h, t);
+        if (!cleanHeader) {
+            for (int i = 0; i < LEAF_COUNT; i++) drawFloatingLeaf(canvas, w, h, i, t);
+        }
         if (fullPage) drawPageBreeze(canvas, w, h, t);
 
         if (running) postInvalidateDelayed(32L);
@@ -121,6 +130,17 @@ public final class FocusWelcomeAnimationView extends View {
             path.reset();
             path.moveTo(w + dp(26), h * .47f + d - sway);
             path.cubicTo(w * .90f, h * .46f + d, w * .82f, h * .52f + d, w * .67f, h * .50f + d);
+            canvas.drawPath(path, line);
+            // Long strokes sit behind the account choices. The buttons remain
+            // solid, so these are visible only around their edges.
+            path.reset();
+            path.moveTo(-dp(28), h * .62f + d - sway);
+            path.cubicTo(w * .20f, h * .58f + d, w * .47f, h * .67f + d, w + dp(28), h * .60f + d);
+            canvas.drawPath(path, line);
+            // A second lower-right accent completes the page without clutter.
+            path.reset();
+            path.moveTo(w * .28f, h * .86f + d + sway);
+            path.cubicTo(w * .50f, h * .80f + d, w * .73f, h * .91f + d, w + dp(28), h * .84f + d);
             canvas.drawPath(path, line);
             path.reset();
             path.moveTo(-dp(24), h * .87f + d + sway);
