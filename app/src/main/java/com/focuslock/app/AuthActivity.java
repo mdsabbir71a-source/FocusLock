@@ -137,6 +137,10 @@ public class AuthActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         FrameLayout hero = new FrameLayout(this);
+        // This local artwork shares the logo's exact container, so its rings
+        // always stay centered behind the logo regardless of screen height.
+        hero.addView(new FocusWelcomeAnimationView(this), new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.focuslock_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -242,14 +246,14 @@ public class AuthActivity extends Activity {
         logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
         FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(dp(72), dp(72));
         logoParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        logoParams.topMargin = dp(36);
+        logoParams.topMargin = dp(44);
         artHeader.addView(logo, logoParams);
         TextView brand = text("FocusLock", 21, INK, true);
         brand.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams brandParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         brandParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        brandParams.topMargin = dp(124);
+        brandParams.topMargin = dp(132);
         artHeader.addView(brand, brandParams);
         root.addView(artHeader, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(182)));
