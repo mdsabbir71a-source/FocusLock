@@ -224,14 +224,6 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams brandLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         brandLp.leftMargin = dp(10);
         header.addView(brandBox, brandLp);
-        TextView menu = text("•••", 15, VIOLET, true);
-        menu.setContentDescription("Open menu");
-        menu.setGravity(Gravity.CENTER);
-        menu.setPadding(dp(13), dp(7), dp(13), dp(9));
-        menu.setBackground(shape(Color.WHITE, BORDER, 19));
-        menu.setOnClickListener(v -> showMainMenu());
-        attachPressAnimation(menu);
-        header.addView(menu);
         root.addView(header, matchWrap());
 
         LinearLayout master = column();
@@ -409,9 +401,13 @@ public class MainActivity extends Activity {
         attachPressAnimation(saveButton);
         actionBar.addView(saveButton, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(56)));
+        LinearLayout bottomDock = column();
+        bottomDock.setBackground(shape(Color.rgb(253, 254, 252), BORDER, 0));
+        bottomDock.addView(actionBar);
+        bottomDock.addView(buildBottomNavigation());
         FrameLayout.LayoutParams actionParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
-        screenRoot.addView(actionBar, actionParams);
+        screenRoot.addView(bottomDock, actionParams);
 
         refreshPermissionCards();
         refreshMasterButton();
@@ -426,6 +422,82 @@ public class MainActivity extends Activity {
         startLogoAnimation();
         mainScroll.post(this::resumeGuide);
         return screenRoot;
+    }
+
+    private View buildBottomNavigation() {
+        LinearLayout nav = row();
+        nav.setGravity(Gravity.CENTER);
+        nav.setPadding(dp(10), dp(2), dp(10), dp(10));
+        nav.setBackgroundColor(Color.rgb(253, 254, 252));
+        nav.addView(navButton("⌂", "Home", v -> mainScroll.smoothScrollTo(0, 0)),
+                new LinearLayout.LayoutParams(0, dp(52), 1f));
+        nav.addView(navButton("◷", "Plan", v -> {
+            if (settingsAnchor != null) mainScroll.smoothScrollTo(0, Math.max(0, settingsAnchor.getTop() - dp(12)));
+        }), new LinearLayout.LayoutParams(0, dp(52), 1f));
+        nav.addView(navButton("✦", "Insights", v -> showInsights()),
+                new LinearLayout.LayoutParams(0, dp(52), 1f));
+        nav.addView(navButton("◌", "Account", v -> showAccountDialog()),
+                new LinearLayout.LayoutParams(0, dp(52), 1f));
+        return nav;
+    }
+
+    private View navButton(String icon, String label, View.OnClickListener click) {
+        LinearLayout item = column();
+        item.setGravity(Gravity.CENTER);
+        item.setPadding(dp(4), dp(3), dp(4), dp(3));
+        TextView symbol = text(icon, 17, GREEN, true);
+        symbol.setGravity(Gravity.CENTER);
+        item.addView(symbol, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(25)));
+        TextView copy = text(label, 10, MUTED, true);
+        copy.setGravity(Gravity.CENTER);
+        item.addView(copy, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
+        item.setContentDescription(label);
+        item.setOnClickListener(click);
+        attachPressAnimation(item);
+        return item;
+    }
+
+    private void showInsights() {
+        FocusInsights.Snapshot insight = FocusInsights.snapshot(this);
+        LinearLayout sheet = column();
+        sheet.setPadding(dp(20), dp(18), dp(20), dp(8));
+        sheet.setBackgroundColor(BACKGROUND);
+        sheet.addView(text("Your focus rhythm", 22, INK, true));
+        sheet.addView(text("A gentle view of the boundaries you kept.", 12, MUTED, false), topMargin(4));
+
+        LinearLayout stats = row();
+        stats.setGravity(Gravity.CENTER_VERTICAL);
+        stats.addView(insightCard(String.valueOf(insight.pauses), "pauses taken"),
+                new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        LinearLayout.LayoutParams gap = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        gap.leftMargin = dp(8);
+        stats.addView(insightCard(friendly(insight.focusSavedMs), "time protected"), gap);
+        sheet.addView(stats, topMargin(18));
+
+        LinearLayout change = column();
+        change.setPadding(dp(14), dp(13), dp(14), dp(13));
+        change.setBackground(shape(Color.WHITE, BORDER, 18));
+        change.addView(text("Selected-app screen time", 12, INK, true));
+        change.addView(text(friendly(insight.todayScreenMs) + " today", 20, GREEN, true), topMargin(4));
+        String comparison = insight.previousScreenMs <= 0
+                ? "Your first day is being measured now."
+                : (insight.todayScreenMs <= insight.previousScreenMs
+                    ? friendly(insight.previousScreenMs - insight.todayScreenMs) + " less than your previous day"
+                    : friendly(insight.todayScreenMs - insight.previousScreenMs) + " more than your previous day");
+        change.addView(text(comparison, 11, MUTED, false), topMargin(3));
+        sheet.addView(change, topMargin(10));
+
+        sheet.addView(text("Every pause is a small win. Your numbers update automatically while you use FocusLock.", 11, VIOLET, false), topMargin(14));
+        new AlertDialog.Builder(this).setView(sheet).setPositiveButton("Done", null).show();
+    }
+
+    private View insightCard(String value, String label) {
+        LinearLayout card = column();
+        card.setPadding(dp(13), dp(13), dp(13), dp(13));
+        card.setBackground(shape(SOFT_VIOLET, BORDER, 18));
+        card.addView(text(value, 23, INK, true));
+        card.addView(text(label, 10, MUTED, false), topMargin(2));
+        return card;
     }
 
     private void showMainMenu() {
