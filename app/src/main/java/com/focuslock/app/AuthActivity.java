@@ -119,16 +119,24 @@ public class AuthActivity extends Activity {
         password = null;
         signIn = null;
 
+        // One continuous animated canvas now sits behind the complete welcome
+        // page. The controls remain clear and high-contrast above it.
+        FrameLayout scene = new FrameLayout(this);
+        scene.setBackgroundColor(BACKGROUND);
+        FocusWelcomeAnimationView fullPageArt = new FocusWelcomeAnimationView(this, true);
+        scene.addView(fullPageArt, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         ScrollView scroll = screen();
+        scroll.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout root = column();
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(22), dp(10), dp(22), dp(24));
         scroll.addView(root, matchWrap());
-
-        FrameLayout hero = new FrameLayout(this);
-        hero.addView(new FocusWelcomeAnimationView(this), new FrameLayout.LayoutParams(
+        scene.addView(scroll, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
+        FrameLayout hero = new FrameLayout(this);
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.focuslock_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -158,7 +166,7 @@ public class AuthActivity extends Activity {
         advice = text(ENCOURAGEMENTS[adviceIndex], 12, GREEN, true);
         advice.setGravity(Gravity.CENTER);
         advice.setPadding(dp(15), dp(11), dp(15), dp(11));
-        advice.setBackground(shape(SOFT, BORDER, 18));
+        advice.setBackground(shape(Color.argb(212, 240, 248, 239), BORDER, 18));
         root.addView(advice, topMargin(18));
         adviceHandler.postDelayed(advanceAdvice, 3800L);
 
@@ -167,7 +175,7 @@ public class AuthActivity extends Activity {
         google.setOnClickListener(v -> beginGoogle());
         actions.addView(google);
 
-        signUp = button("Sign up with email   →", Color.WHITE, GREEN, BORDER);
+        signUp = button("Sign up with email   →", Color.argb(238, 255, 255, 255), GREEN, BORDER);
         signUp.setOnClickListener(v -> showEmailScreen(true));
         actions.addView(signUp, topMargin(11));
         root.addView(actions, topMargin(28));
@@ -176,7 +184,7 @@ public class AuthActivity extends Activity {
         root.addView(status, topMargin(12));
         root.addView(legalText(), topMargin(10));
 
-        setContentView(scroll);
+        setContentView(scene);
         animateLanding(root, hero, actions, returning);
         startLogoMotion(logo);
     }
