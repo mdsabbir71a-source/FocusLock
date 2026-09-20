@@ -190,10 +190,19 @@ public class AuthActivity extends Activity {
         signIn = null;
         signUp = null;
 
+        FrameLayout scene = new FrameLayout(this);
+        scene.setBackgroundColor(BACKGROUND);
+        FocusWelcomeAnimationView ambient = new FocusWelcomeAnimationView(this);
+        ambient.setAlpha(.28f);
+        scene.addView(ambient, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         ScrollView scroll = screen();
+        scroll.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout root = column();
-        root.setPadding(dp(22), dp(18), dp(22), dp(28));
+        root.setPadding(dp(22), dp(18), dp(22), dp(34));
         scroll.addView(root, matchWrap());
+        scene.addView(scroll, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         TextView back = text("←   Back", 13, GREEN, true);
         back.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
@@ -261,7 +270,7 @@ public class AuthActivity extends Activity {
         root.addView(status, topMargin(12));
         root.addView(legalText(), topMargin(10));
 
-        setContentView(scroll);
+        setContentView(scene);
         root.setAlpha(0f);
         root.setTranslationX(dp(22));
         root.animate().alpha(1f).translationX(0f).setDuration(330)
@@ -271,6 +280,11 @@ public class AuthActivity extends Activity {
         card.animate().alpha(1f).translationY(0f).setStartDelay(90).setDuration(380)
                 .setInterpolator(new DecelerateInterpolator()).start();
         startLogoMotion(logo);
+        ObjectAnimator ambientBreath = ObjectAnimator.ofFloat(ambient, "alpha", .18f, .34f, .18f);
+        ambientBreath.setDuration(4200);
+        ambientBreath.setRepeatCount(ObjectAnimator.INFINITE);
+        ambientBreath.setInterpolator(new AccelerateDecelerateInterpolator());
+        ambientBreath.start();
     }
 
     private void authenticate(boolean create) {
