@@ -69,7 +69,7 @@ public class AuthActivity extends Activity {
                 advice.setText(ENCOURAGEMENTS[adviceIndex]);
                 advice.setTranslationY(dp(5));
                 advice.animate().alpha(1f).translationY(0f).setDuration(260).start();
-                adviceHandler.postDelayed(this, 3800L);
+                adviceHandler.postDelayed(this, 6500L);
             }).start();
         }
     };
@@ -168,7 +168,7 @@ public class AuthActivity extends Activity {
         advice.setPadding(dp(15), dp(11), dp(15), dp(11));
         advice.setBackground(shape(Color.argb(212, 240, 248, 239), BORDER, 18));
         root.addView(advice, topMargin(18));
-        adviceHandler.postDelayed(advanceAdvice, 3800L);
+        adviceHandler.postDelayed(advanceAdvice, 6500L);
 
         LinearLayout actions = column();
         google = button("G   Continue with Google", BRIGHT_GREEN, Color.WHITE, BRIGHT_GREEN);
@@ -202,8 +202,8 @@ public class AuthActivity extends Activity {
         // experience, rather than stopping at the welcome header.
         FrameLayout scene = new FrameLayout(this);
         scene.setBackgroundColor(BACKGROUND);
-        FocusWelcomeAnimationView fullPageArt = new FocusWelcomeAnimationView(this);
-        fullPageArt.setAlpha(.92f);
+        FocusWelcomeAnimationView fullPageArt = new FocusWelcomeAnimationView(this, true);
+        fullPageArt.setAlpha(.96f);
         scene.addView(fullPageArt, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -263,6 +263,15 @@ public class AuthActivity extends Activity {
                 : "Your focus plan is ready when you are.", 13, MUTED, false);
         subtitle.setGravity(Gravity.CENTER);
         root.addView(subtitle, topMargin(6));
+
+        // The same calm reminder rotates slowly here too, so both account
+        // flows share the approved FocusLock welcome experience.
+        advice = text(ENCOURAGEMENTS[adviceIndex], 12, GREEN, true);
+        advice.setGravity(Gravity.CENTER);
+        advice.setPadding(dp(14), dp(10), dp(14), dp(10));
+        advice.setBackground(shape(Color.argb(212, 240, 248, 239), BORDER, 18));
+        root.addView(advice, topMargin(15));
+        adviceHandler.postDelayed(advanceAdvice, 6500L);
 
         LinearLayout card = column();
         card.setPadding(dp(18), dp(18), dp(18), dp(18));
