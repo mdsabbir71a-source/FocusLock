@@ -204,7 +204,8 @@ public class AuthActivity extends Activity {
         scene.addView(scroll, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        LinearLayout topBar = row();
+        LinearLayout topBar = new LinearLayout(this);
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
         topBar.setGravity(Gravity.CENTER_VERTICAL);
         TextView back = text("←", 24, GREEN, false);
         back.setGravity(Gravity.CENTER);
