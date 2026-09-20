@@ -204,87 +204,98 @@ public class AuthActivity extends Activity {
         scene.addView(scroll, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        TextView back = text("←   Back", 13, GREEN, true);
-        back.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        back.setPadding(0, dp(8), dp(12), dp(8));
+        LinearLayout topBar = row();
+        topBar.setGravity(Gravity.CENTER_VERTICAL);
+        TextView back = text("←", 24, GREEN, false);
+        back.setGravity(Gravity.CENTER);
+        back.setPadding(dp(8), dp(2), dp(14), dp(4));
+        back.setContentDescription("Back");
         back.setOnClickListener(v -> showLanding(true));
-        root.addView(back, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(44)));
+        topBar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(44)));
+        TextView wordmark = text("FOCUSLOCK", 13, GREEN, true);
+        wordmark.setLetterSpacing(.14f);
+        wordmark.setGravity(Gravity.CENTER);
+        topBar.addView(wordmark, new LinearLayout.LayoutParams(0, dp(44), 1f));
+        TextView step = text(create ? "01  /  JOIN" : "01  /  RETURN", 9, MUTED, true);
+        step.setGravity(Gravity.CENTER);
+        topBar.addView(step, new LinearLayout.LayoutParams(dp(74), dp(44)));
+        root.addView(topBar);
 
         FrameLayout hero = new FrameLayout(this);
+        hero.setBackground(shape(Color.argb(225, 240, 248, 239), BORDER, 28));
         FocusWelcomeAnimationView heroAnimation = new FocusWelcomeAnimationView(this);
+        heroAnimation.setAlpha(.62f);
         hero.addView(heroAnimation, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        LinearLayout heroCopy = column();
+        heroCopy.setGravity(Gravity.CENTER_VERTICAL);
+        heroCopy.setPadding(dp(20), dp(17), dp(20), dp(17));
+        TextView eyebrow = text(create ? "MAKE SPACE FOR WHAT MATTERS" : "YOUR FOCUS SPACE IS WAITING", 10, GREEN, true);
+        eyebrow.setLetterSpacing(.08f);
+        heroCopy.addView(eyebrow);
+        TextView headline = text(create ? "Begin with a\ncalmer screen." : "Welcome back\nto your calm.", 27, INK, true);
+        headline.setLineSpacing(0, .94f);
+        heroCopy.addView(headline, topMargin(6));
+        TextView heroHint = text(create ? "A few mindful minutes can change your day." : "Your saved plan is ready when you are.", 11, MUTED, false);
+        heroHint.setLineSpacing(0, 1.13f);
+        heroCopy.addView(heroHint, topMargin(7));
+        hero.addView(heroCopy, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.focuslock_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(dp(70), dp(70),
-                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        logoParams.topMargin = dp(27);
+        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(dp(54), dp(54),
+                Gravity.TOP | Gravity.RIGHT);
+        logoParams.topMargin = dp(16);
+        logoParams.rightMargin = dp(18);
         hero.addView(logo, logoParams);
-        TextView brand = text("FocusLock", 20, INK, true);
-        brand.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams brandParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        brandParams.topMargin = dp(103);
-        hero.addView(brand, brandParams);
-        TextView ritual = text("A calmer screen begins here", 11, GREEN, true);
-        ritual.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams ritualParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        ritualParams.topMargin = dp(130);
-        hero.addView(ritual, ritualParams);
-        root.addView(hero, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(166)));
-
-        TextView title = text(create ? "Create your account" : "Welcome back", 28, INK, true);
-        title.setGravity(Gravity.CENTER);
-        title.setLetterSpacing(-.018f);
-        root.addView(title, topMargin(12));
-        TextView copy = text(create
-                ? "Start building a calmer relationship with your apps."
-                : "Your focus plan is ready when you are.", 13, MUTED, false);
-        copy.setGravity(Gravity.CENTER);
-        copy.setLineSpacing(0, 1.15f);
-        root.addView(copy, topMargin(7));
+        root.addView(hero, topMargin(14), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(204)));
 
         LinearLayout card = column();
-        card.setPadding(dp(18), dp(20), dp(18), dp(20));
-        card.setBackground(shape(Color.argb(248, 255, 255, 255), BORDER, 24));
-        card.addView(text("Email", 11, MUTED, true));
+        card.setPadding(dp(18), dp(18), dp(18), dp(18));
+        card.setBackground(shape(Color.WHITE, BORDER, 26));
+        TextView formTitle = text(create ? "Create your account" : "Sign in to FocusLock", 19, INK, true);
+        card.addView(formTitle);
+        TextView formHint = text(create ? "Your focus plan will be ready in a moment." : "Continue where you left off.", 11, MUTED, false);
+        card.addView(formHint, topMargin(3));
+
+        card.addView(text("EMAIL ADDRESS", 10, GREEN, true), topMargin(18));
         email = input("you@example.com", false);
         email.setText(draftEmail);
-        card.addView(email, topMargin(7));
-        card.addView(text("Password", 11, MUTED, true), topMargin(16));
+        card.addView(email, topMargin(6));
+        card.addView(text("PASSWORD", 10, GREEN, true), topMargin(14));
         password = input("At least 8 characters", true);
         password.setText(draftPassword);
-        card.addView(password, topMargin(7));
+        card.addView(password, topMargin(6));
 
-        Button action = button(create ? "Create account   →" : "Log in   →",
-                GREEN, Color.WHITE, GREEN);
+        Button action = button(create ? "Create my focus space  →" : "Continue to FocusLock  →",
+                BRIGHT_GREEN, Color.WHITE, BRIGHT_GREEN);
         action.setOnClickListener(v -> authenticate(create));
         if (create) signUp = action; else signIn = action;
-        card.addView(action, topMargin(20));
+        card.addView(action, topMargin(18));
 
         if (!create) {
-            Button forgot = button("Forgot password?", Color.WHITE, GREEN, Color.WHITE);
+            TextView forgot = text("Forgot password?", 12, GREEN, true);
+            forgot.setGravity(Gravity.CENTER);
+            forgot.setPadding(dp(8), dp(14), dp(8), dp(4));
             forgot.setOnClickListener(v -> requestPasswordReset());
-            card.addView(forgot, topMargin(5));
+            card.addView(forgot);
         }
 
         TextView switchMode = text(create
-                ? "Already have an account?   Log in"
-                : "New to FocusLock?   Create an account", 12, GREEN, true);
+                ? "Already a member?  Log in"
+                : "New here?  Create an account", 12, GREEN, true);
         switchMode.setGravity(Gravity.CENTER);
-        switchMode.setPadding(dp(8), dp(13), dp(8), dp(8));
+        switchMode.setPadding(dp(8), dp(15), dp(8), dp(3));
         switchMode.setOnClickListener(v -> showEmailScreen(!create));
-        card.addView(switchMode, topMargin(5));
-        root.addView(card, topMargin(24));
+        card.addView(switchMode);
+        root.addView(card, topMargin(16));
 
         status = statusText();
-        root.addView(status, topMargin(12));
-        root.addView(legalText(), topMargin(10));
+        root.addView(status, topMargin(10));
+        root.addView(legalText(), topMargin(6));
 
         setContentView(scene);
         root.setAlpha(0f);
