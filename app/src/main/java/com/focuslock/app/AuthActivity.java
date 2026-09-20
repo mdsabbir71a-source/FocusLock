@@ -126,139 +126,39 @@ public class AuthActivity extends Activity {
         scroll.addView(root, matchWrap());
 
         FrameLayout hero = new FrameLayout(this);
-        hero.addView(new FocusWelcomeAnimationView(this), new FrameLayout.LayoutParams(
+        FocusWelcomeAnimationView heroAnimation = new FocusWelcomeAnimationView(this);
+        hero.addView(heroAnimation, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.focuslock_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(dp(80), dp(80));
+        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(dp(76), dp(76));
         logoParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        logoParams.topMargin = dp(58);
+        logoParams.topMargin = dp(42);
         hero.addView(logo, logoParams);
-
         TextView brand = text("FocusLock", 21, INK, true);
         brand.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams brandParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         brandParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        brandParams.topMargin = dp(146);
+        brandParams.topMargin = dp(130);
         hero.addView(brand, brandParams);
-        root.addView(hero, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(224)));
+        root.addView(hero, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(198)));
 
-        TextView title = text("Take back your attention.", 28, INK, true);
+        TextView title = text(create ? "Create your account" : "Welcome back", 27, INK, true);
         title.setGravity(Gravity.CENTER);
         title.setLetterSpacing(-.018f);
-        root.addView(title);
-
-        TextView subtitle = text("One small boundary at a time.", 13, MUTED, false);
-        subtitle.setGravity(Gravity.CENTER);
-        root.addView(subtitle, topMargin(7));
-
-        advice = text(ENCOURAGEMENTS[adviceIndex], 12, GREEN, true);
-        advice.setGravity(Gravity.CENTER);
-        advice.setPadding(dp(15), dp(11), dp(15), dp(11));
-        advice.setBackground(shape(SOFT, BORDER, 18));
-        root.addView(advice, topMargin(18));
-        adviceHandler.postDelayed(advanceAdvice, 3800L);
-
-        LinearLayout actions = column();
-        google = button("G   Continue with Google", BRIGHT_GREEN, Color.WHITE, BRIGHT_GREEN);
-        google.setOnClickListener(v -> beginGoogle());
-        actions.addView(google);
-
-        signUp = button("Sign up with email   →", Color.WHITE, GREEN, BORDER);
-        signUp.setOnClickListener(v -> showEmailScreen(true));
-        actions.addView(signUp, topMargin(11));
-        root.addView(actions, topMargin(28));
-
-        status = statusText();
-        root.addView(status, topMargin(12));
-        root.addView(legalText(), topMargin(10));
-
-        setContentView(scroll);
-        animateLanding(root, hero, actions, returning);
-        startLogoMotion(logo);
-    }
-
-    private void showEmailScreen(boolean create) {
-        adviceHandler.removeCallbacksAndMessages(null);
-        emailScreenVisible = true;
-        captureDraft();
-        advice = null;
-        google = null;
-        signIn = null;
-        signUp = null;
-
-        FrameLayout scene = new FrameLayout(this);
-        scene.setBackgroundColor(BACKGROUND);
-        FocusWelcomeAnimationView ambient = new FocusWelcomeAnimationView(this);
-        ambient.setAlpha(.50f);
-        scene.addView(ambient, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        ScrollView scroll = screen();
-        scroll.setBackgroundColor(Color.TRANSPARENT);
-        LinearLayout root = column();
-        root.setPadding(dp(22), dp(18), dp(22), dp(34));
-        scroll.addView(root, matchWrap());
-        scene.addView(scroll, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        LinearLayout topBar = new LinearLayout(this);
-        topBar.setOrientation(LinearLayout.HORIZONTAL);
-        topBar.setGravity(Gravity.CENTER_VERTICAL);
-        TextView back = text("←", 24, GREEN, false);
-        back.setGravity(Gravity.CENTER);
-        back.setPadding(dp(8), dp(2), dp(14), dp(4));
-        back.setContentDescription("Back");
-        back.setOnClickListener(v -> showLanding(true));
-        topBar.addView(back, new LinearLayout.LayoutParams(dp(48), dp(44)));
-        TextView wordmark = text("FOCUSLOCK", 13, GREEN, true);
-        wordmark.setLetterSpacing(.14f);
-        wordmark.setGravity(Gravity.CENTER);
-        topBar.addView(wordmark, new LinearLayout.LayoutParams(0, dp(44), 1f));
-        TextView step = text(create ? "01  /  JOIN" : "01  /  RETURN", 9, MUTED, true);
-        step.setGravity(Gravity.CENTER);
-        topBar.addView(step, new LinearLayout.LayoutParams(dp(74), dp(44)));
-        root.addView(topBar);
-
-        FrameLayout hero = new FrameLayout(this);
-        hero.setBackground(shape(Color.argb(225, 240, 248, 239), BORDER, 28));
-        FocusWelcomeAnimationView heroAnimation = new FocusWelcomeAnimationView(this);
-        heroAnimation.setAlpha(.62f);
-        hero.addView(heroAnimation, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        LinearLayout heroCopy = column();
-        heroCopy.setGravity(Gravity.CENTER_VERTICAL);
-        heroCopy.setPadding(dp(20), dp(17), dp(20), dp(17));
-        TextView eyebrow = text(create ? "MAKE SPACE FOR WHAT MATTERS" : "YOUR FOCUS SPACE IS WAITING", 10, GREEN, true);
-        eyebrow.setLetterSpacing(.08f);
-        heroCopy.addView(eyebrow);
-        TextView headline = text(create ? "Begin with a\ncalmer screen." : "Welcome back\nto your calm.", 27, INK, true);
-        headline.setLineSpacing(0, .94f);
-        heroCopy.addView(headline, topMargin(6));
-        TextView heroHint = text(create ? "A few mindful minutes can change your day." : "Your saved plan is ready when you are.", 11, MUTED, false);
-        heroHint.setLineSpacing(0, 1.13f);
-        heroCopy.addView(heroHint, topMargin(7));
-        hero.addView(heroCopy, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        ImageView logo = new ImageView(this);
-        logo.setImageResource(R.drawable.focuslock_logo);
-        logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(dp(54), dp(54),
-                Gravity.TOP | Gravity.RIGHT);
-        logoParams.topMargin = dp(16);
-        logoParams.rightMargin = dp(18);
-        hero.addView(logo, logoParams);
-        LinearLayout.LayoutParams heroLayout = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(204));
-        heroLayout.topMargin = dp(14);
-        root.addView(hero, heroLayout);
+        root.addView(title, topMargin(2));
+        TextView copy = text(create
+                ? "Make a little more room for your attention."
+                : "Your focus plan is ready when you are.", 13, MUTED, false);
+        copy.setGravity(Gravity.CENTER);
+        root.addView(copy, topMargin(6));
 
         LinearLayout card = column();
         card.setPadding(dp(18), dp(18), dp(18), dp(18));
-        card.setBackground(shape(Color.WHITE, BORDER, 26));
+        card.setBackground(shape(Color.argb(225, 255, 255, 255), BORDER, 26));
         TextView formTitle = text(create ? "Create your account" : "Sign in to FocusLock", 19, INK, true);
         card.addView(formTitle);
         TextView formHint = text(create ? "Your focus plan will be ready in a moment." : "Continue where you left off.", 11, MUTED, false);
@@ -294,7 +194,7 @@ public class AuthActivity extends Activity {
         switchMode.setPadding(dp(8), dp(15), dp(8), dp(3));
         switchMode.setOnClickListener(v -> showEmailScreen(!create));
         card.addView(switchMode);
-        root.addView(card, topMargin(16));
+        root.addView(card, topMargin(18));
 
         status = statusText();
         root.addView(status, topMargin(10));
@@ -314,7 +214,7 @@ public class AuthActivity extends Activity {
         hero.setTranslationY(dp(12));
         hero.animate().alpha(1f).translationY(0f).setDuration(460)
                 .setInterpolator(new DecelerateInterpolator()).start();
-        ObjectAnimator ambientBreath = ObjectAnimator.ofFloat(ambient, "alpha", .40f, .62f, .40f);
+        ObjectAnimator ambientBreath = ObjectAnimator.ofFloat(ambient, "alpha", .78f, 1f, .78f);
         ambientBreath.setDuration(4200);
         ambientBreath.setRepeatCount(ObjectAnimator.INFINITE);
         ambientBreath.setInterpolator(new AccelerateDecelerateInterpolator());
