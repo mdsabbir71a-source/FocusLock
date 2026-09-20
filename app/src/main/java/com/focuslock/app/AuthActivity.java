@@ -250,8 +250,10 @@ public class AuthActivity extends Activity {
         logoParams.topMargin = dp(16);
         logoParams.rightMargin = dp(18);
         hero.addView(logo, logoParams);
-        root.addView(hero, topMargin(14), new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(204)));
+        LinearLayout.LayoutParams heroLayout = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(204));
+        heroLayout.topMargin = dp(14);
+        root.addView(hero, heroLayout);
 
         LinearLayout card = column();
         card.setPadding(dp(18), dp(18), dp(18), dp(18));
