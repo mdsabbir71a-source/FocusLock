@@ -193,7 +193,7 @@ public class AuthActivity extends Activity {
         FrameLayout scene = new FrameLayout(this);
         scene.setBackgroundColor(BACKGROUND);
         FocusWelcomeAnimationView ambient = new FocusWelcomeAnimationView(this);
-        ambient.setAlpha(.28f);
+        ambient.setAlpha(.50f);
         scene.addView(ambient, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         ScrollView scroll = screen();
@@ -210,32 +210,48 @@ public class AuthActivity extends Activity {
         back.setOnClickListener(v -> showLanding(true));
         root.addView(back, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(44)));
 
-        LinearLayout brandRow = new LinearLayout(this);
-        brandRow.setOrientation(LinearLayout.HORIZONTAL);
-        brandRow.setGravity(Gravity.CENTER_VERTICAL);
+        FrameLayout hero = new FrameLayout(this);
+        FocusWelcomeAnimationView heroAnimation = new FocusWelcomeAnimationView(this);
+        hero.addView(heroAnimation, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.focuslock_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        brandRow.addView(logo, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(dp(70), dp(70),
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        logoParams.topMargin = dp(27);
+        hero.addView(logo, logoParams);
         TextView brand = text("FocusLock", 20, INK, true);
-        LinearLayout.LayoutParams brandText = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        brandText.leftMargin = dp(10);
-        brandRow.addView(brand, brandText);
-        root.addView(brandRow, topMargin(18));
+        brand.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams brandParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        brandParams.topMargin = dp(103);
+        hero.addView(brand, brandParams);
+        TextView ritual = text("A calmer screen begins here", 11, GREEN, true);
+        ritual.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams ritualParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        ritualParams.topMargin = dp(130);
+        hero.addView(ritual, ritualParams);
+        root.addView(hero, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(166)));
 
         TextView title = text(create ? "Create your account" : "Welcome back", 28, INK, true);
+        title.setGravity(Gravity.CENTER);
         title.setLetterSpacing(-.018f);
-        root.addView(title, topMargin(24));
+        root.addView(title, topMargin(12));
         TextView copy = text(create
                 ? "Start building a calmer relationship with your apps."
                 : "Your focus plan is ready when you are.", 13, MUTED, false);
+        copy.setGravity(Gravity.CENTER);
         copy.setLineSpacing(0, 1.15f);
         root.addView(copy, topMargin(7));
 
         LinearLayout card = column();
         card.setPadding(dp(18), dp(20), dp(18), dp(20));
-        card.setBackground(shape(Color.WHITE, BORDER, 24));
+        card.setBackground(shape(Color.argb(248, 255, 255, 255), BORDER, 24));
         card.addView(text("Email", 11, MUTED, true));
         email = input("you@example.com", false);
         email.setText(draftEmail);
@@ -280,7 +296,11 @@ public class AuthActivity extends Activity {
         card.animate().alpha(1f).translationY(0f).setStartDelay(90).setDuration(380)
                 .setInterpolator(new DecelerateInterpolator()).start();
         startLogoMotion(logo);
-        ObjectAnimator ambientBreath = ObjectAnimator.ofFloat(ambient, "alpha", .18f, .34f, .18f);
+        hero.setAlpha(0f);
+        hero.setTranslationY(dp(12));
+        hero.animate().alpha(1f).translationY(0f).setDuration(460)
+                .setInterpolator(new DecelerateInterpolator()).start();
+        ObjectAnimator ambientBreath = ObjectAnimator.ofFloat(ambient, "alpha", .40f, .62f, .40f);
         ambientBreath.setDuration(4200);
         ambientBreath.setRepeatCount(ObjectAnimator.INFINITE);
         ambientBreath.setInterpolator(new AccelerateDecelerateInterpolator());
