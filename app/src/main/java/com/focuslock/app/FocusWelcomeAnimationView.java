@@ -19,9 +19,16 @@ public final class FocusWelcomeAnimationView extends View {
     private final float[] leafY = {.26f, .69f, .21f, .59f, .44f, .39f};
     private final float[] phase = {0f, .8f, 1.7f, 2.6f, 3.4f, 4.1f};
     private boolean running;
+    private final boolean fullPage;
 
     public FocusWelcomeAnimationView(Context context) {
+        this(context, false);
+    }
+
+    /** Full-page mode adds subtle moving elements behind an entire auth page. */
+    public FocusWelcomeAnimationView(Context context, boolean fullPage) {
         super(context);
+        this.fullPage = fullPage;
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         line.setStyle(Paint.Style.STROKE);
         line.setStrokeCap(Paint.Cap.ROUND);
@@ -77,6 +84,7 @@ public final class FocusWelcomeAnimationView extends View {
 
         drawGrowingPath(canvas, w, h, t);
         for (int i = 0; i < LEAF_COUNT; i++) drawFloatingLeaf(canvas, w, h, i, t);
+        if (fullPage) drawPageBreeze(canvas, w, h, t);
 
         if (running) postInvalidateDelayed(32L);
     }
@@ -92,6 +100,30 @@ public final class FocusWelcomeAnimationView extends View {
             path.cubicTo(w * .22f, y - dp(25), w * .42f, y + dp(28), w * .63f, y - dp(8));
             path.cubicTo(w * .79f, y - dp(31), w * .92f, y + dp(11), w + dp(20), y - dp(18));
             canvas.drawPath(path, line);
+        }
+    }
+
+    private void drawPageBreeze(Canvas canvas, float w, float h, float t) {
+        // Low-contrast elements move through the lower and side areas so the
+        // complete screen feels alive without competing with fields or buttons.
+        for (int i = 0; i < 7; i++) {
+            float travel = (t * (.022f + i * .002f) + i * .17f) % 1f;
+            float x = -dp(18) + travel * (w + dp(36));
+            float y = h * (.30f + (i % 4) * .16f)
+                    + (float) Math.sin(t * .55f + i) * dp(13);
+            drawLeaf(canvas, x, y, dp(4.5f + i % 3), -22 + travel * 38);
+        }
+        fill.setStyle(Paint.Style.FILL);
+        for (int i = 0; i < 4; i++) {
+            float rise = (t * (.018f + i * .002f) + i * .24f) % 1f;
+            float x = w * (.16f + (i % 3) * .29f)
+                    + (float) Math.sin(t * .38f + i) * dp(11);
+            float y = h * (.94f - rise * .56f);
+            fill.setColor(Color.argb(28, 75, 157, 188));
+            canvas.drawCircle(x, y, dp(4 + i), fill);
+            line.setStrokeWidth(dp(.8f));
+            line.setColor(Color.argb(35, 75, 157, 188));
+            canvas.drawCircle(x, y, dp(4 + i), line);
         }
     }
 
