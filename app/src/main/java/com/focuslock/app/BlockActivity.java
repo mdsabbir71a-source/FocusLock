@@ -9,8 +9,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
-import android.graphics.LinearGradient;
-import android.graphics.Shader;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -18,7 +16,6 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.os.SystemClock;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -55,7 +52,7 @@ public class BlockActivity extends Activity {
     private CountDownTimer timer;
     private LinearLayout timerCard;
     private LinearLayout reminderCard;
-    private LeafBreezeView leafBreeze;
+    private LockCardArtView lockCardArt;
     private boolean smoothEntry;
     private boolean nightTheme;
 
@@ -65,7 +62,7 @@ public class BlockActivity extends Activity {
         blockedPackage = getIntent().getStringExtra("blocked_package");
         if (blockedPackage == null || !LockStore.isLocked(this, blockedPackage)) { finish(); return; }
         smoothEntry = getIntent().getBooleanExtra("smooth_entry", false);
-        nightTheme = isNightTheme();
+        nightTheme = false;
         setContentView(buildUi());
         startTimer();
         if (!smoothEntry) startAnimations();
@@ -87,8 +84,8 @@ public class BlockActivity extends Activity {
     }
 
     @Override public boolean dispatchTouchEvent(MotionEvent event) {
-        if (event.getActionMasked() == MotionEvent.ACTION_DOWN && leafBreeze != null) {
-            leafBreeze.gatherAt(event.getX(), event.getY());
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN && lockCardArt != null) {
+            lockCardArt.gatherAt(event.getX(), event.getY());
         }
         return super.dispatchTouchEvent(event);
     }
@@ -176,17 +173,10 @@ public class BlockActivity extends Activity {
 
         FrameLayout scene = new FrameLayout(this);
         scene.setBackgroundColor(nightTheme ? Color.rgb(15, 29, 22) : Color.rgb(247, 245, 239));
-        leafBreeze = new LeafBreezeView(this, nightTheme);
-        leafBreeze.setClickable(false);
-        scene.addView(leafBreeze, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        lockCardArt = new LockCardArtView(this, (blockedPackage.hashCode() & 1) == 0);
+        lockCardArt.setClickable(false);
+        scene.addView(lockCardArt, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         scene.addView(root, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        scene.post(() -> {
-            int[] card = new int[2];
-            int[] overlay = new int[2];
-            timerCard.getLocationInWindow(card);
-            leafBreeze.getLocationInWindow(overlay);
-            leafBreeze.setTimerBounds(card[0] - overlay[0], card[1] - overlay[1], timerCard.getWidth(), timerCard.getHeight());
-        });
         return scene;
     }
 
@@ -240,140 +230,62 @@ public class BlockActivity extends Activity {
 
     }
 
-    private LinearLayout breathStep(String label, String value) {
-        LinearLayout step = new LinearLayout(this);
-        step.setOrientation(LinearLayout.VERTICAL);
-        step.setGravity(Gravity.CENTER);
-        step.setPadding(dp(5), dp(9), dp(5), dp(9));
-        step.setBackground(shape(Color.rgb(249, 250, 251), Color.rgb(243, 244, 246), 14));
-        step.addView(text(label, 9, FAINT, false));
-        step.addView(text(value, 14, INK, true));
-        return step;
-    }
-
-    private static final class GradientTimerText extends TextView {
-        private final Paint shaderPaint = new Paint();
-        GradientTimerText(android.content.Context context) { super(context); }
-        @Override protected void onDraw(Canvas canvas) {
-            shaderPaint.set(getPaint());
-            shaderPaint.setShader(new LinearGradient(0, 0, getWidth(), 0,
-                    Color.WHITE, Color.rgb(188, 235, 200), Shader.TileMode.CLAMP));
-            getPaint().setShader(shaderPaint.getShader());
-            super.onDraw(canvas);
-            getPaint().setShader(null);
-        }
-    }
-
     private static final class ProgressRingView extends View {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private float progress = 1f;
-        ProgressRingView(android.content.Context context) { super(context); }
-        void setProgress(float value) { progress = value; invalidate(); }
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG); private float progress=1f;
+        ProgressRingView(android.content.Context context){super(context);}
+        void setProgress(float value){progress=value;invalidate();}
         @Override protected void onDraw(Canvas canvas) {
-            float centerX = getWidth() / 2f, centerY = getHeight() / 2f;
-            float radius = Math.min(getWidth(), getHeight()) / 2f - dp(getContext(), 12);
-            RectF oval = new RectF(centerX - radius, centerY - radius, centerX + radius, centerY + radius);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setStrokeWidth(dp(getContext(), 13));
-            paint.setColor(Color.argb(32, 52, 116, 76));
-            canvas.drawArc(oval, -90f, 360f, false, paint);
-            paint.setStrokeWidth(dp(getContext(), 22));
-            paint.setColor(Color.argb(30, 79, 172, 104));
-            canvas.drawArc(oval, -90f, 360f * progress, false, paint);
-            paint.setStrokeWidth(dp(getContext(), 7));
-            paint.setShader(new LinearGradient(0, 0, getWidth(), getHeight(),
-                    new int[] { Color.rgb(76, 157, 98), Color.rgb(188, 235, 200), Color.rgb(52, 116, 76) },
-                    null, Shader.TileMode.CLAMP));
-            canvas.drawArc(oval, -90f, 360f * progress, false, paint);
-            paint.setShader(null);
+            float c=getWidth()/2f,r=Math.min(getWidth(),getHeight())/2f-dp(getContext(),6); RectF oval=new RectF(c-r,c-r,c+r,c+r);
+            paint.setStyle(Paint.Style.STROKE); paint.setStrokeCap(Paint.Cap.ROUND); paint.setStrokeWidth(dp(getContext(),1)); paint.setColor(Color.argb(52,47,122,74)); canvas.drawCircle(c,c,r,paint);
+            paint.setStrokeWidth(dp(getContext(),1.6f));paint.setColor(Color.argb(140,47,122,74));canvas.drawArc(oval,-90f,360f*progress,false,paint);
+            paint.setStrokeWidth(dp(getContext(),1));paint.setColor(Color.argb(76,47,122,74));for(int i=0;i<8;i++){double a=Math.PI*2*i/8d;float x1=c+(float)Math.cos(a)*r,y1=c+(float)Math.sin(a)*r,x2=c+(float)Math.cos(a)*(r-dp(getContext(),9)),y2=c+(float)Math.sin(a)*(r-dp(getContext(),9));canvas.drawLine(x1,y1,x2,y2,paint);}
         }
-        private static float dp(android.content.Context context, float value) {
-            return value * context.getResources().getDisplayMetrics().density;
-        }
+        private static float dp(android.content.Context context,float value){return value*context.getResources().getDisplayMetrics().density;}
     }
 
-    /** The two supplied lock-card scenes: Horizon in light mode, Nightfall in dark mode. */
-    private static final class LeafBreezeView extends View {
+    /** Only the two current supplied lock-card illustrations. */
+    private static final class LockCardArtView extends View {
         private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final android.graphics.Path path = new android.graphics.Path();
-        private final boolean night;
+        private final boolean roots;
 
-        LeafBreezeView(android.content.Context context, boolean night) {
+        LockCardArtView(android.content.Context context, boolean roots) {
             super(context);
-            this.night = night;
+            this.roots = roots;
             line.setStyle(Paint.Style.STROKE);
             line.setStrokeCap(Paint.Cap.ROUND);
             line.setStrokeJoin(Paint.Join.ROUND);
+            line.setColor(Color.argb(58, 47, 122, 74));
         }
-
-        void setTimerBounds(float x, float y, float w, float h) { invalidate(); }
-        void gatherAt(float x, float y) { /* artwork remains calm while the card is touched */ }
+        void gatherAt(float x, float y) { /* the supplied designs are intentionally still */ }
 
         @Override protected void onDraw(Canvas canvas) {
             float w = getWidth(), h = getHeight();
             if (w <= 0 || h <= 0) return;
-            float time = SystemClock.uptimeMillis() / 1000f;
-            if (night) drawNightfall(canvas, w, h, time);
-            else drawHorizon(canvas, w, h, time);
-            postInvalidateDelayed(40L);
+            if (roots) drawRoots(canvas, w, h); else drawHorizon(canvas, w, h);
         }
-
-        private void drawHorizon(Canvas canvas, float w, float h, float time) {
-            line.setStrokeWidth(dp(getContext(), 1.1f));
-            line.setColor(Color.argb(64, 47, 122, 74));
-            float drift = (float) Math.sin(time * .25f) * dp(getContext(), 3);
-            path.reset();
-            path.moveTo(-dp(getContext(), 8), dp(getContext(), 28) + drift);
-            path.cubicTo(w*.18f, dp(getContext(), 40), w*.36f, dp(getContext(), 8), w*.50f, dp(getContext(), 26));
-            path.cubicTo(w*.68f, dp(getContext(), 42), w*.82f, dp(getContext(), 33), w+dp(getContext(), 8), dp(getContext(), 12));
-            canvas.drawPath(path, line);
-
-            float sx=w*.73f, sy=h*.125f, pulse=(float)Math.sin(time*1.1f);
-            line.setColor(Color.argb(72, 47, 122, 74));
-            canvas.drawCircle(sx, sy, dp(getContext(), 34)+pulse*dp(getContext(), 2), line);
-            for(int i=0;i<8;i++){ double a=Math.PI*2*i/8d; float r1=dp(getContext(),48),r2=dp(getContext(),60)+pulse*dp(getContext(),2); canvas.drawLine(sx+(float)Math.cos(a)*r1,sy+(float)Math.sin(a)*r1,sx+(float)Math.cos(a)*r2,sy+(float)Math.sin(a)*r2,line); }
-
-            line.setColor(Color.argb(48, 47, 122, 74));
-            line.setStrokeWidth(dp(getContext(), 1.25f));
-            float sway=(float)Math.sin(time*.22f)*dp(getContext(),4);
-            wave(canvas,w,h*.66f+sway,w*.75f);
-            wave(canvas,w,h*.73f-sway,w*.82f);
-            wave(canvas,w,h*.80f+sway,w*.89f);
-            wave(canvas,w,h*.87f-sway,w*.96f);
-            bird(canvas,w*.17f,h*.16f+(float)Math.sin(time*.55f)*dp(getContext(),3),1f);
-            bird(canvas,w*.29f,h*.105f+(float)Math.cos(time*.48f)*dp(getContext(),3),.72f);
+        private void drawRoots(Canvas c, float w, float h) {
+            line.setColor(Color.argb(36, 47, 122, 74)); line.setStrokeWidth(dp(getContext(), 1.3f));
+            float cx=w*.5f;
+            c.drawCircle(cx, 0, dp(getContext(),70), line); c.drawCircle(cx,0,dp(getContext(),92),line); c.drawCircle(cx,0,dp(getContext(),112),line);
+            path.reset(); path.moveTo(cx,0); path.cubicTo(cx+dp(getContext(),2),h*.10f,cx-dp(getContext(),6),h*.15f,cx+dp(getContext(),1),h*.22f); path.cubicTo(cx-dp(getContext(),4),h*.36f,cx,h*.48f,cx+dp(getContext(),1),h*.57f); c.drawPath(path,line);
+            branch(c,cx,h*.12f,w*.26f,h*.27f); branch(c,w*.36f,h*.27f,w*.30f,h*.33f); branch(c,cx,h*.29f,w*.22f,h*.45f); branch(c,w*.36f,h*.45f,w*.30f,h*.51f); branch(c,cx,h*.50f,w*.34f,h*.64f);
+            branch(c,cx,h*.18f,w*.75f,h*.32f); branch(c,w*.85f,h*.32f,w*.91f,h*.38f); branch(c,cx,h*.36f,w*.68f,h*.52f); branch(c,w*.78f,h*.52f,w*.84f,h*.58f); branch(c,cx,h*.55f,w*.63f,h*.67f);
+            line.setColor(Color.argb(52,47,122,74)); line.setStrokeWidth(dp(getContext(),1f));
+            wave(c,w,h*.78f); wave(c,w,h*.85f);
+            leaf(c,w*.16f,h*.09f,1); leaf(c,w*.84f,h*.16f,-1);
         }
-
-        private void drawNightfall(Canvas canvas, float w, float h, float time) {
-            line.setColor(Color.argb(118, 127, 191, 151));
-            line.setStrokeWidth(dp(getContext(), 1f));
-            float[] xs={.15f,.82f,.11f,.90f,.18f,.85f,.13f,.88f};
-            float[] ys={.09f,.15f,.36f,.42f,.62f,.67f,.86f,.91f};
-            for(int i=0;i<xs.length;i++){
-                float x=w*xs[i],y=h*ys[i],s=dp(getContext(),3+(i%2));
-                float glow=.45f+.55f*(float)((Math.sin(time*.9f+i)+1)/2);
-                line.setAlpha((int)(130*glow));
-                canvas.drawLine(x-s,y,x+s,y,line); canvas.drawLine(x,y-s,x,y+s,line);
-            }
-            line.setAlpha(115); line.setStrokeWidth(dp(getContext(),1.3f));
-            float mx=w*.78f,my=h*.10f;
-            path.reset(); path.moveTo(mx,my-dp(getContext(),20)); path.arcTo(mx-dp(getContext(),24),my-dp(getContext(),24),mx+dp(getContext(),24),my+dp(getContext(),24),-72,285,false); canvas.drawPath(path,line);
-            line.setColor(Color.argb(74,127,191,151)); line.setStrokeWidth(dp(getContext(),1.3f));
-            path.reset(); path.moveTo(-dp(getContext(),14),h*.79f); path.cubicTo(w*.12f,h*.70f,w*.22f,h*.67f,w*.33f,h*.72f); path.cubicTo(w*.47f,h*.78f,w*.57f,h*.67f,w*.70f,h*.71f); path.cubicTo(w*.81f,h*.75f,w*.90f,h*.76f,w+dp(getContext(),14),h*.73f); canvas.drawPath(path,line);
-            path.reset(); path.moveTo(-dp(getContext(),14),h*.87f); path.cubicTo(w*.17f,h*.79f,w*.28f,h*.80f,w*.42f,h*.86f); path.cubicTo(w*.58f,h*.91f,w*.72f,h*.80f,w+dp(getContext(),14),h*.86f); canvas.drawPath(path,line);
+        private void drawHorizon(Canvas c, float w, float h) {
+            line.setColor(Color.argb(51,47,122,74)); line.setStrokeWidth(dp(getContext(),1f));
+            path.reset();path.moveTo(-dp(getContext(),6),dp(getContext(),20));path.cubicTo(w*.18f,dp(getContext(),34),w*.33f,dp(getContext(),8),w*.49f,dp(getContext(),22));path.cubicTo(w*.65f,dp(getContext(),36),w*.79f,dp(getContext(),30),w+dp(getContext(),6),dp(getContext(),8));c.drawPath(path,line);
+            float sx=w*.733f,sy=h*.123f;line.setColor(Color.argb(61,47,122,74));line.setStrokeWidth(dp(getContext(),1.1f));c.drawCircle(sx,sy,dp(getContext(),34),line);
+            for(int i=0;i<8;i++){double a=Math.PI*2*i/8d;float r1=dp(getContext(),48),r2=dp(getContext(),60);c.drawLine(sx+(float)Math.cos(a)*r1,sy+(float)Math.sin(a)*r1,sx+(float)Math.cos(a)*r2,sy+(float)Math.sin(a)*r2,line);}
+            line.setColor(Color.argb(41,47,122,74));line.setStrokeWidth(dp(getContext(),1.2f));wave(c,w,h*.66f);wave(c,w,h*.72f);wave(c,w,h*.79f);wave(c,w,h*.86f);bird(c,w*.17f,h*.15f,1);bird(c,w*.31f,h*.095f,.72f);
         }
-
-        private void wave(Canvas c,float w,float y,float controlY) {
-            path.reset(); path.moveTo(-dp(getContext(),14),y);
-            path.cubicTo(w*.15f,controlY,w*.29f,y-dp(getContext(),18),w*.42f,y);
-            path.cubicTo(w*.55f,y+dp(getContext(),20),w*.70f,y-dp(getContext(),14),w+dp(getContext(),14),y+dp(getContext(),12));
-            c.drawPath(path,line);
-        }
-        private void bird(Canvas c,float x,float y,float scale){
-            float s=dp(getContext(),10)*scale; path.reset(); path.moveTo(x-s,y); path.quadTo(x-s*.45f,y-s*.7f,x,y); path.quadTo(x+s*.45f,y-s*.7f,x+s,y); c.drawPath(path,line);
-        }
+        private void branch(Canvas c,float x1,float y1,float x2,float y2){path.reset();path.moveTo(x1,y1);path.cubicTo(x1+(x2-x1)*.42f,y1+(y2-y1)*.22f,x1+(x2-x1)*.75f,y1+(y2-y1)*.72f,x2,y2);c.drawPath(path,line);}
+        private void wave(Canvas c,float w,float y){path.reset();path.moveTo(-dp(getContext(),14),y);path.cubicTo(w*.15f,y-dp(getContext(),28),w*.29f,y-dp(getContext(),26),w*.42f,y);path.cubicTo(w*.56f,y+dp(getContext(),22),w*.72f,y+dp(getContext(),18),w+dp(getContext(),14),y-dp(getContext(),2));c.drawPath(path,line);}
+        private void leaf(Canvas c,float x,float y,int d){float s=dp(getContext(),20);path.reset();path.moveTo(x-d*s,y);path.quadTo(x,y-s*.7f,x+d*s,y-dp(getContext(),2));path.quadTo(x,y+s*.7f,x-d*s,y);c.drawPath(path,line);c.drawLine(x-d*s*.7f,y,x+d*s*.6f,y+dp(getContext(),3),line);}
+        private void bird(Canvas c,float x,float y,float scale){float s=dp(getContext(),10)*scale;path.reset();path.moveTo(x-s,y);path.quadTo(x-s*.45f,y-s*.7f,x,y);path.quadTo(x+s*.45f,y-s*.7f,x+s,y);c.drawPath(path,line);}
         private static float dp(android.content.Context c,float v){return v*c.getResources().getDisplayMetrics().density;}
     }
 
@@ -390,12 +302,6 @@ public class BlockActivity extends Activity {
     private void updateTimer(long remaining) {
         if (timerText != null) timerText.setText(format(remaining));
         if (timerRing != null) timerRing.setProgress(Math.max(0f, Math.min(1f, remaining / (float) timerDurationMs)));
-    }
-
-    private boolean isNightTheme() {
-        int mode = getResources().getConfiguration().uiMode
-                & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
-        return mode == android.content.res.Configuration.UI_MODE_NIGHT_YES;
     }
 
     private String appName() {
@@ -416,13 +322,6 @@ public class BlockActivity extends Activity {
     @Override public void onBackPressed() { goHome(); }
     @Override protected void onDestroy() { visible = false; if (timer != null) timer.cancel(); super.onDestroy(); }
     private TextView text(String value, int size, int color, boolean bold) { TextView v = new TextView(this); v.setText(value); v.setTextSize(size); v.setTextColor(color); if (bold) v.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD); return v; }
-    private GradientDrawable circleTimerShape() {
-        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[] { Color.rgb(9, 13, 18), INK, Color.rgb(17, 31, 25) });
-        d.setShape(GradientDrawable.OVAL);
-        d.setStroke(dp(1), Color.rgb(65, 139, 86));
-        return d;
-    }
     private GradientDrawable shape(int fill, int stroke, int radius) { GradientDrawable d = new GradientDrawable(); d.setColor(fill); d.setCornerRadius(dp(radius)); d.setStroke(dp(1), stroke); return d; }
     private LinearLayout.LayoutParams matchWrap() { return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT); }
     private LinearLayout.LayoutParams weighted() { LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f); p.setMargins(dp(3), 0, dp(3), 0); return p; }
