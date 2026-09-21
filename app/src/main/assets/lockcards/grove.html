@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FocusLock — Lock Card (Grove)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --screen:#F7F5EF;--ink:#132A1C;--ink-soft:#5B6B5F;--green:#1F6B3B;--green-deep:#17532E;--line:#2F7A4A;
+    --page-bg:#E6E3DA;--page-ink:#22312a;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){--page-bg:#141C17;--page-ink:#DDE5DE}
+  }
+  :root[data-theme="dark"]{--page-bg:#141C17;--page-ink:#DDE5DE}
+  *,*::before,*::after{box-sizing:inherit}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+  body{
+    margin:0;min-height:100%;background:var(--page-bg);color:var(--page-ink);
+    font-family:"Schibsted Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;align-items:center;justify-content:center;padding:32px 16px;
+  }
+
+  .phone{
+    width:330px;height:714px;max-width:100%;border-radius:38px;position:relative;overflow:hidden;
+    background:var(--screen);color:var(--ink);
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 18px 40px -18px rgba(19,42,28,.45);
+    display:flex;flex-direction:column;
+  }
+  .art{position:absolute;left:0;right:0;pointer-events:none}
+  .art svg{display:block;width:100%;height:auto}
+  .stroke{fill:none;stroke:var(--line);stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+
+  .body{position:relative;z-index:2;display:flex;flex-direction:column;flex:1;padding:0 24px 24px;align-items:center}
+  .status{display:flex;justify-content:space-between;align-items:center;width:100%;padding:14px 0 0;font-size:12px;font-weight:500;color:var(--ink-soft)}
+  .status i{display:block;width:12px;height:8px;border:1px solid currentColor;border-radius:2px;opacity:.6}
+  .brandline{text-align:center;font-size:12px;font-weight:700;letter-spacing:.14em;margin:18px 0 0;color:var(--green-deep)}
+  .appline{display:flex;align-items:center;gap:7px;margin-top:24px;font-size:14.5px;color:var(--ink-soft)}
+  .appline svg{width:15px;height:15px}
+  h2.headline{font-size:26px;line-height:1.14;font-weight:700;letter-spacing:-.02em;text-align:center;margin:8px 0 0;max-width:14ch}
+  .quote{width:100%;border-radius:22px;padding:20px;text-align:center;font-size:15.5px;font-weight:600;line-height:1.4;border:1.5px solid rgba(31,107,59,.16);background:rgba(255,255,255,.82);color:var(--ink)}
+  .spacer{flex:1}
+  .btn{display:flex;align-items:center;justify-content:center;width:100%;height:54px;border-radius:999px;font-size:15.5px;font-weight:600;font-family:inherit;text-decoration:none;letter-spacing:-.005em;background:rgba(31,107,59,.12);color:var(--green-deep);border:1.5px solid rgba(31,107,59,.3)}
+  .btn:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+  .footer{text-align:center;font-size:11.5px;margin-top:14px;color:var(--ink-soft)}
+  .homebar{width:112px;height:4px;border-radius:99px;margin:14px auto 0;background:rgba(19,42,28,.22)}
+
+  .timer{position:relative;display:flex;align-items:center;justify-content:center}
+  .timer > svg{position:absolute;inset:0;width:100%;height:100%}
+  .t-face{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center}
+  .t-label{font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--ink-soft)}
+  .t-clock{font-family:"Space Mono",monospace;font-weight:700;color:var(--ink);letter-spacing:.01em}
+
+  .t-dial{width:214px;height:214px;margin:18px 0 16px}
+  .t-dial .t-clock{font-size:36px}
+  .t-dial .t-label{margin-bottom:2px}
+
+  @media (max-width:400px){ .phone{height:min(714px,calc(92vw * 2.163))} }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="art" style="top:0">
+    <svg viewBox="0 0 330 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <g class="stroke" opacity=".36" stroke-width="1.3">
+        <path d="M-10 -14c34 44 44 92 34 150"/>
+        <path d="M24 44c22 4 34 18 38 38M24 44c-2 20 4 34 18 44" opacity=".8"/>
+        <path d="M12 96c20 8 28 22 30 42" opacity=".65"/>
+        <path d="M340 -14c-34 44-44 92-34 150"/>
+        <path d="M306 44c-22 4-34 18-38 38M306 44c2 20-4 34-18 44" opacity=".8"/>
+        <path d="M318 96c-20 8-28 22-30 42" opacity=".65"/>
+      </g>
+      <g class="stroke" opacity=".3" stroke-width="1.2">
+        <path d="M74 74c16-14 38-13 47 1-13 15-36 16-47-1zM74 74c13-3 26 0 37 7" opacity=".85"/>
+        <path d="M256 110c-16-14-38-13-47 1 13 15 36 16 47-1zM256 110c-13-3-26 0-37 7" opacity=".85"/>
+        <path d="M158 40c14-12 33-11 41 1-11 13-31 14-41-1zM158 40c11-3 22 0 32 6" opacity=".6"/>
+      </g>
+    </svg>
+  </div>
+  <div class="art" style="bottom:0">
+    <svg viewBox="0 0 330 206" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <g class="stroke" opacity=".3" stroke-width="1.2">
+        <path d="M-14 168c58-10 96-2 134 8M-14 190c70-12 118-2 160 10"/>
+        <path d="M180 178c50-12 96-6 148 10"/>
+      </g>
+      <g class="stroke" opacity=".42" stroke-width="1.3">
+        <path d="M38 202c0-34 7-56 22-72M38 202c-3-28-12-46-28-56M38 202c6-22 18-36 36-41"/>
+        <path d="M92 204c0-26 5-43 17-55M92 204c-2-21-9-35-21-43"/>
+        <path d="M244 204c0-30 6-50 20-64M244 204c-3-25-11-41-25-50"/>
+        <path d="M300 202c0-24 5-40 15-50M300 202c-2-19-8-32-19-39"/>
+      </g>
+      <g class="stroke" opacity=".32" stroke-width="1.3">
+        <path d="M146 204c-14 0-24-7-24-15s10-14 24-14 25 6 25 14-11 15-25 15z"/>
+        <path d="M182 204c-9 0-16-5-16-10s7-9 16-9 16 4 16 9-7 10-16 10z" opacity=".7"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="body">
+    <div class="status"><span>7:48<span style="font-size:10px"> AM</span></span><i></i></div>
+    <p class="brandline">FOCUSLOCK</p>
+    <div class="appline">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      YouTube is paused
+    </div>
+    <h2 class="headline">Take a quiet moment</h2>
+
+    <div class="timer t-dial">
+      <svg viewBox="0 0 214 214" aria-hidden="true">
+        <!-- full tick collar, faint -->
+        <g opacity=".26">
+          <circle class="stroke" cx="107" cy="107" r="98" stroke-width="9"
+                  stroke-dasharray="1.4 8.86" stroke-linecap="butt"/>
+        </g>
+        <!-- progress ring inside the ticks -->
+        <g class="stroke" stroke-width="1.1" opacity=".18"><circle cx="107" cy="107" r="86"/></g>
+        <g class="stroke" stroke-width="2" opacity=".7">
+          <circle cx="107" cy="107" r="86" stroke-dasharray="540.4" stroke-dashoffset="205.4" transform="rotate(-90 107 107)"/>
+        </g>
+        <!-- leaf marker riding the ring -->
+        <g class="stroke" stroke-width="1.3" opacity=".8" transform="translate(48.2 169.8) rotate(-47)">
+          <path d="M0 0c9-8 21-7 26 1-7 9-20 9-26-1z"/>
+          <path d="M0 0c7-2 15 0 21 4" opacity=".7"/>
+        </g>
+      </svg>
+      <div class="t-face">
+        <span class="t-label">UNLOCKS IN</span>
+        <span class="t-clock">09:53</span>
+      </div>
+    </div>
+
+    <div class="quote">A small pause protects a bigger purpose.</div>
+    <div class="spacer"></div>
+    <a class="btn" href="#">Return to home</a>
+    <p class="footer">FocusLock is protecting your time</p>
+    <div class="homebar"></div>
+  </div>
+</div>
+</body>
+</html>
