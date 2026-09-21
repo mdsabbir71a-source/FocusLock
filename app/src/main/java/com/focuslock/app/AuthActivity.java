@@ -42,15 +42,15 @@ import java.util.Map;
 
 /** FocusLock account entry with a simple two-choice welcome and a separate email flow. */
 public class AuthActivity extends Activity {
-    private static final int INK = Color.rgb(17, 24, 39);
-    private static final int MUTED = Color.rgb(107, 114, 128);
-    private static final int GREEN = Color.rgb(39, 91, 59);
+    private static final int INK = Color.rgb(19, 42, 28);
+    private static final int MUTED = Color.rgb(91, 107, 95);
+    private static final int GREEN = Color.rgb(31, 107, 59);
     // A deeper version of the FocusLock green keeps the Google action branded
     // while giving it a calmer, more grounded contrast on the welcome screen.
-    private static final int BRIGHT_GREEN = Color.rgb(35, 112, 64);
-    private static final int BACKGROUND = Color.rgb(248, 251, 246);
-    private static final int SOFT = Color.rgb(240, 248, 239);
-    private static final int BORDER = Color.rgb(220, 233, 220);
+    private static final int BRIGHT_GREEN = Color.rgb(23, 83, 46);
+    private static final int BACKGROUND = Color.rgb(247, 245, 239);
+    private static final int SOFT = Color.rgb(251, 243, 228);
+    private static final int BORDER = Color.rgb(205, 220, 205);
     private static final String CALLBACK = "focuslock://auth/callback";
     private static final String CONSENT_VERSION = "2026-08-18";
     private static final String[] ENCOURAGEMENTS = {
@@ -118,79 +118,55 @@ public class AuthActivity extends Activity {
         email = null;
         password = null;
         signIn = null;
+        advice = null;
 
-        // One continuous animated canvas now sits behind the complete welcome
-        // page. The controls remain clear and high-contrast above it.
         FrameLayout scene = new FrameLayout(this);
         scene.setBackgroundColor(BACKGROUND);
-        FocusWelcomeAnimationView fullPageArt = new FocusWelcomeAnimationView(this, true);
-        scene.addView(fullPageArt, new FrameLayout.LayoutParams(
+        scene.addView(new FocusWelcomeAnimationView(this, true), new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         ScrollView scroll = screen();
         scroll.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout root = column();
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(22), dp(10), dp(22), dp(24));
-        scroll.addView(root, matchWrap());
+        root.setPadding(dp(26), dp(10), dp(26), dp(22));
+        scroll.addView(root, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         scene.addView(scroll, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        FrameLayout hero = new FrameLayout(this);
-        // This local artwork shares the logo's exact container, so its rings
-        // always stay centered behind the logo regardless of screen height.
-        hero.addView(new FocusWelcomeAnimationView(this), new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        ImageView logo = new ImageView(this);
-        logo.setImageResource(R.drawable.focuslock_logo);
-        logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(dp(80), dp(80));
-        logoParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        logoParams.topMargin = dp(58);
-        hero.addView(logo, logoParams);
+        root.addView(horizonWordmark(false), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(150)));
 
-        TextView brand = text("FocusLock", 21, INK, true);
-        brand.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams brandParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        brandParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        brandParams.topMargin = dp(146);
-        hero.addView(brand, brandParams);
-        root.addView(hero, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(224)));
-
-        TextView title = text("Take back your attention.", 28, INK, true);
+        TextView title = text("Take back your attention.", 35, INK, true);
         title.setGravity(Gravity.CENTER);
-        title.setLetterSpacing(-.018f);
+        title.setLetterSpacing(-.035f);
         root.addView(title);
 
-        TextView subtitle = text("One small boundary at a time.", 13, MUTED, false);
+        TextView subtitle = text("One small boundary at a time.\nChoose what gets in, and when.", 15, MUTED, false);
         subtitle.setGravity(Gravity.CENTER);
-        root.addView(subtitle, topMargin(7));
+        subtitle.setLineSpacing(0, 1.25f);
+        root.addView(subtitle, topMargin(10));
 
-        advice = text(ENCOURAGEMENTS[adviceIndex], 12, GREEN, true);
-        advice.setGravity(Gravity.CENTER);
-        advice.setPadding(dp(15), dp(11), dp(15), dp(11));
-        advice.setBackground(shape(Color.argb(212, 240, 248, 239), BORDER, 18));
-        root.addView(advice, topMargin(18));
-        adviceHandler.postDelayed(advanceAdvice, 6500L);
+        View openSpace = new View(this);
+        root.addView(openSpace, new LinearLayout.LayoutParams(1, 0, 1f));
 
         LinearLayout actions = column();
         google = button("G   Continue with Google", BRIGHT_GREEN, Color.WHITE, BRIGHT_GREEN);
         google.setOnClickListener(v -> beginGoogle());
         actions.addView(google);
 
-        signUp = button("Sign up with email   →", Color.argb(238, 255, 255, 255), GREEN, BORDER);
+        signUp = button("Sign up with email", Color.argb(238, 247, 245, 239), INK, Color.argb(82, 31, 107, 59));
         signUp.setOnClickListener(v -> showEmailScreen(true));
         actions.addView(signUp, topMargin(11));
-        root.addView(actions, topMargin(28));
+        root.addView(actions, matchWrap());
 
         status = statusText();
-        root.addView(status, topMargin(12));
-        root.addView(legalText(), topMargin(10));
+        root.addView(status, topMargin(8));
+        root.addView(legalText(), topMargin(8));
 
         setContentView(scene);
-        animateLanding(root, hero, actions, returning);
-        startLogoMotion(logo);
+        animateLanding(root, root, actions, returning);
     }
 
     private void showEmailScreen(boolean create) {
@@ -202,12 +178,9 @@ public class AuthActivity extends Activity {
         signIn = null;
         signUp = null;
 
-        // The same animated FocusLock artwork now runs behind the entire email
-        // experience, rather than stopping at the welcome header.
         FrameLayout scene = new FrameLayout(this);
         scene.setBackgroundColor(BACKGROUND);
         FocusWelcomeAnimationView fullPageArt = new FocusWelcomeAnimationView(this, true);
-        fullPageArt.setAlpha(.96f);
         scene.addView(fullPageArt, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -215,71 +188,27 @@ public class AuthActivity extends Activity {
         scroll.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout root = column();
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(22), dp(12), dp(22), dp(30));
+        root.setPadding(dp(26), dp(8), dp(26), dp(24));
         scroll.addView(root, matchWrap());
         scene.addView(scroll, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        LinearLayout topBar = new LinearLayout(this);
-        topBar.setOrientation(LinearLayout.HORIZONTAL);
-        topBar.setGravity(Gravity.CENTER_VERTICAL);
-        TextView back = text("←", 24, GREEN, false);
-        back.setGravity(Gravity.CENTER);
-        back.setPadding(dp(6), 0, dp(10), dp(2));
-        back.setContentDescription("Back");
-        back.setOnClickListener(v -> showLanding(true));
-        topBar.addView(back, new LinearLayout.LayoutParams(dp(44), dp(42)));
-        TextView topBrand = text("FOCUSLOCK", 12, GREEN, true);
-        topBrand.setLetterSpacing(.13f);
-        topBrand.setGravity(Gravity.CENTER);
-        topBar.addView(topBrand, new LinearLayout.LayoutParams(0, dp(42), 1f));
-        root.addView(topBar, matchWrap());
+        root.addView(horizonWordmark(true), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(136)));
 
-        // This matches the logo, rings, leaves, and line art used at the top
-        // of the welcome screen, then the same art continues behind the form.
-        FrameLayout artHeader = new FrameLayout(this);
-        FocusWelcomeAnimationView headerArt = new FocusWelcomeAnimationView(this);
-        artHeader.addView(headerArt, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        ImageView logo = new ImageView(this);
-        logo.setImageResource(R.drawable.focuslock_logo);
-        logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(dp(72), dp(72));
-        logoParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        logoParams.topMargin = dp(44);
-        artHeader.addView(logo, logoParams);
-        TextView brand = text("FocusLock", 21, INK, true);
-        brand.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams brandParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        brandParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        brandParams.topMargin = dp(132);
-        artHeader.addView(brand, brandParams);
-        root.addView(artHeader, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(182)));
-
-        TextView title = text(create ? "Create your account" : "Welcome back", 27, INK, true);
+        TextView title = text(create ? "Create your account" : "Welcome back", 29, INK, true);
         title.setGravity(Gravity.CENTER);
-        title.setLetterSpacing(-.018f);
-        root.addView(title, topMargin(4));
+        title.setLetterSpacing(-.03f);
+        root.addView(title);
         TextView subtitle = text(create
-                ? "Make a little more room for your attention."
-                : "Your focus plan is ready when you are.", 13, MUTED, false);
+                ? "One small boundary at a time."
+                : "Your focus plan is ready when you are.", 14, MUTED, false);
         subtitle.setGravity(Gravity.CENTER);
-        root.addView(subtitle, topMargin(6));
-
-        // The same calm reminder rotates slowly here too, so both account
-        // flows share the approved FocusLock welcome experience.
-        advice = text(ENCOURAGEMENTS[adviceIndex], 12, GREEN, true);
-        advice.setGravity(Gravity.CENTER);
-        advice.setPadding(dp(14), dp(10), dp(14), dp(10));
-        advice.setBackground(shape(Color.argb(212, 240, 248, 239), BORDER, 18));
-        root.addView(advice, topMargin(15));
-        adviceHandler.postDelayed(advanceAdvice, 6500L);
+        root.addView(subtitle, topMargin(9));
 
         LinearLayout card = column();
         card.setPadding(dp(18), dp(18), dp(18), dp(18));
-        card.setBackground(shape(Color.argb(225, 255, 255, 255), BORDER, 26));
+        card.setBackground(shape(Color.argb(230, 247, 245, 239), Color.argb(65, 31, 107, 59), 24));
         card.addView(text("EMAIL ADDRESS", 10, GREEN, true));
         email = input("you@example.com", false);
         email.setText(draftEmail);
@@ -289,7 +218,7 @@ public class AuthActivity extends Activity {
         password.setText(draftPassword);
         card.addView(password, topMargin(6));
 
-        Button action = button(create ? "Create my focus space  →" : "Continue to FocusLock  →",
+        Button action = button(create ? "Create my focus space" : "Continue to FocusLock",
                 BRIGHT_GREEN, Color.WHITE, BRIGHT_GREEN);
         action.setOnClickListener(v -> authenticate(create));
         if (create) signUp = action; else signIn = action;
@@ -309,7 +238,7 @@ public class AuthActivity extends Activity {
         switchMode.setPadding(dp(8), dp(15), dp(8), dp(3));
         switchMode.setOnClickListener(v -> showEmailScreen(!create));
         card.addView(switchMode);
-        root.addView(card, topMargin(18));
+        root.addView(card, topMargin(25));
 
         status = statusText();
         root.addView(status, topMargin(10));
@@ -320,20 +249,46 @@ public class AuthActivity extends Activity {
         root.setTranslationY(dp(12));
         root.animate().alpha(1f).translationY(0f).setDuration(360)
                 .setInterpolator(new DecelerateInterpolator()).start();
-        artHeader.setAlpha(0f);
-        artHeader.setTranslationY(dp(-8));
-        artHeader.animate().alpha(1f).translationY(0f).setDuration(480)
-                .setInterpolator(new DecelerateInterpolator()).start();
-        card.setAlpha(0f);
-        card.setTranslationY(dp(20));
-        card.animate().alpha(1f).translationY(0f).setStartDelay(100).setDuration(420)
-                .setInterpolator(new DecelerateInterpolator()).start();
-        startLogoMotion(logo);
-        ObjectAnimator artworkBreath = ObjectAnimator.ofFloat(fullPageArt, "alpha", .76f, 1f, .76f);
+        ObjectAnimator artworkBreath = ObjectAnimator.ofFloat(fullPageArt, "alpha", .82f, 1f, .82f);
         artworkBreath.setDuration(4300);
         artworkBreath.setRepeatCount(ObjectAnimator.INFINITE);
         artworkBreath.setInterpolator(new AccelerateDecelerateInterpolator());
         artworkBreath.start();
+    }
+
+    /** Native version of the supplied horizon heading: centered mark and wordmark. */
+    private FrameLayout horizonWordmark(boolean showBack) {
+        FrameLayout header = new FrameLayout(this);
+        header.addView(new FocusWelcomeAnimationView(this), new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        LinearLayout brandRow = new LinearLayout(this);
+        brandRow.setOrientation(LinearLayout.HORIZONTAL);
+        brandRow.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.focuslock_logo);
+        logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        brandRow.addView(logo, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        TextView brand = text("FocusLock", 20, INK, true);
+        brand.setPadding(dp(12), 0, 0, 0);
+        brandRow.addView(brand, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        FrameLayout.LayoutParams rowParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        rowParams.topMargin = dp(36);
+        header.addView(brandRow, rowParams);
+
+        if (showBack) {
+            TextView back = text("←", 24, GREEN, false);
+            back.setGravity(Gravity.CENTER);
+            back.setContentDescription("Back");
+            back.setOnClickListener(v -> showLanding(true));
+            FrameLayout.LayoutParams backParams = new FrameLayout.LayoutParams(dp(44), dp(44), Gravity.TOP | Gravity.START);
+            backParams.topMargin = dp(20);
+            header.addView(back, backParams);
+        }
+        return header;
     }
 
     private void authenticate(boolean create) {
@@ -571,12 +526,12 @@ public class AuthActivity extends Activity {
         field.setHintTextColor(Color.rgb(156, 163, 175));
         field.setSingleLine(true);
         field.setPadding(dp(14), dp(13), dp(14), dp(13));
-        field.setBackground(shape(Color.rgb(249, 251, 248), BORDER, 15));
+        field.setBackground(shape(Color.rgb(251, 250, 246), BORDER, 16));
         field.setInputType(secret
                 ? InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD
                 : InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
         field.setOnFocusChangeListener((view, focused) -> {
-            view.setBackground(shape(Color.rgb(249, 251, 248), focused ? BRIGHT_GREEN : BORDER, 15));
+            view.setBackground(shape(Color.rgb(251, 250, 246), focused ? BRIGHT_GREEN : BORDER, 16));
             view.animate().scaleX(focused ? 1.012f : 1f).scaleY(focused ? 1.012f : 1f)
                     .setDuration(150).start();
         });
@@ -593,8 +548,10 @@ public class AuthActivity extends Activity {
         value.setGravity(Gravity.CENTER);
         value.setMinHeight(0);
         value.setMinimumHeight(0);
-        value.setPadding(dp(14), dp(14), dp(14), dp(14));
-        value.setBackground(shape(background, stroke, 21));
+        value.setPadding(dp(14), dp(15), dp(14), dp(15));
+        value.setMinHeight(dp(56));
+        value.setMinimumHeight(dp(56));
+        value.setBackground(shape(background, stroke, 28));
         value.setStateListAnimator(null);
         value.setOnTouchListener((view, event) -> {
             if (!view.isEnabled()) return false;
