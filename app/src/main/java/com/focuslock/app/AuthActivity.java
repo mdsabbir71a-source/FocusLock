@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -42,15 +43,14 @@ import java.util.Map;
 
 /** FocusLock account entry with a simple two-choice welcome and a separate email flow. */
 public class AuthActivity extends Activity {
-    private static final int INK = Color.rgb(19, 42, 28);
-    private static final int MUTED = Color.rgb(91, 107, 95);
-    private static final int GREEN = Color.rgb(31, 107, 59);
-    // A deeper version of the FocusLock green keeps the Google action branded
-    // while giving it a calmer, more grounded contrast on the welcome screen.
-    private static final int BRIGHT_GREEN = Color.rgb(23, 83, 46);
-    private static final int BACKGROUND = Color.rgb(247, 245, 239);
-    private static final int SOFT = Color.rgb(251, 243, 228);
-    private static final int BORDER = Color.rgb(205, 220, 205);
+    private int INK = Color.rgb(19, 42, 28);
+    private int MUTED = Color.rgb(91, 107, 95);
+    private int GREEN = Color.rgb(31, 107, 59);
+    private int BRIGHT_GREEN = Color.rgb(23, 83, 46);
+    private int BACKGROUND = Color.rgb(247, 245, 239);
+    private int SOFT = Color.rgb(251, 243, 228);
+    private int BORDER = Color.rgb(205, 220, 205);
+    private boolean darkTheme;
     private static final String CALLBACK = "focuslock://auth/callback";
     private static final String CONSENT_VERSION = "2026-08-18";
     private static final String[] ENCOURAGEMENTS = {
@@ -88,8 +88,8 @@ public class AuthActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().setStatusBarColor(BACKGROUND);
-        getWindow().setNavigationBarColor(Color.rgb(254, 254, 252));
+        refreshTheme();
+        applySystemBars();
         showLanding(false);
         handleCallback(getIntent());
         if (getIntent().getData() == null && SecureSessionStore.hasSession(this)) finishAuthentication();
@@ -113,6 +113,8 @@ public class AuthActivity extends Activity {
     }
 
     private void showLanding(boolean returning) {
+        refreshTheme();
+        applySystemBars();
         adviceHandler.removeCallbacksAndMessages(null);
         emailScreenVisible = false;
         email = null;
@@ -156,7 +158,7 @@ public class AuthActivity extends Activity {
         google.setOnClickListener(v -> beginGoogle());
         actions.addView(google);
 
-        signUp = button("Sign up with email", Color.argb(238, 247, 245, 239), INK, Color.argb(82, 31, 107, 59));
+        signUp = button("Sign up with email", darkTheme ? Color.rgb(35, 50, 42) : Color.argb(238, 247, 245, 239), INK, darkTheme ? Color.rgb(65, 160, 92) : Color.argb(82, 31, 107, 59));
         signUp.setOnClickListener(v -> showEmailScreen(true));
         actions.addView(signUp, topMargin(11));
         root.addView(actions, matchWrap());
@@ -170,6 +172,8 @@ public class AuthActivity extends Activity {
     }
 
     private void showEmailScreen(boolean create) {
+        refreshTheme();
+        applySystemBars();
         adviceHandler.removeCallbacksAndMessages(null);
         emailScreenVisible = true;
         captureDraft();
@@ -208,7 +212,7 @@ public class AuthActivity extends Activity {
 
         LinearLayout card = column();
         card.setPadding(dp(18), dp(18), dp(18), dp(18));
-        card.setBackground(shape(Color.argb(230, 247, 245, 239), Color.argb(65, 31, 107, 59), 24));
+        card.setBackground(shape(darkTheme ? Color.argb(238, 31, 45, 37) : Color.argb(230, 247, 245, 239), darkTheme ? Color.argb(115, 100, 201, 121) : Color.argb(65, 31, 107, 59), 24));
         card.addView(text("EMAIL ADDRESS", 10, GREEN, true));
         email = input("you@example.com", false);
         email.setText(draftEmail);
@@ -477,6 +481,39 @@ public class AuthActivity extends Activity {
         status.animate().alpha(1f).translationY(0f).setDuration(180).start();
     }
 
+    /** Applies the supplied horizon palette to the device's light/dark setting. */
+    private void refreshTheme() {
+        int mode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        darkTheme = mode == Configuration.UI_MODE_NIGHT_YES;
+        if (darkTheme) {
+            BACKGROUND = Color.rgb(22, 32, 26);
+            INK = Color.rgb(231, 240, 232);
+            MUTED = Color.rgb(174, 190, 177);
+            GREEN = Color.rgb(101, 205, 123);
+            BRIGHT_GREEN = Color.rgb(31, 107, 59);
+            SOFT = Color.rgb(35, 50, 42);
+            BORDER = Color.rgb(66, 97, 76);
+        } else {
+            BACKGROUND = Color.rgb(247, 245, 239);
+            INK = Color.rgb(19, 42, 28);
+            MUTED = Color.rgb(91, 107, 95);
+            GREEN = Color.rgb(31, 107, 59);
+            BRIGHT_GREEN = Color.rgb(23, 83, 46);
+            SOFT = Color.rgb(251, 243, 228);
+            BORDER = Color.rgb(205, 220, 205);
+        }
+    }
+
+    private void applySystemBars() {
+        getWindow().setStatusBarColor(BACKGROUND);
+        getWindow().setNavigationBarColor(BACKGROUND);
+        int flags = darkTheme ? 0 : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        if (!darkTheme && android.os.Build.VERSION.SDK_INT >= 26) {
+            flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        }
+        getWindow().getDecorView().setSystemUiVisibility(flags);
+    }
+
     private ScrollView screen() {
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -526,15 +563,15 @@ public class AuthActivity extends Activity {
         field.setHint(hint);
         field.setTextSize(14);
         field.setTextColor(INK);
-        field.setHintTextColor(Color.rgb(156, 163, 175));
+        field.setHintTextColor(darkTheme ? Color.rgb(155, 170, 160) : Color.rgb(156, 163, 175));
         field.setSingleLine(true);
         field.setPadding(dp(14), dp(13), dp(14), dp(13));
-        field.setBackground(shape(Color.rgb(251, 250, 246), BORDER, 16));
+        field.setBackground(shape(darkTheme ? Color.rgb(35, 50, 42) : Color.rgb(251, 250, 246), BORDER, 16));
         field.setInputType(secret
                 ? InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD
                 : InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
         field.setOnFocusChangeListener((view, focused) -> {
-            view.setBackground(shape(Color.rgb(251, 250, 246), focused ? BRIGHT_GREEN : BORDER, 16));
+            view.setBackground(shape(darkTheme ? Color.rgb(35, 50, 42) : Color.rgb(251, 250, 246), focused ? BRIGHT_GREEN : BORDER, 16));
             view.animate().scaleX(focused ? 1.012f : 1f).scaleY(focused ? 1.012f : 1f)
                     .setDuration(150).start();
         });
