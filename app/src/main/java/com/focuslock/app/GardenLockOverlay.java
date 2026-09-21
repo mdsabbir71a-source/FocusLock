@@ -46,14 +46,15 @@ public final class GardenLockOverlay {
     private static void showOnMain(Context context, String packageName) {
         appContext = context;
         blockedPackage = packageName;
+        final boolean night = isNightTheme(context);
         if (root != null) { refresh(); return; }
         try {
             windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
             if (windowManager == null) return;
 
             FrameLayout scene = new FrameLayout(context);
-            scene.setBackgroundColor(Color.rgb(246, 250, 246));
-            GardenBreezeView breeze = new GardenBreezeView(context);
+            scene.setBackgroundColor(night ? Color.rgb(15, 29, 22) : Color.rgb(247, 245, 239));
+            GardenBreezeView breeze = new GardenBreezeView(context, night);
             scene.addView(breeze, new FrameLayout.LayoutParams(-1, -1));
 
             LinearLayout content = new LinearLayout(context);
@@ -61,15 +62,15 @@ public final class GardenLockOverlay {
             content.setGravity(Gravity.CENTER_HORIZONTAL);
             content.setPadding(dp(context, 28), dp(context, 25), dp(context, 28), dp(context, 26));
 
-            TextView label = text(context, "FOCUSLOCK", 11, Color.rgb(52, 116, 76), true);
+            TextView label = text(context, "FOCUSLOCK", 11, night ? Color.rgb(232, 180, 92) : Color.rgb(23, 83, 46), true);
             label.setLetterSpacing(.14f); label.setGravity(Gravity.CENTER);
             content.addView(label, match());
 
             View topSpace = new View(context);
             content.addView(topSpace, new LinearLayout.LayoutParams(1, 0, .78f));
-            TextView app = text(context, appName(context, packageName) + " is paused", 14, Color.rgb(107, 114, 128), false);
+            TextView app = text(context, appName(context, packageName) + " is paused", 14, night ? Color.rgb(169, 190, 174) : Color.rgb(91, 107, 95), false);
             app.setGravity(Gravity.CENTER); content.addView(app, match());
-            TextView title = text(context, "Take a quiet moment", 28, Color.rgb(17, 24, 39), true);
+            TextView title = text(context, "Take a quiet moment", 26, night ? Color.rgb(239, 234, 217) : Color.rgb(19, 42, 28), true);
             title.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams titleParams = match(); titleParams.topMargin = dp(context, 12);
             content.addView(title, titleParams);
@@ -79,11 +80,11 @@ public final class GardenLockOverlay {
             LinearLayout timer = new LinearLayout(context);
             timer.setOrientation(LinearLayout.VERTICAL); timer.setGravity(Gravity.CENTER);
             timer.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12));
-            timer.setBackground(timerShape(context));
-            TextView unlocks = text(context, "UNLOCKS IN", 10, Color.rgb(184, 231, 196), true);
+            timer.setBackgroundColor(Color.TRANSPARENT);
+            TextView unlocks = text(context, "UNLOCKS IN", 10, night ? Color.rgb(169, 190, 174) : Color.rgb(91, 107, 95), true);
             unlocks.setLetterSpacing(.12f); unlocks.setGravity(Gravity.CENTER);
             timer.addView(unlocks, match());
-            countdown = text(context, "00:00", 42, Color.WHITE, true);
+            countdown = text(context, "00:00", 38, night ? Color.rgb(239, 234, 217) : Color.rgb(19, 42, 28), true);
             countdown.setGravity(Gravity.CENTER); countdown.setIncludeFontPadding(false);
             LinearLayout.LayoutParams countParams = match(); countParams.topMargin = dp(context, 8);
             timer.addView(countdown, countParams);
@@ -97,16 +98,16 @@ public final class GardenLockOverlay {
             pulseY.setDuration(1_800L); pulseY.setRepeatCount(ObjectAnimator.INFINITE); pulseY.setRepeatMode(ObjectAnimator.REVERSE);
             pulseY.setInterpolator(new AccelerateDecelerateInterpolator()); pulseY.start();
 
-            TextView reminder = text(context, "You chose focus. Let this moment pass.", 16, Color.rgb(17, 24, 39), true);
+            TextView reminder = text(context, "A small pause protects a bigger purpose.", 16, night ? Color.rgb(239, 234, 217) : Color.rgb(19, 42, 28), true);
             reminder.setGravity(Gravity.CENTER); reminder.setPadding(dp(context, 18), dp(context, 18), dp(context, 18), dp(context, 18));
-            reminder.setBackground(shape(context, Color.WHITE, Color.rgb(220, 233, 220), 24));
+            reminder.setBackground(shape(context, night ? Color.rgb(15, 29, 22) : Color.argb(235,255,255,255), night ? Color.rgb(71,97,80) : Color.rgb(205,220,205), 22));
             LinearLayout.LayoutParams reminderParams = match(); reminderParams.topMargin = dp(context, 17);
             content.addView(reminder, reminderParams);
             View lowerSpace = new View(context);
             content.addView(lowerSpace, new LinearLayout.LayoutParams(1, 0, .88f));
             Button home = new Button(context);
-            home.setText("Return to home"); home.setAllCaps(false); home.setTextSize(13); home.setTextColor(Color.rgb(52, 116, 76));
-            home.setBackground(shape(context, Color.rgb(238, 247, 239), Color.rgb(194, 222, 199), 26));
+            home.setText("Return to home"); home.setAllCaps(false); home.setTextSize(13); home.setTextColor(night ? Color.rgb(232,180,92) : Color.rgb(23,83,46));
+            home.setBackground(shape(context, night ? Color.argb(36,232,180,92) : Color.argb(31,107,59,30), night ? Color.argb(95,232,180,92) : Color.argb(76,31,107,59), 28));
             home.setOnClickListener(v -> goHome(context));
             content.addView(home, match());
             scene.addView(content, new FrameLayout.LayoutParams(-1, -1));
@@ -145,6 +146,12 @@ public final class GardenLockOverlay {
         root = null; countdown = null; blockedPackage = null; windowManager = null; appContext = null;
     }
 
+    private static boolean isNightTheme(Context context) {
+        int mode = context.getResources().getConfiguration().uiMode
+                & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+        return mode == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+    }
+
     private static String appName(Context context, String packageName) {
         try { return context.getPackageManager().getApplicationLabel(context.getPackageManager().getApplicationInfo(packageName, 0)).toString(); }
         catch (Exception ignored) { return "Your app"; }
@@ -175,20 +182,34 @@ public final class GardenLockOverlay {
         }
     }
 
+    /** Same Horizon/Nightfall artwork for the overlay fallback. */
     private static final class GardenBreezeView extends View {
-        private static final String[] EMOJIS = { "🍃", "🫧", "🌿", "🌱", "🌸" };
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        GardenBreezeView(Context context) { super(context); }
-        @Override protected void onDraw(Canvas canvas) {
-            long now = SystemClock.uptimeMillis(); float w = getWidth(), h = getHeight();
-            for (int i = 0; i < EMOJIS.length; i++) {
-                float life = ((now % 11_000L) + i * 2_200L) % 11_000L / 11_000f;
-                float x = i % 2 == 0 ? -32 + (w + 64) * life : w + 32 - (w + 64) * life;
-                float y = h * (.16f + i * .15f) + (float) Math.sin(life * 6.28 + i) * 20;
-                paint.setTextSize(dp(getContext(), 22 + i % 3 * 3)); paint.setAlpha((int) (120 * Math.min(1f, Math.min(life / .18f, (1f - life) / .18f))));
-                canvas.drawText(EMOJIS[i], x, y, paint);
-            }
-            postInvalidateDelayed(16);
+        private final android.graphics.Path path = new android.graphics.Path();
+        private final boolean night;
+        GardenBreezeView(Context context, boolean night) {
+            super(context); this.night = night;
+            paint.setStyle(Paint.Style.STROKE); paint.setStrokeCap(Paint.Cap.ROUND); paint.setStrokeJoin(Paint.Join.ROUND);
         }
+        @Override protected void onDraw(Canvas canvas) {
+            float w=getWidth(),h=getHeight(); if(w<=0||h<=0)return;
+            float t=SystemClock.uptimeMillis()/1000f;
+            paint.setStrokeWidth(dp(getContext(), 1.2f));
+            if(night) {
+                paint.setColor(Color.argb(112,127,191,151));
+                float[] xs={.15f,.82f,.11f,.90f,.18f,.85f,.13f,.88f};
+                float[] ys={.09f,.15f,.36f,.42f,.62f,.67f,.86f,.91f};
+                for(int i=0;i<xs.length;i++){float x=w*xs[i],y=h*ys[i],s=dp(getContext(),3+(i%2));float a=.45f+.55f*(float)((Math.sin(t*.9f+i)+1)/2);paint.setAlpha((int)(125*a));canvas.drawLine(x-s,y,x+s,y,paint);canvas.drawLine(x,y-s,x,y+s,paint);}
+                paint.setAlpha(110);float mx=w*.78f,my=h*.10f;path.reset();path.moveTo(mx,my-dp(getContext(),20));path.arcTo(mx-dp(getContext(),24),my-dp(getContext(),24),mx+dp(getContext(),24),my+dp(getContext(),24),-72,285,false);canvas.drawPath(path,paint);
+                paint.setAlpha(72);path.reset();path.moveTo(-dp(getContext(),14),h*.80f);path.cubicTo(w*.15f,h*.70f,w*.29f,h*.70f,w*.42f,h*.77f);path.cubicTo(w*.58f,h*.84f,w*.72f,h*.70f,w+dp(getContext(),14),h*.77f);canvas.drawPath(path,paint);
+            } else {
+                paint.setColor(Color.argb(60,47,122,74));float drift=(float)Math.sin(t*.24f)*dp(getContext(),3);path.reset();path.moveTo(-dp(getContext(),8),dp(getContext(),26)+drift);path.cubicTo(w*.18f,dp(getContext(),39),w*.36f,dp(getContext(),9),w*.5f,dp(getContext(),26));path.cubicTo(w*.68f,dp(getContext(),42),w*.82f,dp(getContext(),33),w+dp(getContext(),8),dp(getContext(),12));canvas.drawPath(path,paint);
+                float sx=w*.73f,sy=h*.125f,p=(float)Math.sin(t*1.1f);paint.setColor(Color.argb(74,47,122,74));canvas.drawCircle(sx,sy,dp(getContext(),34)+p*dp(getContext(),2),paint);
+                paint.setColor(Color.argb(46,47,122,74));path.reset();path.moveTo(-dp(getContext(),14),h*.74f);path.cubicTo(w*.15f,h*.65f,w*.30f,h*.68f,w*.42f,h*.74f);path.cubicTo(w*.56f,h*.81f,w*.72f,h*.68f,w+dp(getContext(),14),h*.76f);canvas.drawPath(path,paint);
+            }
+            postInvalidateDelayed(40L);
+        }
+        private static float dp(Context c,float v){return v*c.getResources().getDisplayMetrics().density;}
     }
+
 }
