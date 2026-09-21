@@ -61,7 +61,7 @@ public final class FocusWelcomeAnimationView extends View {
         float pulse = (float) Math.sin(time * 1.15f);
 
         if (fullPage) {
-            paper.setColor(Color.rgb(247, 245, 239));
+            paper.setColor(isNight() ? Color.rgb(22, 32, 26) : Color.rgb(247, 245, 239));
             canvas.drawRect(0, 0, w, h, paper);
         }
         drawUpperBreeze(canvas, w, h, time);
@@ -73,7 +73,7 @@ public final class FocusWelcomeAnimationView extends View {
         float base = fullPage ? h * .075f : h * .16f;
         float drift = (float) Math.sin(time * .24f) * dp(3);
         line.setStrokeWidth(dp(1));
-        line.setColor(Color.argb(58, 47, 122, 74));
+        line.setColor(brandLine(58));
         for (int i = 0; i < 3; i++) {
             float y = base + dp(i * 19) + drift;
             path.reset();
@@ -90,7 +90,7 @@ public final class FocusWelcomeAnimationView extends View {
 
     private void drawLeafOutline(Canvas canvas, float cx, float cy, float direction) {
         line.setStrokeWidth(dp(1.2f));
-        line.setColor(Color.argb(86, 47, 122, 74));
+        line.setColor(brandLine(86));
         float s = dp(19);
         path.reset();
         path.moveTo(cx - s * direction, cy);
@@ -107,7 +107,7 @@ public final class FocusWelcomeAnimationView extends View {
         float sway = (float) Math.sin(time * .22f) * dp(4);
 
         // Gentle sun and rays in the open right-hand sky.
-        line.setColor(Color.argb(88, 47, 122, 74));
+        line.setColor(brandLine(88));
         line.setStrokeWidth(dp(1.25f));
         float sx = w * .77f + (float) Math.sin(time * .20f) * dp(2);
         float sy = horizon + dp(28) + (float) Math.cos(time * .28f) * dp(2);
@@ -124,7 +124,7 @@ public final class FocusWelcomeAnimationView extends View {
             canvas.drawLine(x1, y1, x2, y2, line);
         }
 
-        line.setColor(Color.argb(108, 47, 122, 74));
+        line.setColor(brandLine(108));
         line.setStrokeWidth(dp(1.45f));
         path.reset();
         path.moveTo(-dp(14), h * .76f + sway);
@@ -139,7 +139,7 @@ public final class FocusWelcomeAnimationView extends View {
         path.cubicTo(w * .84f, h * .79f, w * .93f, h * .80f, w + dp(14), h * .87f);
         canvas.drawPath(path, line);
 
-        line.setColor(Color.argb(50, 47, 122, 74));
+        line.setColor(brandLine(50));
         line.setStrokeWidth(dp(1));
         float birdGlide = (float) Math.sin(time * .46f) * dp(13);
         drawBird(canvas, w * .18f + birdGlide, horizon + dp(15) + (float) Math.sin(time * .70f) * dp(3), 1f);
@@ -169,6 +169,19 @@ public final class FocusWelcomeAnimationView extends View {
         canvas.drawLine(x, y, x + s * .25f, y - s * 1.65f, line);
         canvas.drawLine(x, y, x - s * .78f, y - s * 1.22f, line);
         canvas.drawLine(x, y, x + s * 1.00f, y - s * .92f, line);
+    }
+
+    private boolean isNight() {
+        int mode = getResources().getConfiguration().uiMode
+                & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+        return mode == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    /** Brand-green line art stays crisp and visible in dark mode. */
+    private int brandLine(int alpha) {
+        return isNight()
+                ? Color.argb(alpha, 101, 205, 123)
+                : Color.argb(alpha, 47, 122, 74);
     }
 
     private float dp(float value) {
