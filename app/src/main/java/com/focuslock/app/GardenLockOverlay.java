@@ -11,7 +11,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
@@ -46,15 +45,15 @@ public final class GardenLockOverlay {
     private static void showOnMain(Context context, String packageName) {
         appContext = context;
         blockedPackage = packageName;
-        final boolean night = isNightTheme(context);
+        final boolean roots = (packageName.hashCode() & 1) == 0;
         if (root != null) { refresh(); return; }
         try {
             windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
             if (windowManager == null) return;
 
             FrameLayout scene = new FrameLayout(context);
-            scene.setBackgroundColor(night ? Color.rgb(15, 29, 22) : Color.rgb(247, 245, 239));
-            GardenBreezeView breeze = new GardenBreezeView(context, night);
+            scene.setBackgroundColor(Color.rgb(247, 245, 239));
+            LockCardArtView breeze = new LockCardArtView(context, roots);
             scene.addView(breeze, new FrameLayout.LayoutParams(-1, -1));
 
             LinearLayout content = new LinearLayout(context);
@@ -62,15 +61,15 @@ public final class GardenLockOverlay {
             content.setGravity(Gravity.CENTER_HORIZONTAL);
             content.setPadding(dp(context, 28), dp(context, 25), dp(context, 28), dp(context, 26));
 
-            TextView label = text(context, "FOCUSLOCK", 11, night ? Color.rgb(232, 180, 92) : Color.rgb(23, 83, 46), true);
+            TextView label = text(context, "FOCUSLOCK", 11, Color.rgb(23, 83, 46), true);
             label.setLetterSpacing(.14f); label.setGravity(Gravity.CENTER);
             content.addView(label, match());
 
             View topSpace = new View(context);
             content.addView(topSpace, new LinearLayout.LayoutParams(1, 0, .78f));
-            TextView app = text(context, appName(context, packageName) + " is paused", 14, night ? Color.rgb(169, 190, 174) : Color.rgb(91, 107, 95), false);
+            TextView app = text(context, appName(context, packageName) + " is paused", 14, Color.rgb(91, 107, 95), false);
             app.setGravity(Gravity.CENTER); content.addView(app, match());
-            TextView title = text(context, "Take a quiet moment", 26, night ? Color.rgb(239, 234, 217) : Color.rgb(19, 42, 28), true);
+            TextView title = text(context, "Take a quiet moment", 26, Color.rgb(19, 42, 28), true);
             title.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams titleParams = match(); titleParams.topMargin = dp(context, 12);
             content.addView(title, titleParams);
@@ -81,10 +80,10 @@ public final class GardenLockOverlay {
             timer.setOrientation(LinearLayout.VERTICAL); timer.setGravity(Gravity.CENTER);
             timer.setPadding(dp(context, 12), dp(context, 12), dp(context, 12), dp(context, 12));
             timer.setBackgroundColor(Color.TRANSPARENT);
-            TextView unlocks = text(context, "UNLOCKS IN", 10, night ? Color.rgb(169, 190, 174) : Color.rgb(91, 107, 95), true);
+            TextView unlocks = text(context, "UNLOCKS IN", 10, Color.rgb(91, 107, 95), true);
             unlocks.setLetterSpacing(.12f); unlocks.setGravity(Gravity.CENTER);
             timer.addView(unlocks, match());
-            countdown = text(context, "00:00", 38, night ? Color.rgb(239, 234, 217) : Color.rgb(19, 42, 28), true);
+            countdown = text(context, "00:00", 38, Color.rgb(19, 42, 28), true);
             countdown.setGravity(Gravity.CENTER); countdown.setIncludeFontPadding(false);
             LinearLayout.LayoutParams countParams = match(); countParams.topMargin = dp(context, 8);
             timer.addView(countdown, countParams);
@@ -98,16 +97,16 @@ public final class GardenLockOverlay {
             pulseY.setDuration(1_800L); pulseY.setRepeatCount(ObjectAnimator.INFINITE); pulseY.setRepeatMode(ObjectAnimator.REVERSE);
             pulseY.setInterpolator(new AccelerateDecelerateInterpolator()); pulseY.start();
 
-            TextView reminder = text(context, "A small pause protects a bigger purpose.", 16, night ? Color.rgb(239, 234, 217) : Color.rgb(19, 42, 28), true);
+            TextView reminder = text(context, "A small pause protects a bigger purpose.", 16, Color.rgb(19, 42, 28), true);
             reminder.setGravity(Gravity.CENTER); reminder.setPadding(dp(context, 18), dp(context, 18), dp(context, 18), dp(context, 18));
-            reminder.setBackground(shape(context, night ? Color.rgb(15, 29, 22) : Color.argb(235,255,255,255), night ? Color.rgb(71,97,80) : Color.rgb(205,220,205), 22));
+            reminder.setBackground(shape(context, Color.argb(235,255,255,255), Color.rgb(205,220,205), 22));
             LinearLayout.LayoutParams reminderParams = match(); reminderParams.topMargin = dp(context, 17);
             content.addView(reminder, reminderParams);
             View lowerSpace = new View(context);
             content.addView(lowerSpace, new LinearLayout.LayoutParams(1, 0, .88f));
             Button home = new Button(context);
             home.setText("Return to home"); home.setAllCaps(false); home.setTextSize(13); home.setTextColor(night ? Color.rgb(232,180,92) : Color.rgb(23,83,46));
-            home.setBackground(shape(context, night ? Color.argb(36,232,180,92) : Color.argb(31,107,59,30), night ? Color.argb(95,232,180,92) : Color.argb(76,31,107,59), 28));
+            home.setBackground(shape(context, Color.argb(31,107,59,30), Color.argb(76,31,107,59), 28));
             home.setOnClickListener(v -> goHome(context));
             content.addView(home, match());
             scene.addView(content, new FrameLayout.LayoutParams(-1, -1));
@@ -174,42 +173,20 @@ public final class GardenLockOverlay {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         RingView(Context context) { super(context); }
         @Override protected void onDraw(Canvas canvas) {
-            float c = getWidth() / 2f, r = getWidth() / 2f - dp(getContext(), 14);
-            RectF oval = new RectF(c - r, c - r, c + r, c + r);
-            paint.setStyle(Paint.Style.STROKE); paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setStrokeWidth(dp(getContext(), 13)); paint.setColor(Color.argb(32, 52, 116, 76)); canvas.drawArc(oval, -90, 360, false, paint);
-            paint.setStrokeWidth(dp(getContext(), 7)); paint.setColor(Color.rgb(76, 157, 98)); canvas.drawArc(oval, -90, 360, false, paint);
+            float c=getWidth()/2f,r=getWidth()/2f-dp(getContext(),14); RectF oval=new RectF(c-r,c-r,c+r,c+r);
+            paint.setStyle(Paint.Style.STROKE); paint.setStrokeCap(Paint.Cap.ROUND); paint.setStrokeWidth(dp(getContext(),1)); paint.setColor(Color.argb(52,47,122,74)); canvas.drawCircle(c,c,r,paint);
+            paint.setStrokeWidth(dp(getContext(),1.6f)); paint.setColor(Color.argb(140,47,122,74)); canvas.drawArc(oval,-90,180,false,paint);
         }
     }
 
-    /** Same Horizon/Nightfall artwork for the overlay fallback. */
-    private static final class GardenBreezeView extends View {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final android.graphics.Path path = new android.graphics.Path();
-        private final boolean night;
-        GardenBreezeView(Context context, boolean night) {
-            super(context); this.night = night;
-            paint.setStyle(Paint.Style.STROKE); paint.setStrokeCap(Paint.Cap.ROUND); paint.setStrokeJoin(Paint.Join.ROUND);
-        }
-        @Override protected void onDraw(Canvas canvas) {
-            float w=getWidth(),h=getHeight(); if(w<=0||h<=0)return;
-            float t=SystemClock.uptimeMillis()/1000f;
-            paint.setStrokeWidth(dp(getContext(), 1.2f));
-            if(night) {
-                paint.setColor(Color.argb(112,127,191,151));
-                float[] xs={.15f,.82f,.11f,.90f,.18f,.85f,.13f,.88f};
-                float[] ys={.09f,.15f,.36f,.42f,.62f,.67f,.86f,.91f};
-                for(int i=0;i<xs.length;i++){float x=w*xs[i],y=h*ys[i],s=dp(getContext(),3+(i%2));float a=.45f+.55f*(float)((Math.sin(t*.9f+i)+1)/2);paint.setAlpha((int)(125*a));canvas.drawLine(x-s,y,x+s,y,paint);canvas.drawLine(x,y-s,x,y+s,paint);}
-                paint.setAlpha(110);float mx=w*.78f,my=h*.10f;path.reset();path.moveTo(mx,my-dp(getContext(),20));path.arcTo(mx-dp(getContext(),24),my-dp(getContext(),24),mx+dp(getContext(),24),my+dp(getContext(),24),-72,285,false);canvas.drawPath(path,paint);
-                paint.setAlpha(72);path.reset();path.moveTo(-dp(getContext(),14),h*.80f);path.cubicTo(w*.15f,h*.70f,w*.29f,h*.70f,w*.42f,h*.77f);path.cubicTo(w*.58f,h*.84f,w*.72f,h*.70f,w+dp(getContext(),14),h*.77f);canvas.drawPath(path,paint);
-            } else {
-                paint.setColor(Color.argb(60,47,122,74));float drift=(float)Math.sin(t*.24f)*dp(getContext(),3);path.reset();path.moveTo(-dp(getContext(),8),dp(getContext(),26)+drift);path.cubicTo(w*.18f,dp(getContext(),39),w*.36f,dp(getContext(),9),w*.5f,dp(getContext(),26));path.cubicTo(w*.68f,dp(getContext(),42),w*.82f,dp(getContext(),33),w+dp(getContext(),8),dp(getContext(),12));canvas.drawPath(path,paint);
-                float sx=w*.73f,sy=h*.125f,p=(float)Math.sin(t*1.1f);paint.setColor(Color.argb(74,47,122,74));canvas.drawCircle(sx,sy,dp(getContext(),34)+p*dp(getContext(),2),paint);
-                paint.setColor(Color.argb(46,47,122,74));path.reset();path.moveTo(-dp(getContext(),14),h*.74f);path.cubicTo(w*.15f,h*.65f,w*.30f,h*.68f,w*.42f,h*.74f);path.cubicTo(w*.56f,h*.81f,w*.72f,h*.68f,w+dp(getContext(),14),h*.76f);canvas.drawPath(path,paint);
-            }
-            postInvalidateDelayed(40L);
-        }
-        private static float dp(Context c,float v){return v*c.getResources().getDisplayMetrics().density;}
+    /** Only the supplied Roots and Horizon illustrations; shared by the fallback overlay. */
+    private static final class LockCardArtView extends View {
+        private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG); private final android.graphics.Path path=new android.graphics.Path(); private final boolean roots;
+        LockCardArtView(Context context,boolean roots){super(context);this.roots=roots;paint.setStyle(Paint.Style.STROKE);paint.setStrokeCap(Paint.Cap.ROUND);paint.setStrokeJoin(Paint.Join.ROUND);}
+        @Override protected void onDraw(Canvas c){float w=getWidth(),h=getHeight();if(w<=0||h<=0)return;if(roots)roots(c,w,h);else horizon(c,w,h);}
+        private void roots(Canvas c,float w,float h){paint.setColor(Color.argb(42,47,122,74));paint.setStrokeWidth(dp(getContext(),1.25f));float x=w*.5f;c.drawCircle(x,0,dp(getContext(),70),paint);c.drawCircle(x,0,dp(getContext(),92),paint);c.drawCircle(x,0,dp(getContext(),112),paint);path.reset();path.moveTo(x,0);path.cubicTo(x+2,h*.10f,x-6,h*.16f,x,h*.24f);path.cubicTo(x-4,h*.40f,x,h*.52f,x,h*.58f);c.drawPath(path,paint);branch(c,x,h*.12f,w*.25f,h*.28f);branch(c,x,h*.20f,w*.75f,h*.34f);branch(c,x,h*.35f,w*.23f,h*.48f);branch(c,x,h*.45f,w*.70f,h*.58f);waves(c,w,h*.78f);waves(c,w,h*.85f);}
+        private void horizon(Canvas c,float w,float h){paint.setColor(Color.argb(51,47,122,74));paint.setStrokeWidth(dp(getContext(),1f));path.reset();path.moveTo(-6,20);path.cubicTo(w*.18f,34,w*.33f,8,w*.49f,22);path.cubicTo(w*.65f,36,w*.79f,30,w+6,8);c.drawPath(path,paint);float sx=w*.733f,sy=h*.123f;paint.setColor(Color.argb(61,47,122,74));paint.setStrokeWidth(dp(getContext(),1.1f));c.drawCircle(sx,sy,dp(getContext(),34),paint);for(int i=0;i<8;i++){double a=Math.PI*2*i/8d;float r1=dp(getContext(),48),r2=dp(getContext(),60);c.drawLine(sx+(float)Math.cos(a)*r1,sy+(float)Math.sin(a)*r1,sx+(float)Math.cos(a)*r2,sy+(float)Math.sin(a)*r2,paint);}paint.setColor(Color.argb(41,47,122,74));paint.setStrokeWidth(dp(getContext(),1.2f));waves(c,w,h*.66f);waves(c,w,h*.73f);waves(c,w,h*.80f);waves(c,w,h*.87f);}
+        private void branch(Canvas c,float x1,float y1,float x2,float y2){path.reset();path.moveTo(x1,y1);path.cubicTo(x1+(x2-x1)*.42f,y1+(y2-y1)*.22f,x1+(x2-x1)*.75f,y1+(y2-y1)*.72f,x2,y2);c.drawPath(path,paint);}
+        private void waves(Canvas c,float w,float y){path.reset();path.moveTo(-14,y);path.cubicTo(w*.15f,y-dp(getContext(),28),w*.29f,y-dp(getContext(),26),w*.42f,y);path.cubicTo(w*.56f,y+dp(getContext(),22),w*.72f,y+dp(getContext(),18),w+14,y-2);c.drawPath(path,paint);}
     }
-
 }
