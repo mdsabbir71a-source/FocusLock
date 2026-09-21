@@ -58,13 +58,14 @@ public final class FocusWelcomeAnimationView extends View {
         float h = getHeight();
         if (w <= 0 || h <= 0) return;
         float time = SystemClock.uptimeMillis() / 1000f;
+        float pulse = (float) Math.sin(time * 1.15f);
 
         if (fullPage) {
             paper.setColor(Color.rgb(247, 245, 239));
             canvas.drawRect(0, 0, w, h, paper);
         }
         drawUpperBreeze(canvas, w, h, time);
-        if (fullPage) drawHorizon(canvas, w, h, time);
+        if (fullPage) drawHorizon(canvas, w, h, time, pulse);
         if (running) postInvalidateDelayed(40L);
     }
 
@@ -101,21 +102,25 @@ public final class FocusWelcomeAnimationView extends View {
         canvas.drawLine(cx - s * .70f * direction, cy, cx + s * .66f * direction, cy + s * .25f, line);
     }
 
-    private void drawHorizon(Canvas canvas, float w, float h, float time) {
+    private void drawHorizon(Canvas canvas, float w, float h, float time, float pulse) {
         float horizon = h * .51f;
         float sway = (float) Math.sin(time * .22f) * dp(4);
 
         // Gentle sun and rays in the open right-hand sky.
         line.setColor(Color.argb(88, 47, 122, 74));
         line.setStrokeWidth(dp(1.25f));
-        float sx = w * .77f, sy = horizon + dp(28);
-        canvas.drawCircle(sx, sy, dp(39), line);
+        float sx = w * .77f + (float) Math.sin(time * .20f) * dp(2);
+        float sy = horizon + dp(28) + (float) Math.cos(time * .28f) * dp(2);
+        float sunRadius = dp(39) + pulse * dp(2.2f);
+        canvas.drawCircle(sx, sy, sunRadius, line);
         for (int i = 0; i < 8; i++) {
             double angle = Math.PI * 2 * i / 8d;
-            float x1 = sx + (float) Math.cos(angle) * dp(55);
-            float y1 = sy + (float) Math.sin(angle) * dp(55);
-            float x2 = sx + (float) Math.cos(angle) * dp(67);
-            float y2 = sy + (float) Math.sin(angle) * dp(67);
+            float rayIn = dp(55) + pulse * dp(1.5f);
+            float rayOut = dp(67) + pulse * dp(3.2f);
+            float x1 = sx + (float) Math.cos(angle) * rayIn;
+            float y1 = sy + (float) Math.sin(angle) * rayIn;
+            float x2 = sx + (float) Math.cos(angle) * rayOut;
+            float y2 = sy + (float) Math.sin(angle) * rayOut;
             canvas.drawLine(x1, y1, x2, y2, line);
         }
 
@@ -136,10 +141,18 @@ public final class FocusWelcomeAnimationView extends View {
 
         line.setColor(Color.argb(50, 47, 122, 74));
         line.setStrokeWidth(dp(1));
-        drawBird(canvas, w * .18f, horizon + dp(15), 1f);
-        drawBird(canvas, w * .30f, horizon - dp(25), .72f);
+        float birdGlide = (float) Math.sin(time * .46f) * dp(13);
+        drawBird(canvas, w * .18f + birdGlide, horizon + dp(15) + (float) Math.sin(time * .70f) * dp(3), 1f);
+        drawBird(canvas, w * .30f - birdGlide * .72f, horizon - dp(25) + (float) Math.cos(time * .62f) * dp(3), .72f);
+        float grassWind = (float) Math.sin(time * .78f) * dp(5);
+        canvas.save();
+        canvas.translate(grassWind, 0);
         drawGrass(canvas, w * .14f, h * .98f, 1f);
+        canvas.restore();
+        canvas.save();
+        canvas.translate(-grassWind * .7f, 0);
         drawGrass(canvas, w * .87f, h * .99f, .82f);
+        canvas.restore();
     }
 
     private void drawBird(Canvas canvas, float x, float y, float scale) {
