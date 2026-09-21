@@ -173,7 +173,7 @@ public class BlockActivity extends Activity {
 
         FrameLayout scene = new FrameLayout(this);
         scene.setBackgroundColor(nightTheme ? Color.rgb(15, 29, 22) : Color.rgb(247, 245, 239));
-        lockCardArt = new LockCardArtView(this, (blockedPackage.hashCode() & 1) == 0);
+        lockCardArt = new LockCardArtView(this, chooseTheme());
         lockCardArt.setClickable(false);
         scene.addView(lockCardArt, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         scene.addView(root, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -243,50 +243,45 @@ public class BlockActivity extends Activity {
         private static float dp(android.content.Context context,float value){return value*context.getResources().getDisplayMetrics().density;}
     }
 
-    /** Only the two current supplied lock-card illustrations. */
+    /** The eight supplied lock-card scenes: Dunes, Grove, Horizon, Nightfall, Rainfall, Ridge, Seedling and Tide. */
     private static final class LockCardArtView extends View {
-        private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final android.graphics.Path path = new android.graphics.Path();
-        private final boolean roots;
+        private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG); private final android.graphics.Path q=new android.graphics.Path(); private final int theme;
+        LockCardArtView(android.content.Context c,int theme){super(c);this.theme=theme;p.setStyle(Paint.Style.STROKE);p.setStrokeCap(Paint.Cap.ROUND);p.setStrokeJoin(Paint.Join.ROUND);p.setColor(Color.argb(58,47,122,74));}
+        void gatherAt(float x,float y) { /* artwork remains still during touches */ }
+        @Override protected void onDraw(Canvas c){float w=getWidth(),h=getHeight();if(w<1||h<1)return;switch(theme){case 0:dunes(c,w,h);break;case 1:grove(c,w,h);break;case 2:horizon(c,w,h);break;case 3:nightfall(c,w,h);break;case 4:rain(c,w,h);break;case 5:ridge(c,w,h);break;case 6:seed(c,w,h);break;default:tide(c,w,h);}}
+        private void dunes(Canvas c,float w,float h){topWaves(c,w,h,.11f,3);sprout(c,w*.79f,h*.06f);birds(c,w*.15f,h*.06f);bottomWaves(c,w,h,.77f,3);sprout(c,w*.78f,h*.88f);sprout(c,w*.15f,h*.92f);}
+        private void grove(Canvas c,float w,float h){branch(c,-5,-5,w*.12f,h*.22f);branch(c,w+5,-5,w*.88f,h*.22f);leaf(c,w*.25f,h*.10f);leaf(c,w*.72f,h*.16f);leaf(c,w*.50f,h*.055f);bottomWaves(c,w,h,.78f,2);for(float x:new float[]{.12f,.28f,.74f,.91f})tree(c,w*x,h*.96f);}
+        private void horizon(Canvas c,float w,float h){float x=w*.78f,y=h*.065f;c.drawCircle(x,y,d(27),p);for(int i=0;i<8;i++){double a=Math.PI*2*i/8;float r=d(38);c.drawLine(x+(float)Math.cos(a)*r,y+(float)Math.sin(a)*r,x+(float)Math.cos(a)*(r+d(9)),y+(float)Math.sin(a)*(r+d(9)),p);}topWaves(c,w,h,.15f,2);birds(c,w*.17f,h*.085f);bottomWaves(c,w,h,.74f,3);tree(c,w*.16f,h*.96f);tree(c,w*.86f,h*.98f);}
+        private void nightfall(Canvas c,float w,float h){for(float[] a:new float[][]{{.19f,.05f},{.80f,.10f},{.36f,.16f},{.67f,.04f}})star(c,w*a[0],h*a[1]);leaf(c,w*.60f,h*.08f);topWaves(c,w,h,.18f,2);bottomWaves(c,w,h,.76f,3);tree(c,w*.25f,h*.96f);tree(c,w*.82f,h*.98f);}
+        private void rain(Canvas c,float w,float h){cloud(c,w*.30f,h*.07f);cloud(c,w*.77f,h*.14f);for(int i=0;i<11;i++)drop(c,w*(.12f+i*.075f),h*(.15f+(i%3)*.025f));topWaves(c,w,h,.72f,1);pond(c,w*.29f,h*.89f);pond(c,w*.74f,h*.94f);tree(c,w*.07f,h*.97f);tree(c,w*.94f,h*.97f);}
+        private void ridge(Canvas c,float w,float h){topWaves(c,w,h,.035f,4);birds(c,w*.17f,h*.06f);q.reset();q.moveTo(-d(14),h*.82f);q.lineTo(w*.18f,h*.63f);q.lineTo(w*.30f,h*.73f);q.lineTo(w*.42f,h*.59f);q.lineTo(w*.60f,h*.76f);q.lineTo(w*.73f,h*.67f);q.lineTo(w+d(14),h*.84f);c.drawPath(q,p);topWaves(c,w,h,.93f,1);tree(c,w*.30f,h*.98f);tree(c,w*.81f,h*.98f);}
+        private void seed(Canvas c,float w,float h){q.reset();q.moveTo(-d(6),h*.14f);q.cubicTo(w*.10f,h*.02f,w*.28f,h*.01f,w*.5f,h*.01f);q.cubicTo(w*.72f,h*.01f,w*.90f,h*.02f,w+d(6),h*.14f);c.drawPath(q,p);for(int i=1;i<5;i++)c.drawLine(w*i/5f,h*.02f,w*i/5f,h*.14f,p);c.drawLine(w*.07f,h*.085f,w*.93f,h*.085f,p);c.drawLine(w*.11f,h*.05f,w*.89f,h*.05f,p);sprout(c,w*.29f,h*.09f);sprout(c,w*.71f,h*.07f);birds(c,w*.48f,h*.18f);bottomWaves(c,w,h,.72f,3);sprout(c,w*.12f,h*.87f);sprout(c,w*.87f,h*.91f);}
+        private void tide(Canvas c,float w,float h){topWaves(c,w,h,.06f,3);birds(c,w*.18f,h*.06f);sprout(c,w*.74f,h*.18f);bottomWaves(c,w,h,.70f,4);boat(c,w*.74f,h*.74f);}
+        private void cloud(Canvas c,float x,float y){c.drawCircle(x-d(17),y+d(6),d(13),p);c.drawCircle(x,y,d(20),p);c.drawCircle(x+d(21),y+d(8),d(14),p);c.drawLine(x-d(30),y+d(20),x+d(34),y+d(20),p);}
+        private void drop(Canvas c,float x,float y){c.drawLine(x,y,x-d(6),y+d(18),p);}
+        private void pond(Canvas c,float x,float y){c.drawOval(x-d(48),y-d(10),x+d(48),y+d(10),p);c.drawOval(x-d(28),y-d(6),x+d(28),y+d(6),p);}
+        private void star(Canvas c,float x,float y){float s=d(9);q.reset();q.moveTo(x,y-s);q.lineTo(x+d(3),y-d(3));q.lineTo(x+s,y);q.lineTo(x+d(3),y+d(3));q.lineTo(x,y+s);q.lineTo(x-d(3),y+d(3));q.lineTo(x-s,y);q.lineTo(x-d(3),y-d(3));q.close();c.drawPath(q,p);}
+        private void boat(Canvas c,float x,float y){c.drawLine(x-d(25),y,x+d(25),y,p);c.drawLine(x-d(15),y,x-d(8),y+d(12),p);c.drawLine(x+d(15),y,x+d(8),y+d(12),p);c.drawLine(x,y,x,y-d(32),p);q.reset();q.moveTo(x,y-d(28));q.lineTo(x+d(22),y-d(10));q.lineTo(x,y-d(10));q.close();c.drawPath(q,p);}
+        private void tree(Canvas c,float x,float y){c.drawLine(x,y,x,y-d(38),p);c.drawLine(x,y-d(24),x-d(15),y-d(42),p);c.drawLine(x,y-d(19),x+d(15),y-d(34),p);}
+        private void sprout(Canvas c,float x,float y){c.drawLine(x,y,x,y+d(25),p);leaf(c,x-d(7),y+d(3));leaf(c,x+d(7),y+d(9));}
+        private void leaf(Canvas c,float x,float y){float s=d(16);q.reset();q.moveTo(x-s,y);q.quadTo(x,y-s*.65f,x+s,y);q.quadTo(x,y+s*.65f,x-s,y);c.drawPath(q,p);}
+        private void birds(Canvas c,float x,float y){bird(c,x,y,1);bird(c,x+d(42),y-d(18),.75f);}
+        private void bird(Canvas c,float x,float y,float sc){float s=d(10)*sc;q.reset();q.moveTo(x-s,y);q.quadTo(x-s*.45f,y-s*.7f,x,y);q.quadTo(x+s*.45f,y-s*.7f,x+s,y);c.drawPath(q,p);}
+        private void branch(Canvas c,float x1,float y1,float x2,float y2){q.reset();q.moveTo(x1,y1);q.cubicTo(x1+(x2-x1)*.4f,y1+(y2-y1)*.25f,x1+(x2-x1)*.75f,y1+(y2-y1)*.72f,x2,y2);c.drawPath(q,p);}
+        private void topWaves(Canvas c,float w,float h,float start,int n){for(int i=0;i<n;i++)wave(c,w,h*(start+i*.05f));}
+        private void bottomWaves(Canvas c,float w,float h,float start,int n){for(int i=0;i<n;i++)wave(c,w,h*(start+i*.07f));}
+        private void wave(Canvas c,float w,float y){q.reset();q.moveTo(-d(14),y);q.cubicTo(w*.15f,y-d(22),w*.29f,y-d(19),w*.42f,y);q.cubicTo(w*.56f,y+d(18),w*.72f,y+d(14),w+d(14),y-d(2));c.drawPath(q,p);}
+        private float d(float v){return v*getResources().getDisplayMetrics().density;}
+    }
 
-        LockCardArtView(android.content.Context context, boolean roots) {
-            super(context);
-            this.roots = roots;
-            line.setStyle(Paint.Style.STROKE);
-            line.setStrokeCap(Paint.Cap.ROUND);
-            line.setStrokeJoin(Paint.Join.ROUND);
-            line.setColor(Color.argb(58, 47, 122, 74));
-        }
-        void gatherAt(float x, float y) { /* the supplied designs are intentionally still */ }
-
-        @Override protected void onDraw(Canvas canvas) {
-            float w = getWidth(), h = getHeight();
-            if (w <= 0 || h <= 0) return;
-            if (roots) drawRoots(canvas, w, h); else drawHorizon(canvas, w, h);
-        }
-        private void drawRoots(Canvas c, float w, float h) {
-            line.setColor(Color.argb(36, 47, 122, 74)); line.setStrokeWidth(dp(getContext(), 1.3f));
-            float cx=w*.5f;
-            c.drawCircle(cx, 0, dp(getContext(),70), line); c.drawCircle(cx,0,dp(getContext(),92),line); c.drawCircle(cx,0,dp(getContext(),112),line);
-            path.reset(); path.moveTo(cx,0); path.cubicTo(cx+dp(getContext(),2),h*.10f,cx-dp(getContext(),6),h*.15f,cx+dp(getContext(),1),h*.22f); path.cubicTo(cx-dp(getContext(),4),h*.36f,cx,h*.48f,cx+dp(getContext(),1),h*.57f); c.drawPath(path,line);
-            branch(c,cx,h*.12f,w*.26f,h*.27f); branch(c,w*.36f,h*.27f,w*.30f,h*.33f); branch(c,cx,h*.29f,w*.22f,h*.45f); branch(c,w*.36f,h*.45f,w*.30f,h*.51f); branch(c,cx,h*.50f,w*.34f,h*.64f);
-            branch(c,cx,h*.18f,w*.75f,h*.32f); branch(c,w*.85f,h*.32f,w*.91f,h*.38f); branch(c,cx,h*.36f,w*.68f,h*.52f); branch(c,w*.78f,h*.52f,w*.84f,h*.58f); branch(c,cx,h*.55f,w*.63f,h*.67f);
-            line.setColor(Color.argb(52,47,122,74)); line.setStrokeWidth(dp(getContext(),1f));
-            wave(c,w,h*.78f); wave(c,w,h*.85f);
-            leaf(c,w*.16f,h*.09f,1); leaf(c,w*.84f,h*.16f,-1);
-        }
-        private void drawHorizon(Canvas c, float w, float h) {
-            line.setColor(Color.argb(51,47,122,74)); line.setStrokeWidth(dp(getContext(),1f));
-            path.reset();path.moveTo(-dp(getContext(),6),dp(getContext(),20));path.cubicTo(w*.18f,dp(getContext(),34),w*.33f,dp(getContext(),8),w*.49f,dp(getContext(),22));path.cubicTo(w*.65f,dp(getContext(),36),w*.79f,dp(getContext(),30),w+dp(getContext(),6),dp(getContext(),8));c.drawPath(path,line);
-            float sx=w*.733f,sy=h*.123f;line.setColor(Color.argb(61,47,122,74));line.setStrokeWidth(dp(getContext(),1.1f));c.drawCircle(sx,sy,dp(getContext(),34),line);
-            for(int i=0;i<8;i++){double a=Math.PI*2*i/8d;float r1=dp(getContext(),48),r2=dp(getContext(),60);c.drawLine(sx+(float)Math.cos(a)*r1,sy+(float)Math.sin(a)*r1,sx+(float)Math.cos(a)*r2,sy+(float)Math.sin(a)*r2,line);}
-            line.setColor(Color.argb(41,47,122,74));line.setStrokeWidth(dp(getContext(),1.2f));wave(c,w,h*.66f);wave(c,w,h*.72f);wave(c,w,h*.79f);wave(c,w,h*.86f);bird(c,w*.17f,h*.15f,1);bird(c,w*.31f,h*.095f,.72f);
-        }
-        private void branch(Canvas c,float x1,float y1,float x2,float y2){path.reset();path.moveTo(x1,y1);path.cubicTo(x1+(x2-x1)*.42f,y1+(y2-y1)*.22f,x1+(x2-x1)*.75f,y1+(y2-y1)*.72f,x2,y2);c.drawPath(path,line);}
-        private void wave(Canvas c,float w,float y){path.reset();path.moveTo(-dp(getContext(),14),y);path.cubicTo(w*.15f,y-dp(getContext(),28),w*.29f,y-dp(getContext(),26),w*.42f,y);path.cubicTo(w*.56f,y+dp(getContext(),22),w*.72f,y+dp(getContext(),18),w+dp(getContext(),14),y-dp(getContext(),2));c.drawPath(path,line);}
-        private void leaf(Canvas c,float x,float y,int d){float s=dp(getContext(),20);path.reset();path.moveTo(x-d*s,y);path.quadTo(x,y-s*.7f,x+d*s,y-dp(getContext(),2));path.quadTo(x,y+s*.7f,x-d*s,y);c.drawPath(path,line);c.drawLine(x-d*s*.7f,y,x+d*s*.6f,y+dp(getContext(),3),line);}
-        private void bird(Canvas c,float x,float y,float scale){float s=dp(getContext(),10)*scale;path.reset();path.moveTo(x-s,y);path.quadTo(x-s*.45f,y-s*.7f,x,y);path.quadTo(x+s*.45f,y-s*.7f,x+s,y);c.drawPath(path,line);}
-        private static float dp(android.content.Context c,float v){return v*c.getResources().getDisplayMetrics().density;}
+    private int chooseTheme() {
+        long session = LockStore.lockedUntil(this, blockedPackage);
+        android.content.SharedPreferences p = getSharedPreferences("focuslock_lock_card_themes", MODE_PRIVATE);
+        String key = "card:" + blockedPackage;
+        if (p.getLong(key + ":session", Long.MIN_VALUE) == session) return p.getInt(key + ":theme", 0);
+        int next = (p.getInt("last_theme", -1) + 1) % 8;
+        p.edit().putLong(key + ":session", session).putInt(key + ":theme", next).putInt("last_theme", next).apply();
+        return next;
     }
 
     private void startTimer() {
