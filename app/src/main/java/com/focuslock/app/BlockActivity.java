@@ -57,6 +57,7 @@ public class BlockActivity extends Activity {
     private LinearLayout reminderCard;
     private LeafBreezeView leafBreeze;
     private boolean smoothEntry;
+    private boolean nightTheme;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -64,6 +65,7 @@ public class BlockActivity extends Activity {
         blockedPackage = getIntent().getStringExtra("blocked_package");
         if (blockedPackage == null || !LockStore.isLocked(this, blockedPackage)) { finish(); return; }
         smoothEntry = getIntent().getBooleanExtra("smooth_entry", false);
+        nightTheme = isNightTheme();
         setContentView(buildUi());
         startTimer();
         if (!smoothEntry) startAnimations();
@@ -102,7 +104,7 @@ public class BlockActivity extends Activity {
             root.animate().alpha(1f).setDuration(450).start();
         }
 
-        TextView top = text("FOCUSLOCK", 11, VIOLET, true);
+        TextView top = text("FOCUSLOCK", 11, nightTheme ? Color.rgb(232, 180, 92) : Color.rgb(23, 83, 46), true);
         top.setLetterSpacing(.14f);
         top.setGravity(Gravity.CENTER);
         root.addView(top, matchWrap());
@@ -110,11 +112,11 @@ public class BlockActivity extends Activity {
         Space upper = new Space(this);
         root.addView(upper, new LinearLayout.LayoutParams(1, 0, .9f));
 
-        TextView status = text(appName() + " is paused", 14, MUTED, false);
+        TextView status = text(appName() + " is paused", 14, nightTheme ? Color.rgb(169, 190, 174) : Color.rgb(91, 107, 95), false);
         status.setGravity(Gravity.CENTER);
         root.addView(status, matchWrap());
 
-        TextView title = text("Take a quiet moment", 28, INK, true);
+        TextView title = text("Take a quiet moment", 26, nightTheme ? Color.rgb(239, 234, 217) : Color.rgb(19, 42, 28), true);
         title.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams titleLp = matchWrap(); titleLp.topMargin = dp(12);
         root.addView(title, titleLp);
@@ -128,15 +130,12 @@ public class BlockActivity extends Activity {
         timerCard.setOrientation(LinearLayout.VERTICAL);
         timerCard.setGravity(Gravity.CENTER);
         timerCard.setPadding(dp(16), dp(16), dp(16), dp(16));
-        timerCard.setBackground(circleTimerShape());
-        TextView timerLabel = text("UNLOCKS IN", 10, Color.rgb(184, 231, 196), true);
+        timerCard.setBackgroundColor(Color.TRANSPARENT);
+        TextView timerLabel = text("UNLOCKS IN", 10, nightTheme ? Color.rgb(169, 190, 174) : Color.rgb(91, 107, 95), true);
         timerLabel.setLetterSpacing(.12f);
         timerLabel.setGravity(Gravity.CENTER);
         timerCard.addView(timerLabel, matchWrap());
-        timerText = new GradientTimerText(this);
-        timerText.setText("00:00");
-        timerText.setTextSize(42);
-        timerText.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
+        timerText = text("00:00", 38, nightTheme ? Color.rgb(239, 234, 217) : Color.rgb(19, 42, 28), true);
         timerText.setGravity(Gravity.CENTER);
         timerText.setIncludeFontPadding(false);
         LinearLayout.LayoutParams timerValueLp = matchWrap(); timerValueLp.topMargin = dp(8);
@@ -149,9 +148,9 @@ public class BlockActivity extends Activity {
         reminderCard = new LinearLayout(this);
         reminderCard.setOrientation(LinearLayout.VERTICAL);
         reminderCard.setPadding(dp(20), dp(18), dp(20), dp(18));
-        reminderCard.setBackground(shape(Color.WHITE, Color.rgb(220, 233, 220), 24));
+        reminderCard.setBackground(shape(nightTheme ? Color.rgb(15, 29, 22) : Color.argb(235, 255, 255, 255), nightTheme ? Color.rgb(71, 97, 80) : Color.rgb(205, 220, 205), 22));
         String[] reminders = RemoteConfigStore.reminders(this, REMINDERS);
-        TextView quote = text(reminders[LockStore.nextReminderIndex(this, reminders.length)], 16, INK, true);
+        TextView quote = text(reminders[LockStore.nextReminderIndex(this, reminders.length)], 16, nightTheme ? Color.rgb(239, 234, 217) : Color.rgb(19, 42, 28), true);
         quote.setGravity(Gravity.CENTER);
         quote.setLineSpacing(0, 1.24f);
         LinearLayout.LayoutParams quoteLp = matchWrap();
@@ -165,19 +164,19 @@ public class BlockActivity extends Activity {
         home.setText("Return to home");
         home.setAllCaps(false);
         home.setTextSize(13);
-        home.setTextColor(VIOLET);
+        home.setTextColor(nightTheme ? Color.rgb(232, 180, 92) : Color.rgb(23, 83, 46));
         home.setPadding(dp(16), dp(13), dp(16), dp(13));
-        home.setBackground(shape(Color.rgb(238, 247, 239), Color.rgb(194, 222, 199), 26));
+        home.setBackground(shape(nightTheme ? Color.argb(36, 232, 180, 92) : Color.argb(31, 107, 59, 30), nightTheme ? Color.argb(95, 232, 180, 92) : Color.argb(76, 31, 107, 59), 28));
         home.setOnClickListener(v -> goHome());
         root.addView(home, matchWrap());
-        TextView active = text("FocusLock is protecting your time", 10, FAINT, false);
+        TextView active = text("FocusLock is protecting your time", 10, nightTheme ? Color.rgb(143, 166, 151) : Color.rgb(91, 107, 95), false);
         active.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams activeLp = matchWrap(); activeLp.topMargin = dp(10);
         root.addView(active, activeLp);
 
         FrameLayout scene = new FrameLayout(this);
-        scene.setBackgroundColor(Color.rgb(246, 250, 246));
-        leafBreeze = new LeafBreezeView(this);
+        scene.setBackgroundColor(nightTheme ? Color.rgb(15, 29, 22) : Color.rgb(247, 245, 239));
+        leafBreeze = new LeafBreezeView(this, nightTheme);
         leafBreeze.setClickable(false);
         scene.addView(leafBreeze, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         scene.addView(root, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -294,127 +293,88 @@ public class BlockActivity extends Activity {
         }
     }
 
+    /** The two supplied lock-card scenes: Horizon in light mode, Nightfall in dark mode. */
     private static final class LeafBreezeView extends View {
-        private static final int COUNT = 5;
-        private static final long LIFETIME_MS = 11000L;
-        private static final long STAGGER_MS = 2200L;
-        private static final String[] NATURE = { "🌱", "🌿", "☘️", "🍀", "🍁", "🍂", "🍃", "🌾", "🥬", "🌵", "🌳", "🌲", "🌴", "🌸", "🌺", "🌷", "🌹", "🌻", "🌼", "💐", "🥀", "🍄", "🌰", "🌞", "🌙", "⭐", "🫧", "💧", "✨", "💨" };
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint ripplePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final float[] x = new float[COUNT];
-        private final float[] y = new float[COUNT];
-        private final long[] bornAt = new long[COUNT];
-        private float cardW, cardH;
-        private float gatherX, gatherY;
-        private float touchEmojiX, touchEmojiY;
-        private long gatherUntil;
-        private long rippleStarted;
-        private long touchEmojiUntil;
-        private long lastFrame;
+        private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Path path = new android.graphics.Path();
+        private final boolean night;
 
-        LeafBreezeView(android.content.Context context) {
+        LeafBreezeView(android.content.Context context, boolean night) {
             super(context);
-            paint.setTypeface(android.graphics.Typeface.DEFAULT);
-            ripplePaint.setStyle(Paint.Style.STROKE);
-            ripplePaint.setStrokeWidth(dp(context, 2));
+            this.night = night;
+            line.setStyle(Paint.Style.STROKE);
+            line.setStrokeCap(Paint.Cap.ROUND);
+            line.setStrokeJoin(Paint.Join.ROUND);
         }
 
-        void setTimerBounds(float x, float y, float w, float h) {
-            cardW = w; cardH = h;
-            long now = SystemClock.uptimeMillis();
-            for (int i = 0; i < COUNT; i++) {
-                bornAt[i] = now - i * STAGGER_MS;
-                float[] target = breezeTarget(i, lifeProgress(i, now));
-                this.x[i] = target[0];
-                this.y[i] = target[1];
-            }
-            invalidate();
-        }
-
-        void gatherAt(float x, float y) {
-            gatherX = x; gatherY = y;
-            long now = SystemClock.uptimeMillis();
-            gatherUntil = now + 700L;
-            rippleStarted = now;
-            touchEmojiX = x; touchEmojiY = y;
-            touchEmojiUntil = now + 900L;
-            invalidate();
-        }
+        void setTimerBounds(float x, float y, float w, float h) { invalidate(); }
+        void gatherAt(float x, float y) { /* artwork remains calm while the card is touched */ }
 
         @Override protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            if (cardW == 0f || cardH == 0f) return;
-            long now = SystemClock.uptimeMillis();
-            float dt = lastFrame == 0 ? .016f : Math.min(.05f, (now - lastFrame) / 1000f);
-            lastFrame = now;
-            boolean gathering = now < gatherUntil;
-            for (int i = 0; i < COUNT; i++) {
-                if (now - bornAt[i] >= LIFETIME_MS) {
-                    bornAt[i] = now;
-                    float[] start = breezeTarget(i, 0f);
-                    x[i] = start[0]; y[i] = start[1];
-                }
-                float life = lifeProgress(i, now);
-                float targetX;
-                float targetY;
-                if (gathering) {
-                    float spreadX = (i % 3 - 1f) * dp(getContext(), 15);
-                    float spreadY = (i / 3 - .5f) * dp(getContext(), 15);
-                    targetX = gatherX + spreadX;
-                    targetY = gatherY + spreadY;
-                } else {
-                    float[] target = breezeTarget(i, life);
-                    targetX = target[0];
-                    targetY = target[1];
-                }
-                float pull = gathering ? .14f : .060f;
-                x[i] += (targetX - x[i]) * pull;
-                y[i] += (targetY - y[i]) * pull;
-                float fade = Math.min(1f, Math.min(life / .18f, (1f - life) / .18f));
-                paint.setAlpha((int) (fade * (125 + (i % 3) * 30)));
-                paint.setTextSize(dp(getContext(), 20 + (i % 4) * 3));
-                int emojiIndex = Math.floorMod((int) (bornAt[i] / STAGGER_MS) + i * 5, NATURE.length);
-                String emoji = i == 0 ? "🫧" : NATURE[emojiIndex];
-                canvas.drawText(emoji, x[i], y[i], paint);
-            }
-            long rippleAge = now - rippleStarted;
-            if (rippleAge >= 0 && rippleAge < 800L) {
-                float fraction = rippleAge / 800f;
-                ripplePaint.setColor(Color.rgb(83, 156, 103));
-                ripplePaint.setAlpha((int) ((1f - fraction) * 105));
-                canvas.drawCircle(gatherX, gatherY, dp(getContext(), 18 + 120 * fraction), ripplePaint);
-                ripplePaint.setAlpha((int) ((1f - fraction) * 55));
-                canvas.drawCircle(gatherX, gatherY, dp(getContext(), 6 + 76 * fraction), ripplePaint);
-            }
-            if (now < touchEmojiUntil) {
-                float fraction = 1f - (touchEmojiUntil - now) / 900f;
-                paint.setAlpha((int) ((1f - fraction) * 255));
-                paint.setTextSize(dp(getContext(), 25 + 7 * fraction));
-                int touchIndex = Math.floorMod((int) (rippleStarted / STAGGER_MS), NATURE.length);
-                canvas.drawText(NATURE[touchIndex], touchEmojiX - dp(getContext(), 12), touchEmojiY + dp(getContext(), 8) - dp(getContext(), 14 * fraction), paint);
-            }
-            postInvalidateDelayed(16);
-        }
-
-        private float lifeProgress(int i, long now) {
-            return Math.max(0f, Math.min(1f, (now - bornAt[i]) / (float) LIFETIME_MS));
-        }
-
-        private float[] breezeTarget(int i, float life) {
             float w = getWidth(), h = getHeight();
-            float wave = (float) Math.sin(life * Math.PI * 2f + i * 1.37f) * dp(getContext(), 18);
-            switch (i % 5) {
-                case 0: return new float[] { -dp(getContext(), 30) + (w + dp(getContext(), 60)) * life, h * .20f + wave };
-                case 1: return new float[] { w + dp(getContext(), 30) - (w + dp(getContext(), 60)) * life, h * .35f - wave };
-                case 2: return new float[] { -dp(getContext(), 32) + (w + dp(getContext(), 52)) * life, h * .78f - h * .58f * life + wave };
-                case 3: return new float[] { w + dp(getContext(), 32) - (w + dp(getContext(), 52)) * life, h * .72f - h * .55f * life - wave };
-                default: return new float[] { w * .50f + (life - .5f) * w * .65f, -dp(getContext(), 28) + (h + dp(getContext(), 56)) * life + wave };
-            }
+            if (w <= 0 || h <= 0) return;
+            float time = SystemClock.uptimeMillis() / 1000f;
+            if (night) drawNightfall(canvas, w, h, time);
+            else drawHorizon(canvas, w, h, time);
+            postInvalidateDelayed(40L);
         }
 
-        private static float dp(android.content.Context context, float value) {
-            return value * context.getResources().getDisplayMetrics().density;
+        private void drawHorizon(Canvas canvas, float w, float h, float time) {
+            line.setStrokeWidth(dp(getContext(), 1.1f));
+            line.setColor(Color.argb(64, 47, 122, 74));
+            float drift = (float) Math.sin(time * .25f) * dp(getContext(), 3);
+            path.reset();
+            path.moveTo(-dp(getContext(), 8), dp(getContext(), 28) + drift);
+            path.cubicTo(w*.18f, dp(getContext(), 40), w*.36f, dp(getContext(), 8), w*.50f, dp(getContext(), 26));
+            path.cubicTo(w*.68f, dp(getContext(), 42), w*.82f, dp(getContext(), 33), w+dp(getContext(), 8), dp(getContext(), 12));
+            canvas.drawPath(path, line);
+
+            float sx=w*.73f, sy=h*.125f, pulse=(float)Math.sin(time*1.1f);
+            line.setColor(Color.argb(72, 47, 122, 74));
+            canvas.drawCircle(sx, sy, dp(getContext(), 34)+pulse*dp(getContext(), 2), line);
+            for(int i=0;i<8;i++){ double a=Math.PI*2*i/8d; float r1=dp(getContext(),48),r2=dp(getContext(),60)+pulse*dp(getContext(),2); canvas.drawLine(sx+(float)Math.cos(a)*r1,sy+(float)Math.sin(a)*r1,sx+(float)Math.cos(a)*r2,sy+(float)Math.sin(a)*r2,line); }
+
+            line.setColor(Color.argb(48, 47, 122, 74));
+            line.setStrokeWidth(dp(getContext(), 1.25f));
+            float sway=(float)Math.sin(time*.22f)*dp(getContext(),4);
+            wave(canvas,w,h*.66f+sway,w*.75f);
+            wave(canvas,w,h*.73f-sway,w*.82f);
+            wave(canvas,w,h*.80f+sway,w*.89f);
+            wave(canvas,w,h*.87f-sway,w*.96f);
+            bird(canvas,w*.17f,h*.16f+(float)Math.sin(time*.55f)*dp(getContext(),3),1f);
+            bird(canvas,w*.29f,h*.105f+(float)Math.cos(time*.48f)*dp(getContext(),3),.72f);
         }
+
+        private void drawNightfall(Canvas canvas, float w, float h, float time) {
+            line.setColor(Color.argb(118, 127, 191, 151));
+            line.setStrokeWidth(dp(getContext(), 1f));
+            float[] xs={.15f,.82f,.11f,.90f,.18f,.85f,.13f,.88f};
+            float[] ys={.09f,.15f,.36f,.42f,.62f,.67f,.86f,.91f};
+            for(int i=0;i<xs.length;i++){
+                float x=w*xs[i],y=h*ys[i],s=dp(getContext(),3+(i%2));
+                float glow=.45f+.55f*(float)((Math.sin(time*.9f+i)+1)/2);
+                line.setAlpha((int)(130*glow));
+                canvas.drawLine(x-s,y,x+s,y,line); canvas.drawLine(x,y-s,x,y+s,line);
+            }
+            line.setAlpha(115); line.setStrokeWidth(dp(getContext(),1.3f));
+            float mx=w*.78f,my=h*.10f;
+            path.reset(); path.moveTo(mx,my-dp(getContext(),20)); path.arcTo(mx-dp(getContext(),24),my-dp(getContext(),24),mx+dp(getContext(),24),my+dp(getContext(),24),-72,285,false); canvas.drawPath(path,line);
+            line.setColor(Color.argb(74,127,191,151)); line.setStrokeWidth(dp(getContext(),1.3f));
+            path.reset(); path.moveTo(-dp(getContext(),14),h*.79f); path.cubicTo(w*.12f,h*.70f,w*.22f,h*.67f,w*.33f,h*.72f); path.cubicTo(w*.47f,h*.78f,w*.57f,h*.67f,w*.70f,h*.71f); path.cubicTo(w*.81f,h*.75f,w*.90f,h*.76f,w+dp(getContext(),14),h*.73f); canvas.drawPath(path,line);
+            path.reset(); path.moveTo(-dp(getContext(),14),h*.87f); path.cubicTo(w*.17f,h*.79f,w*.28f,h*.80f,w*.42f,h*.86f); path.cubicTo(w*.58f,h*.91f,w*.72f,h*.80f,w+dp(getContext(),14),h*.86f); canvas.drawPath(path,line);
+        }
+
+        private void wave(Canvas c,float w,float y,float controlY) {
+            path.reset(); path.moveTo(-dp(getContext(),14),y);
+            path.cubicTo(w*.15f,controlY,w*.29f,y-dp(getContext(),18),w*.42f,y);
+            path.cubicTo(w*.55f,y+dp(getContext(),20),w*.70f,y-dp(getContext(),14),w+dp(getContext(),14),y+dp(getContext(),12));
+            c.drawPath(path,line);
+        }
+        private void bird(Canvas c,float x,float y,float scale){
+            float s=dp(getContext(),10)*scale; path.reset(); path.moveTo(x-s,y); path.quadTo(x-s*.45f,y-s*.7f,x,y); path.quadTo(x+s*.45f,y-s*.7f,x+s,y); c.drawPath(path,line);
+        }
+        private static float dp(android.content.Context c,float v){return v*c.getResources().getDisplayMetrics().density;}
     }
 
     private void startTimer() {
@@ -430,6 +390,12 @@ public class BlockActivity extends Activity {
     private void updateTimer(long remaining) {
         if (timerText != null) timerText.setText(format(remaining));
         if (timerRing != null) timerRing.setProgress(Math.max(0f, Math.min(1f, remaining / (float) timerDurationMs)));
+    }
+
+    private boolean isNightTheme() {
+        int mode = getResources().getConfiguration().uiMode
+                & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+        return mode == android.content.res.Configuration.UI_MODE_NIGHT_YES;
     }
 
     private String appName() {
