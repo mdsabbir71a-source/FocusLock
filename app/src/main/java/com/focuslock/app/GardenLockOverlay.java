@@ -105,7 +105,7 @@ public final class GardenLockOverlay {
             View lowerSpace = new View(context);
             content.addView(lowerSpace, new LinearLayout.LayoutParams(1, 0, .88f));
             Button home = new Button(context);
-            home.setText("Return to home"); home.setAllCaps(false); home.setTextSize(13); home.setTextColor(night ? Color.rgb(232,180,92) : Color.rgb(23,83,46));
+            home.setText("Return to home"); home.setAllCaps(false); home.setTextSize(13); home.setTextColor(Color.rgb(23,83,46));
             home.setBackground(shape(context, Color.argb(31,107,59,30), Color.argb(76,31,107,59), 28));
             home.setOnClickListener(v -> goHome(context));
             content.addView(home, match());
@@ -168,6 +168,7 @@ public final class GardenLockOverlay {
         d.setShape(GradientDrawable.OVAL); d.setStroke(dp(context, 1), Color.rgb(65, 139, 86)); return d;
     }
     private static int dp(Context context, int value) { return Math.round(value * context.getResources().getDisplayMetrics().density); }
+    private static float dp(Context context, float value) { return value * context.getResources().getDisplayMetrics().density; }
 
     private static final class RingView extends View {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
