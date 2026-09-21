@@ -288,6 +288,9 @@ public class AuthActivity extends Activity {
             backParams.topMargin = dp(20);
             header.addView(back, backParams);
         }
+        // A very small breathing/float motion keeps the supplied horizon
+        // heading alive without distracting from sign-in.
+        startLogoMotion(logo);
         return header;
     }
 
