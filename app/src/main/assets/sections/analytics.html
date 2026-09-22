@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FocusLock — Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --screen:#F7F5EF;--ink:#132A1C;--ink-soft:#5B6B5F;--green:#1F6B3B;--green-deep:#17532E;--line:#2F7A4A;
+    --card:#FFFFFF;--card-line:rgba(31,107,59,.14);
+    --page-bg:#E6E3DA;--page-ink:#22312a;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){--page-bg:#141C17;--page-ink:#DDE5DE}
+  }
+  :root[data-theme="dark"]{--page-bg:#141C17;--page-ink:#DDE5DE}
+  *,*::before,*::after{box-sizing:inherit}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+  body{
+    margin:0;min-height:100%;background:var(--page-bg);color:var(--page-ink);
+    font-family:"Schibsted Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;align-items:center;justify-content:center;padding:32px 16px;
+  }
+
+  .phone{
+    width:330px;height:714px;max-width:100%;border-radius:38px;position:relative;overflow:hidden;
+    background:var(--screen);color:var(--ink);
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 18px 40px -18px rgba(19,42,28,.45);
+    display:flex;flex-direction:column;
+  }
+  .stroke{fill:none;stroke:var(--line);stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+
+  .top-art{position:absolute;top:0;left:0;right:0;pointer-events:none;z-index:0}
+  .top-art svg{display:block;width:100%;height:auto}
+
+  .status{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:14px 24px 0;font-size:12px;font-weight:500;color:var(--ink-soft)}
+  .status i{display:block;width:12px;height:8px;border:1px solid currentColor;border-radius:2px;opacity:.6}
+
+  .head{position:relative;z-index:2;padding:14px 24px 0}
+  .brandline{font-size:11.5px;font-weight:700;letter-spacing:.14em;color:var(--green-deep);margin:0}
+  h1.title{font-size:25px;font-weight:700;letter-spacing:-.02em;margin:6px 0 0}
+  p.sub{font-size:13.5px;line-height:1.5;color:var(--ink-soft);margin:5px 0 0}
+
+  .tabs{position:relative;z-index:2;display:flex;gap:6px;margin:16px 24px 0;background:rgba(31,107,59,.08);border-radius:999px;padding:4px}
+  .tab{flex:1;text-align:center;padding:8px 0;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink-soft);letter-spacing:-.005em}
+  .tab.active{background:var(--green-deep);color:#F4F7F2}
+
+  .scroll{position:relative;z-index:2;flex:1;overflow-y:auto;padding:16px 20px 14px;display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
+  .scroll::-webkit-scrollbar{display:none}
+
+  .card{background:var(--card);border:1.3px solid var(--card-line);border-radius:20px;padding:18px}
+
+  /* hero: ring + stats */
+  .hero{display:flex;align-items:center;gap:14px}
+  .ring{position:relative;width:118px;height:118px;flex:none;display:flex;align-items:center;justify-content:center}
+  .ring svg{position:absolute;inset:0;width:100%;height:100%}
+  .ring-face{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center}
+  .ring-pct{font-family:"Space Mono",monospace;font-weight:700;font-size:24px;color:var(--ink)}
+  .ring-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--ink-soft);margin-top:2px;text-align:center;max-width:9ch}
+  .hero-stats{display:flex;flex-direction:column;gap:9px;min-width:0}
+  .hero-stats .row{display:flex;align-items:baseline;gap:6px}
+  .hero-stats .num{font-family:"Space Mono",monospace;font-weight:700;font-size:19px;color:var(--ink)}
+  .hero-stats .lbl{font-size:12px;color:var(--ink-soft)}
+  .delta{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;color:var(--green-deep);margin-top:2px}
+  .delta svg{width:10px;height:10px}
+
+  .card-title{font-size:13px;font-weight:700;letter-spacing:-.005em;margin:0 0 2px}
+  .card-note{font-size:11.5px;color:var(--ink-soft);margin:0 0 10px}
+
+  .chart{width:100%;height:auto}
+  .daylabels{display:flex;margin-top:2px}
+  .daylabels span{flex:1;text-align:center;font-size:10.5px;color:var(--ink-soft);font-weight:600}
+  .daylabels span.today{color:var(--green-deep)}
+
+  .tiles{display:flex;gap:12px}
+  .tile{flex:1;background:var(--card);border:1.3px solid var(--card-line);border-radius:18px;padding:15px}
+  .tile .tt{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--ink-soft);text-transform:uppercase}
+  .tile .tn{font-family:"Space Mono",monospace;font-size:22px;font-weight:700;margin-top:6px}
+  .tile .ts{font-size:11.5px;color:var(--ink-soft);margin-top:2px}
+  .leafrow{display:flex;gap:4px;margin-top:10px}
+  .leafrow svg{width:15px;height:15px}
+  .barmini{height:5px;border-radius:99px;background:rgba(31,107,59,.12);margin-top:10px;overflow:hidden}
+  .barmini i{display:block;height:100%;background:var(--green-deep);border-radius:99px}
+
+  .applist .arow{display:flex;align-items:center;gap:11px;padding:9px 0}
+  .applist .arow + .arow{border-top:1px solid var(--card-line)}
+  .aicon{width:32px;height:32px;border-radius:10px;background:rgba(31,107,59,.08);display:flex;align-items:center;justify-content:center;flex:none}
+  .aicon svg{width:16px;height:16px}
+  .ainfo{flex:1;min-width:0}
+  .aname{font-size:13.5px;font-weight:600}
+  .abar{height:4px;border-radius:99px;background:rgba(31,107,59,.1);margin-top:6px;overflow:hidden}
+  .abar i{display:block;height:100%;background:var(--line);border-radius:99px}
+  .amin{font-family:"Space Mono",monospace;font-size:12.5px;color:var(--ink-soft);flex:none}
+
+  .navbar{position:relative;z-index:2;display:flex;border-top:1px solid var(--card-line);background:var(--screen);padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px))}
+  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink-soft)}
+  .navitem svg{width:20px;height:20px}
+  .navitem span{font-size:10px;font-weight:600}
+  .navitem.active{color:var(--green-deep)}
+
+  @media (max-width:400px){
+    .phone{height:min(714px,calc(92vw * 2.163))}
+  }
+</style>
+</head>
+<body>
+
+  <div class="phone">
+    <div class="top-art">
+      <svg viewBox="0 0 330 92" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g class="stroke" opacity=".18" stroke-width="1">
+          <path d="M-8 30c56 12 100-8 148 2s96 6 198-10"/>
+        </g>
+        <g class="stroke" opacity=".26" stroke-width="1.2">
+          <path d="M44 20c5-6 10-6 13 0 3-6 8-6 13 0" opacity=".8"/>
+          <path d="M260 44c5-6 10-6 13 0 3-6 8-6 13 0" opacity=".6"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="status"><span>9:14<span style="font-size:10px"> AM</span></span><i></i></div>
+
+    <div class="head">
+      <p class="brandline">FOCUSLOCK</p>
+      <h1 class="title">Your progress</h1>
+      <p class="sub">You kept 3h 42m for yourself this week.</p>
+    </div>
+
+    <div class="tabs">
+      <div class="tab">Day</div>
+      <div class="tab active">Week</div>
+      <div class="tab">Month</div>
+    </div>
+
+    <div class="scroll">
+
+      <!-- HERO: ring + headline stats -->
+      <div class="card hero">
+        <div class="ring">
+          <svg viewBox="0 0 220 220" aria-hidden="true">
+            <g class="stroke" stroke-width="1" opacity=".16"><circle cx="110" cy="110" r="104"/></g>
+            <g class="stroke" stroke-width="1.8" opacity=".62">
+              <circle cx="110" cy="110" r="104" stroke-dasharray="653.5" stroke-dashoffset="117.6" transform="rotate(-90 110 110)"/>
+            </g>
+            <g class="stroke" stroke-width=".9" opacity=".26">
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(6 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(12 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(18 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(24 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(36 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(42 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(48 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(54 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(66 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(72 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(78 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(84 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(96 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(102 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(108 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(114 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(126 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(132 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(138 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(144 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(156 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(162 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(168 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(174 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(186 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(192 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(198 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(204 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(216 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(222 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(228 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(234 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(246 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(252 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(258 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(264 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(276 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(282 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(288 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(294 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(306 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(312 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(318 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(324 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(336 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(342 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(348 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(354 110 110)"/>
+            </g>
+            <g class="stroke" stroke-width="1.2" opacity=".4">
+              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(30 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(60 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(120 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(150 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(210 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(240 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(300 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(330 110 110)"/>
+            </g>
+            <g class="stroke" stroke-width="1.3" opacity=".55">
+              <line x1="110" y1="12" x2="110" y2="38" transform="rotate(0 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="38" transform="rotate(90 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="38" transform="rotate(180 110 110)"/>
+              <line x1="110" y1="12" x2="110" y2="38" transform="rotate(270 110 110)"/>
+            </g>
+          </svg>
+          <div class="ring-face">
+            <span class="ring-pct">82%</span>
+            <span class="ring-lbl">OF WEEKLY GOAL</span>
+          </div>
+        </div>
+
+        <div class="hero-stats">
+          <div>
+            <div class="row"><span class="num">3h 42m</span><span class="lbl">saved</span></div>
+            <div class="delta">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 15l6-6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              18% vs last week
+            </div>
+          </div>
+          <div class="row"><span class="num">24</span><span class="lbl">locks kept of 28</span></div>
+          <div class="row"><span class="num">6</span><span class="lbl">day streak</span></div>
+        </div>
+      </div>
+
+      <!-- WEEKLY BAR CHART -->
+      <div class="card">
+        <p class="card-title">Minutes protected</p>
+        <p class="card-note">Dashed line marks your daily goal of 35 min.</p>
+        <svg class="chart" viewBox="0 0 300 118" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <g class="stroke" stroke-width="1" opacity=".22" stroke-dasharray="1 6">
+            <path d="M6 44h288"/>
+          </g>
+          <text x="292" y="40" text-anchor="end" font-size="8.5" fill="var(--ink-soft)" font-family="Space Mono,monospace" opacity=".6">goal</text>
+          <g class="stroke" opacity=".22" stroke-width="7">
+            <line x1="30" y1="108" x2="30" y2="67"/>
+            <line x1="68" y1="108" x2="68" y2="38"/>
+            <line x1="106" y1="108" x2="106" y2="80"/>
+            <line x1="144" y1="108" x2="144" y2="27"/>
+            <line x1="182" y1="108" x2="182" y2="53"/>
+            <line x1="220" y1="108" x2="220" y2="12"/>
+          </g>
+          <g class="stroke" opacity=".65" stroke-width="7">
+            <line x1="30" y1="108" x2="30" y2="67"/>
+            <line x1="68" y1="108" x2="68" y2="38"/>
+            <line x1="106" y1="108" x2="106" y2="80"/>
+            <line x1="144" y1="108" x2="144" y2="27"/>
+            <line x1="182" y1="108" x2="182" y2="53"/>
+            <line x1="220" y1="108" x2="220" y2="12"/>
+          </g>
+          <g class="stroke" opacity=".85" stroke-width="7">
+            <line x1="258" y1="108" x2="258" y2="34"/>
+          </g>
+          <g class="stroke" opacity=".9" stroke-width="1.3">
+            <circle cx="30" cy="67" r="3"/><circle cx="68" cy="38" r="3"/><circle cx="106" cy="80" r="3"/>
+            <circle cx="144" cy="27" r="3"/><circle cx="182" cy="53" r="3"/><circle cx="220" cy="12" r="3"/>
+            <circle cx="258" cy="34" r="3.4"/>
+          </g>
+          <g class="stroke" stroke-width="1" opacity=".2"><path d="M6 108h288"/></g>
+        </svg>
+        <div class="daylabels">
+          <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span class="today">S</span>
+        </div>
+      </div>
+
+      <!-- STREAK + LOCKS TILES -->
+      <div class="tiles">
+        <div class="tile">
+          <p class="tt">Streak</p>
+          <p class="tn">6 days</p>
+          <p class="ts">Best: 11 days</p>
+          <div class="leafrow">
+            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".85"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
+            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".85"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
+            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".85"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
+            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".85"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
+            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".85"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
+            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".85"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
+            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".22"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
+          </div>
+        </div>
+        <div class="tile">
+          <p class="tt">Locks kept</p>
+          <p class="tn">24<span style="font-size:13px;color:var(--ink-soft);font-weight:600"> / 28</span></p>
+          <p class="ts">4 skipped this week</p>
+          <div class="barmini"><i style="width:86%"></i></div>
+        </div>
+      </div>
+
+      <!-- MOST PAUSED APPS -->
+      <div class="card applist">
+        <p class="card-title">Most paused</p>
+        <p class="card-note">By total minutes this week</p>
+
+        <div class="arow">
+          <div class="aicon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-deep)" stroke-width="1.6"><path d="M8 6l12 6-12 6V6z" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="ainfo">
+            <div class="aname">YouTube</div>
+            <div class="abar"><i style="width:88%"></i></div>
+          </div>
+          <div class="amin">1h 24m</div>
+        </div>
+
+        <div class="arow">
+          <div class="aicon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-deep)" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="16.2" cy="7.8" r=".9" fill="var(--green-deep)" stroke="none"/></svg>
+          </div>
+          <div class="ainfo">
+            <div class="aname">Instagram</div>
+            <div class="abar"><i style="width:64%"></i></div>
+          </div>
+          <div class="amin">58m</div>
+        </div>
+
+        <div class="arow">
+          <div class="aicon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-deep)" stroke-width="1.6"><path d="M9 4v11a3.2 3.2 0 1 1-2.4-3.1" stroke-linecap="round"/><path d="M9 4c.6 2.6 2.6 4.3 5 4.5" stroke-linecap="round"/></svg>
+          </div>
+          <div class="ainfo">
+            <div class="aname">TikTok</div>
+            <div class="abar"><i style="width:41%"></i></div>
+          </div>
+          <div class="amin">38m</div>
+        </div>
+
+        <div class="arow">
+          <div class="aicon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-deep)" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="ainfo">
+            <div class="aname">X</div>
+            <div class="abar"><i style="width:22%"></i></div>
+          </div>
+          <div class="amin">22m</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="navbar">
+      <div class="navitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 11l8-6 8 6M6 10v9h12v-9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Home</span>
+      </div>
+      <div class="navitem active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19V10M12 19V5M19 19v-7" stroke-linecap="round"/></svg>
+        <span>Analytics</span>
+      </div>
+      <div class="navitem">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6a7 7 0 0 0 .1-1.2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Settings</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
+
+
