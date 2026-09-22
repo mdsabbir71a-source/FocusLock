@@ -427,28 +427,30 @@ public class MainActivity extends Activity {
     private View buildBottomNavigation() {
         LinearLayout nav = row();
         nav.setGravity(Gravity.CENTER);
-        nav.setPadding(dp(10), dp(2), dp(10), dp(10));
+        nav.setPadding(dp(10), dp(8), dp(10), dp(10));
         nav.setBackgroundColor(Color.rgb(253, 254, 252));
-        nav.addView(navButton("⌂", "Home", v -> mainScroll.smoothScrollTo(0, 0)),
+        nav.addView(navButton("⌂", "Home", true, v -> mainScroll.smoothScrollTo(0, 0)),
                 new LinearLayout.LayoutParams(0, dp(52), 1f));
-        nav.addView(navButton("◷", "Plan", v -> {
-            if (settingsAnchor != null) mainScroll.smoothScrollTo(0, Math.max(0, settingsAnchor.getTop() - dp(12)));
-        }), new LinearLayout.LayoutParams(0, dp(52), 1f));
-        nav.addView(navButton("✦", "Insights", v -> showInsights()),
+        nav.addView(navButton("✦", "Insights", false, v -> openSection("insights")),
                 new LinearLayout.LayoutParams(0, dp(52), 1f));
-        nav.addView(navButton("◌", "Account", v -> showAccountDialog()),
+        nav.addView(navButton("◌", "Account", false, v -> openSection("account")),
                 new LinearLayout.LayoutParams(0, dp(52), 1f));
         return nav;
     }
 
-    private View navButton(String icon, String label, View.OnClickListener click) {
+    private void openSection(String section) {
+        startActivity(new Intent(this, SectionActivity.class).putExtra(SectionActivity.EXTRA_SECTION, section));
+    }
+
+    private View navButton(String icon, String label, boolean active, View.OnClickListener click) {
         LinearLayout item = column();
         item.setGravity(Gravity.CENTER);
         item.setPadding(dp(4), dp(3), dp(4), dp(3));
-        TextView symbol = text(icon, 17, GREEN, true);
+        int tint = active ? VIOLET : MUTED;
+        TextView symbol = text(icon, 18, tint, true);
         symbol.setGravity(Gravity.CENTER);
         item.addView(symbol, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(25)));
-        TextView copy = text(label, 10, MUTED, true);
+        TextView copy = text(label, 10, tint, true);
         copy.setGravity(Gravity.CENTER);
         item.addView(copy, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
         item.setContentDescription(label);
