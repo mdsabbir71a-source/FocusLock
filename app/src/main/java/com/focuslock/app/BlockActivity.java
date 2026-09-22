@@ -19,7 +19,7 @@ public class BlockActivity extends Activity {
     private String blockedPackage, reminder; private WebView card; private CountDownTimer timer; private boolean ready;
 
     @Override protected void onCreate(Bundle state){
-        super.onCreate();
+        super.onCreate(state);
         if(!AccessStore.isAllowed(this)||!RemoteConfigStore.appBlockingEnabled(this)){finish();return;}
         blockedPackage=getIntent().getStringExtra("blocked_package");
         if(blockedPackage==null||!LockStore.isLocked(this,blockedPackage)){finish();return;}
