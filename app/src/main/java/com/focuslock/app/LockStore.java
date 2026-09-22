@@ -13,11 +13,14 @@ public final class LockStore {
     private static final String LOCK_FOCUSLOCK = "lock_focuslock_with_apps";
     private static final String ENABLED = "enabled";
     private static final String REMINDER_INDEX = "reminder_index";
+    private static final String LAST_CARD_INDEX = "last_lock_card_index";
+    private static final String[] LOCK_CARDS = {"dunes","grove","horizon","nightfall","rainfall","ridge","seedling","tide"};
 
     private LockStore() {}
     private static SharedPreferences prefs(Context context) { return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE); }
     private static String usageKey(String pkg) { return "usage_" + pkg; }
     private static String lockedKey(String pkg) { return "locked_until_" + pkg; }
+    private static String cardKey(String pkg) { return "lock_card_" + pkg; }
 
     public static Set<String> packages(Context context) { return new HashSet<>(prefs(context).getStringSet(PACKAGES, new HashSet<>())); }
     public static boolean isSelected(Context context, String pkg) { return packages(context).contains(pkg); }
@@ -53,6 +56,19 @@ public final class LockStore {
         return prefs(context).getLong(lockedKey(pkg), 0);
     }
 
+    public static String lockCardName(Context context, String pkg) {
+        String target = pkg;
+        if (context.getPackageName().equals(pkg) && lockFocusLock(context)) {
+            long latest = 0L;
+            for (String selected : packages(context)) {
+                long until = prefs(context).getLong(lockedKey(selected), 0L);
+                if (until > latest) { latest = until; target = selected; }
+            }
+        }
+        int index = Math.max(0, prefs(context).getInt(cardKey(target), 0)) % LOCK_CARDS.length;
+        return LOCK_CARDS[index];
+    }
+
     public static boolean isLocked(Context context, String pkg) {
         if (!isEnabled(context)) return false;
         if (context.getPackageName().equals(pkg)) return lockFocusLock(context) && latestSelectedLockEnd(context) > System.currentTimeMillis();
@@ -72,7 +88,8 @@ public final class LockStore {
         FocusInsights.addScreenTime(context, counted);
         long total = usage(context, pkg) + counted;
         if (total >= allowance(context)) {
-            prefs(context).edit().putLong(usageKey(pkg), 0).putLong(lockedKey(pkg), System.currentTimeMillis() + lockDuration(context)).apply();
+            int cardIndex = (prefs(context).getInt(LAST_CARD_INDEX, -1) + 1) % LOCK_CARDS.length;
+            prefs(context).edit().putLong(usageKey(pkg), 0).putLong(lockedKey(pkg), System.currentTimeMillis() + lockDuration(context)).putInt(cardKey(pkg), cardIndex).putInt(LAST_CARD_INDEX, cardIndex).apply();
             FocusInsights.recordPause(context, lockDuration(context));
             return true;
         }
