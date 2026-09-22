@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FocusLock — Lock Card (Horizon)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --screen:#F7F5EF;--ink:#132A1C;--ink-soft:#5B6B5F;--green:#1F6B3B;--green-deep:#17532E;--line:#2F7A4A;
+    --page-bg:#E6E3DA;--page-ink:#22312a;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){--page-bg:#141C17;--page-ink:#DDE5DE}
+  }
+  :root[data-theme="dark"]{--page-bg:#141C17;--page-ink:#DDE5DE}
+  *,*::before,*::after{box-sizing:inherit}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+  body{
+    margin:0;min-height:100%;background:var(--page-bg);color:var(--page-ink);
+    font-family:"Schibsted Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;align-items:center;justify-content:center;padding:32px 16px;
+  }
+
+  .phone{
+    width:330px;height:714px;max-width:100%;border-radius:38px;position:relative;overflow:hidden;
+    background:var(--screen);color:var(--ink);
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 18px 40px -18px rgba(19,42,28,.45);
+    display:flex;flex-direction:column;
+  }
+  .art{position:absolute;left:0;right:0;pointer-events:none}
+  .art svg{display:block;width:100%;height:auto}
+  .stroke{fill:none;stroke:var(--line);stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+
+  .body{position:relative;z-index:2;display:flex;flex-direction:column;flex:1;padding:0 24px 24px;align-items:center}
+  .status{display:flex;justify-content:space-between;align-items:center;width:100%;padding:14px 0 0;font-size:12px;font-weight:500;color:var(--ink-soft)}
+  .status i{display:block;width:12px;height:8px;border:1px solid currentColor;border-radius:2px;opacity:.6}
+  .brandline{text-align:center;font-size:12px;font-weight:700;letter-spacing:.14em;margin:18px 0 0;color:var(--green-deep)}
+  .appline{display:flex;align-items:center;gap:7px;margin-top:24px;font-size:14.5px;color:var(--ink-soft)}
+  .appline svg{width:15px;height:15px}
+  h2.headline{font-size:26px;line-height:1.14;font-weight:700;letter-spacing:-.02em;text-align:center;margin:8px 0 0;max-width:14ch}
+  .quote{width:100%;border-radius:22px;padding:20px;text-align:center;font-size:15.5px;font-weight:600;line-height:1.4;border:1.5px solid rgba(31,107,59,.16);background:rgba(255,255,255,.82);color:var(--ink)}
+  .spacer{flex:1}
+  .btn{display:flex;align-items:center;justify-content:center;width:100%;height:54px;border-radius:999px;font-size:15.5px;font-weight:600;font-family:inherit;text-decoration:none;letter-spacing:-.005em;background:rgba(31,107,59,.12);color:var(--green-deep);border:1.5px solid rgba(31,107,59,.3)}
+  .btn:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+  .footer{text-align:center;font-size:11.5px;margin-top:14px;color:var(--ink-soft)}
+  .homebar{width:112px;height:4px;border-radius:99px;margin:14px auto 0;background:rgba(19,42,28,.22)}
+
+  .timer{position:relative;display:flex;align-items:center;justify-content:center}
+  .timer > svg{position:absolute;inset:0;width:100%;height:100%}
+  .t-face{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center}
+  .t-label{font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--ink-soft)}
+  .t-clock{font-family:"Space Mono",monospace;font-weight:700;color:var(--ink);letter-spacing:.01em}
+
+  .t-compass{width:222px;height:222px;margin:16px 0 12px;flex-direction:column;gap:2px}
+  .t-compass .t-clock{font-size:36px}
+  .t-compass .t-label{margin-bottom:3px}
+
+  @media (max-width:400px){ .phone{height:min(714px,calc(92vw * 2.163))} }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="art" style="top:0">
+    <svg viewBox="0 0 330 186" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <g class="stroke" opacity=".3" stroke-width="1.2">
+        <circle cx="258" cy="46" r="27"/>
+        <path d="M258 8v-9M258 92v9M301 46h9M206 46h9M288 17l7-7M228 76l-7 7M288 76l7 7M228 17l-7-7" opacity=".55"/>
+      </g>
+      <g class="stroke" opacity=".2" stroke-width="1">
+        <path d="M-8 108c54 12 96-10 142 2s98 6 204-12"/>
+        <path d="M-8 134c46 10 84-12 128 0s92 8 210-10"/>
+      </g>
+      <g class="stroke" opacity=".34" stroke-width="1.3">
+        <path d="M44 62c5-6 10-6 13 0 3-6 8-6 13 0"/>
+        <path d="M84 36c4-5 8-5 11 0 3-5 7-5 11 0" opacity=".65"/>
+        <path d="M112 74c4-5 8-5 11 0 3-5 7-5 11 0" opacity=".5"/>
+      </g>
+    </svg>
+  </div>
+  <div class="art" style="bottom:0">
+    <svg viewBox="0 0 330 210" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <g class="stroke" opacity=".34" stroke-width="1.4">
+        <path d="M-14 118c48-38 96-40 134-12 30 22 58 24 86 2 26-20 78-20 140 26"/>
+      </g>
+      <g class="stroke" opacity=".22" stroke-width="1.2">
+        <path d="M-14 152c54-28 96-26 130-4 34 22 66 22 100 2 30-18 76-16 132 22"/>
+        <path d="M-14 188c60-26 106-22 150 2"/>
+        <path d="M168 200c56-24 100-20 140 4" opacity=".7"/>
+      </g>
+      <g class="stroke" opacity=".38" stroke-width="1.3">
+        <path d="M52 206c0-30 6-50 20-64M52 206c-2-25-11-41-25-50M52 206c5-20 16-32 32-36"/>
+        <path d="M284 208c0-26 6-43 17-54M284 208c-2-22-11-35-22-43"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="body">
+    <div class="status"><span>7:48<span style="font-size:10px"> AM</span></span><i></i></div>
+    <p class="brandline">FOCUSLOCK</p>
+    <div class="appline">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      YouTube is paused
+    </div>
+    <h2 class="headline">Take a quiet moment</h2>
+
+          <div class="timer t-compass">
+            <svg viewBox="0 0 220 220" aria-hidden="true">
+              <g class="stroke" stroke-width="1" opacity=".16"><circle cx="110" cy="110" r="104"/></g>
+              <g class="stroke" stroke-width="1.8" opacity=".62">
+                <circle cx="110" cy="110" r="104" stroke-dasharray="653.5" stroke-dashoffset="248.3" transform="rotate(-90 110 110)"/>
+              </g>
+              <g class="stroke" stroke-width=".9" opacity=".26">
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(6 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(12 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(18 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(24 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(36 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(42 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(48 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(54 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(66 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(72 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(78 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(84 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(96 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(102 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(108 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(114 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(126 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(132 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(138 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(144 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(156 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(162 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(168 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(174 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(186 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(192 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(198 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(204 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(216 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(222 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(228 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(234 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(246 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(252 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(258 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(264 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(276 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(282 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(288 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(294 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(306 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(312 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(318 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(324 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(336 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(342 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(348 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="20" transform="rotate(354 110 110)"/>
+              </g>
+              <g class="stroke" stroke-width="1.2" opacity=".4">
+                <line x1="110" y1="12" x2="110" y2="28" transform="rotate(30 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="28" transform="rotate(60 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="28" transform="rotate(120 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="28" transform="rotate(150 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="28" transform="rotate(210 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="28" transform="rotate(240 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="28" transform="rotate(300 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="28" transform="rotate(330 110 110)"/>
+              </g>
+              <g class="stroke" stroke-width="1.3" opacity=".55">
+                <line x1="110" y1="12" x2="110" y2="38" transform="rotate(0 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="38" transform="rotate(90 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="38" transform="rotate(180 110 110)"/>
+                <line x1="110" y1="12" x2="110" y2="38" transform="rotate(270 110 110)"/>
+              </g>
+            </svg>
+            <div class="t-face">
+              <span class="t-label">UNLOCKS IN</span>
+              <span class="t-clock">09:53</span>
+            </div>
+          </div>
+
+<div class="quote">A small pause protects a bigger purpose.</div>
+    <div class="spacer"></div>
+    <a class="btn" href="#">Return to home</a>
+    <p class="footer">FocusLock is protecting your time</p>
+    <div class="homebar"></div>
+  </div>
+</div>
+</body>
+</html>
