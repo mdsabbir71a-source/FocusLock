@@ -1,372 +1,154 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>FocusLock — Analytics</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<title>FocusLock – Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --screen:#F7F5EF;--ink:#132A1C;--ink-soft:#5B6B5F;--green:#1F6B3B;--green-deep:#17532E;--line:#2F7A4A;
-    --card:#FFFFFF;--card-line:rgba(31,107,59,.14);
-    --page-bg:#E6E3DA;--page-ink:#22312a;
-    box-sizing:border-box;
-    padding-top:env(safe-area-inset-top,0px);
-    padding-bottom:env(safe-area-inset-bottom,0px);
-  }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){--page-bg:#141C17;--page-ink:#DDE5DE}
-  }
-  :root[data-theme="dark"]{--page-bg:#141C17;--page-ink:#DDE5DE}
-  *,*::before,*::after{box-sizing:inherit}
-  html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
-  body{
-    margin:0;min-height:100%;background:var(--page-bg);color:var(--page-ink);
-    font-family:"Schibsted Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    -webkit-font-smoothing:antialiased;
-    display:flex;align-items:center;justify-content:center;padding:32px 16px;
-  }
+/* ---------- Design tokens ---------- */
+:root{--bg:#f5f3ee;--card:#fff;--ink:#16281d;--mute:#6b7a70;--g:#1a5632;--g2:#3f8a5c;--tint:#e6f0e8;--line:#e3e6df;--hero:#1a5632;--on-g:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1712;--card:#16231b;--ink:#e8f0ea;--mute:#93a599;--g:#6fc48e;--g2:#4c9f6c;--tint:#1f3327;--line:#25352b;--hero:#1f5a37;--on-g:#0e1712}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}
+button{font:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--g2);outline-offset:2px}
+.app{max-width:430px;margin:0 auto;padding:20px 16px 100px}
+.brand{font-weight:800;letter-spacing:.14em;font-size:13px;color:var(--g)}
+h1{font-size:32px;line-height:1.1;margin:6px 0 12px;font-weight:800;letter-spacing:-.02em}
 
-  .phone{
-    width:330px;height:714px;max-width:100%;border-radius:38px;position:relative;overflow:hidden;
-    background:var(--screen);color:var(--ink);
-    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 18px 40px -18px rgba(19,42,28,.45);
-    display:flex;flex-direction:column;
-  }
-  .stroke{fill:none;stroke:var(--line);stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+/* ---------- One control for the whole screen ---------- */
+.rng{position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0 12px}
+.seg{display:flex;background:var(--tint);border-radius:999px;padding:4px}
+.seg button{flex:1;border:0;background:none;color:var(--mute);font-weight:600;font-size:15px;padding:11px 6px;border-radius:999px}
+.seg button[aria-pressed="true"]{background:var(--g);color:var(--on-g)}
 
-  .top-art{position:absolute;top:0;left:0;right:0;pointer-events:none;z-index:0}
-  .top-art svg{display:block;width:100%;height:auto}
+/* ---------- Summary ---------- */
+.hero{background:var(--hero);color:#f2f7f3;border-radius:26px;padding:22px 20px 18px}
+.two{display:grid;grid-template-columns:1fr 1fr}
+.two>div+div{border-left:1px solid rgba(255,255,255,.2);padding-left:18px}
+.k{font-size:14px;opacity:.8}
+.big{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1.1;margin-top:2px}
+.delta{margin:14px 0 0;font-size:14px;background:rgba(255,255,255,.14);border-radius:12px;padding:9px 12px}
+.all{margin:12px 2px 0;font-size:13px;opacity:.85;display:flex;justify-content:space-between}
 
-  .status{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:14px 24px 0;font-size:12px;font-weight:500;color:var(--ink-soft)}
-  .status i{display:block;width:12px;height:8px;border:1px solid currentColor;border-radius:2px;opacity:.6}
+/* ---------- Cards ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:14px}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.head h2{font-size:18px;margin:0;font-weight:600}
+.pill{display:flex;background:var(--tint);border-radius:999px;padding:3px}
+.pill button{border:0;background:none;color:var(--mute);font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px}
+.pill button[aria-pressed="true"]{background:var(--card);color:var(--ink)}
+.read{min-height:52px}
+.read b{font-size:28px;font-weight:800;letter-spacing:-.02em}
+.read span{display:block;color:var(--mute);font-size:13px}
+svg{width:100%;height:auto;display:block}
+.bar{fill:var(--tint)}.bar.on{fill:var(--g2)}
+.ax{fill:var(--mute);font-size:10px;font-family:inherit}
+.hint{color:var(--mute);font-size:13px;margin:0 0 6px}
 
-  .head{position:relative;z-index:2;padding:14px 24px 0}
-  .brandline{font-size:11.5px;font-weight:700;letter-spacing:.14em;color:var(--green-deep);margin:0}
-  h1.title{font-size:25px;font-weight:700;letter-spacing:-.02em;margin:6px 0 0}
-  p.sub{font-size:13.5px;line-height:1.5;color:var(--ink-soft);margin:5px 0 0}
+/* ---------- App rows ---------- */
+.app-r{display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.app-r:first-of-type{border-top:0}
+.ic{width:40px;height:40px;border-radius:12px;background:#fff!important;border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;padding:4px}
+.ic img{width:100%;height:100%;object-fit:contain;display:block}
+.nm{font-weight:600;font-size:15px}
+.trk{height:6px;background:var(--tint);border-radius:9px;margin-top:7px;overflow:hidden}
+.trk i{display:block;height:100%;background:var(--g2);border-radius:9px}
+.rt{text-align:right;font-weight:600;font-size:15px}
+.rt small{display:block;color:var(--mute);font-weight:400;font-size:12px}
 
-  .tabs{position:relative;z-index:2;display:flex;gap:6px;margin:16px 24px 0;background:rgba(31,107,59,.08);border-radius:999px;padding:4px}
-  .tab{flex:1;text-align:center;padding:8px 0;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink-soft);letter-spacing:-.005em}
-  .tab.active{background:var(--green-deep);color:#F4F7F2}
+/* ---------- Bottom nav ---------- */
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav div{display:flex;max-width:430px;margin:0 auto;justify-content:space-around;padding:8px 0 10px}
+nav span{display:grid;justify-items:center;gap:2px;font-size:12px;font-weight:600;color:var(--mute)}
+nav .a{color:var(--g)}
+nav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+</style></head>
+<body><main class="app">
+<div class="brand">FOCUSLOCK</div>
+<h1>Your progress</h1>
 
-  .scroll{position:relative;z-index:2;flex:1;overflow-y:auto;padding:16px 20px 14px;display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
-  .scroll::-webkit-scrollbar{display:none}
+<div class="rng"><div class="seg" id="rng" role="group" aria-label="Time range">
+  <button data-r="24h">Day</button><button data-r="7d">Week</button><button data-r="30d">Month</button></div></div>
 
-  .card{background:var(--card);border:1.3px solid var(--card-line);border-radius:20px;padding:18px}
-
-  /* hero: ring + stats */
-  .hero{display:flex;align-items:center;gap:14px}
-  .ring{position:relative;width:118px;height:118px;flex:none;display:flex;align-items:center;justify-content:center}
-  .ring svg{position:absolute;inset:0;width:100%;height:100%}
-  .ring-face{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center}
-  .ring-pct{font-family:"Space Mono",monospace;font-weight:700;font-size:24px;color:var(--ink)}
-  .ring-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--ink-soft);margin-top:2px;text-align:center;max-width:9ch}
-  .hero-stats{display:flex;flex-direction:column;gap:9px;min-width:0}
-  .hero-stats .row{display:flex;align-items:baseline;gap:6px}
-  .hero-stats .num{font-family:"Space Mono",monospace;font-weight:700;font-size:19px;color:var(--ink)}
-  .hero-stats .lbl{font-size:12px;color:var(--ink-soft)}
-  .delta{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;color:var(--green-deep);margin-top:2px}
-  .delta svg{width:10px;height:10px}
-
-  .card-title{font-size:13px;font-weight:700;letter-spacing:-.005em;margin:0 0 2px}
-  .card-note{font-size:11.5px;color:var(--ink-soft);margin:0 0 10px}
-
-  .chart{width:100%;height:auto}
-  .daylabels{display:flex;margin-top:2px}
-  .daylabels span{flex:1;text-align:center;font-size:10.5px;color:var(--ink-soft);font-weight:600}
-  .daylabels span.today{color:var(--green-deep)}
-
-  .tiles{display:flex;gap:12px}
-  .tile{flex:1;background:var(--card);border:1.3px solid var(--card-line);border-radius:18px;padding:15px}
-  .tile .tt{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--ink-soft);text-transform:uppercase}
-  .tile .tn{font-family:"Space Mono",monospace;font-size:22px;font-weight:700;margin-top:6px}
-  .tile .ts{font-size:11.5px;color:var(--ink-soft);margin-top:2px}
-  .leafrow{display:flex;gap:4px;margin-top:10px}
-  .leafrow svg{width:15px;height:15px}
-  .barmini{height:5px;border-radius:99px;background:rgba(31,107,59,.12);margin-top:10px;overflow:hidden}
-  .barmini i{display:block;height:100%;background:var(--green-deep);border-radius:99px}
-
-  .applist .arow{display:flex;align-items:center;gap:11px;padding:9px 0}
-  .applist .arow + .arow{border-top:1px solid var(--card-line)}
-  .aicon{width:32px;height:32px;border-radius:10px;background:rgba(31,107,59,.08);display:flex;align-items:center;justify-content:center;flex:none}
-  .aicon svg{width:16px;height:16px}
-  .ainfo{flex:1;min-width:0}
-  .aname{font-size:13.5px;font-weight:600}
-  .abar{height:4px;border-radius:99px;background:rgba(31,107,59,.1);margin-top:6px;overflow:hidden}
-  .abar i{display:block;height:100%;background:var(--line);border-radius:99px}
-  .amin{font-family:"Space Mono",monospace;font-size:12.5px;color:var(--ink-soft);flex:none}
-
-  .navbar{position:relative;z-index:2;display:flex;border-top:1px solid var(--card-line);background:var(--screen);padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px))}
-  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink-soft)}
-  .navitem svg{width:20px;height:20px}
-  .navitem span{font-size:10px;font-weight:600}
-  .navitem.active{color:var(--green-deep)}
-
-  @media (max-width:400px){
-    .phone{height:min(714px,calc(92vw * 2.163))}
-  }
-</style>
-</head>
-<body>
-
-  <div class="phone">
-    <div class="top-art">
-      <svg viewBox="0 0 330 92" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <g class="stroke" opacity=".18" stroke-width="1">
-          <path d="M-8 30c56 12 100-8 148 2s96 6 198-10"/>
-        </g>
-        <g class="stroke" opacity=".26" stroke-width="1.2">
-          <path d="M44 20c5-6 10-6 13 0 3-6 8-6 13 0" opacity=".8"/>
-          <path d="M260 44c5-6 10-6 13 0 3-6 8-6 13 0" opacity=".6"/>
-        </g>
-      </svg>
-    </div>
-
-    <div class="status"><span>9:14<span style="font-size:10px"> AM</span></span><i></i></div>
-
-    <div class="head">
-      <p class="brandline">FOCUSLOCK</p>
-      <h1 class="title">Your progress</h1>
-      <p class="sub">You kept 3h 42m for yourself this week.</p>
-    </div>
-
-    <div class="tabs">
-      <div class="tab">Day</div>
-      <div class="tab active">Week</div>
-      <div class="tab">Month</div>
-    </div>
-
-    <div class="scroll">
-
-      <!-- HERO: ring + headline stats -->
-      <div class="card hero">
-        <div class="ring">
-          <svg viewBox="0 0 220 220" aria-hidden="true">
-            <g class="stroke" stroke-width="1" opacity=".16"><circle cx="110" cy="110" r="104"/></g>
-            <g class="stroke" stroke-width="1.8" opacity=".62">
-              <circle cx="110" cy="110" r="104" stroke-dasharray="653.5" stroke-dashoffset="117.6" transform="rotate(-90 110 110)"/>
-            </g>
-            <g class="stroke" stroke-width=".9" opacity=".26">
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(6 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(12 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(18 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(24 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(36 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(42 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(48 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(54 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(66 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(72 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(78 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(84 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(96 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(102 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(108 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(114 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(126 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(132 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(138 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(144 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(156 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(162 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(168 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(174 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(186 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(192 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(198 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(204 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(216 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(222 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(228 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(234 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(246 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(252 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(258 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(264 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(276 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(282 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(288 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(294 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(306 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(312 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(318 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(324 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(336 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(342 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(348 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="20" transform="rotate(354 110 110)"/>
-            </g>
-            <g class="stroke" stroke-width="1.2" opacity=".4">
-              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(30 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(60 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(120 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(150 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(210 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(240 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(300 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="28" transform="rotate(330 110 110)"/>
-            </g>
-            <g class="stroke" stroke-width="1.3" opacity=".55">
-              <line x1="110" y1="12" x2="110" y2="38" transform="rotate(0 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="38" transform="rotate(90 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="38" transform="rotate(180 110 110)"/>
-              <line x1="110" y1="12" x2="110" y2="38" transform="rotate(270 110 110)"/>
-            </g>
-          </svg>
-          <div class="ring-face">
-            <span class="ring-pct">82%</span>
-            <span class="ring-lbl">OF WEEKLY GOAL</span>
-          </div>
-        </div>
-
-        <div class="hero-stats">
-          <div>
-            <div class="row"><span class="num">3h 42m</span><span class="lbl">saved</span></div>
-            <div class="delta">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 15l6-6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              18% vs last week
-            </div>
-          </div>
-          <div class="row"><span class="num">24</span><span class="lbl">locks kept of 28</span></div>
-          <div class="row"><span class="num">6</span><span class="lbl">day streak</span></div>
-        </div>
-      </div>
-
-      <!-- WEEKLY BAR CHART -->
-      <div class="card">
-        <p class="card-title">Minutes protected</p>
-        <p class="card-note">Dashed line marks your daily goal of 35 min.</p>
-        <svg class="chart" viewBox="0 0 300 118" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <g class="stroke" stroke-width="1" opacity=".22" stroke-dasharray="1 6">
-            <path d="M6 44h288"/>
-          </g>
-          <text x="292" y="40" text-anchor="end" font-size="8.5" fill="var(--ink-soft)" font-family="Space Mono,monospace" opacity=".6">goal</text>
-          <g class="stroke" opacity=".22" stroke-width="7">
-            <line x1="30" y1="108" x2="30" y2="67"/>
-            <line x1="68" y1="108" x2="68" y2="38"/>
-            <line x1="106" y1="108" x2="106" y2="80"/>
-            <line x1="144" y1="108" x2="144" y2="27"/>
-            <line x1="182" y1="108" x2="182" y2="53"/>
-            <line x1="220" y1="108" x2="220" y2="12"/>
-          </g>
-          <g class="stroke" opacity=".65" stroke-width="7">
-            <line x1="30" y1="108" x2="30" y2="67"/>
-            <line x1="68" y1="108" x2="68" y2="38"/>
-            <line x1="106" y1="108" x2="106" y2="80"/>
-            <line x1="144" y1="108" x2="144" y2="27"/>
-            <line x1="182" y1="108" x2="182" y2="53"/>
-            <line x1="220" y1="108" x2="220" y2="12"/>
-          </g>
-          <g class="stroke" opacity=".85" stroke-width="7">
-            <line x1="258" y1="108" x2="258" y2="34"/>
-          </g>
-          <g class="stroke" opacity=".9" stroke-width="1.3">
-            <circle cx="30" cy="67" r="3"/><circle cx="68" cy="38" r="3"/><circle cx="106" cy="80" r="3"/>
-            <circle cx="144" cy="27" r="3"/><circle cx="182" cy="53" r="3"/><circle cx="220" cy="12" r="3"/>
-            <circle cx="258" cy="34" r="3.4"/>
-          </g>
-          <g class="stroke" stroke-width="1" opacity=".2"><path d="M6 108h288"/></g>
-        </svg>
-        <div class="daylabels">
-          <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span class="today">S</span>
-        </div>
-      </div>
-
-      <!-- STREAK + LOCKS TILES -->
-      <div class="tiles">
-        <div class="tile">
-          <p class="tt">Streak</p>
-          <p class="tn">6 days</p>
-          <p class="ts">Best: 11 days</p>
-          <div class="leafrow">
-            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".85"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
-            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".85"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
-            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".85"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
-            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".85"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
-            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".85"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
-            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".85"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
-            <svg viewBox="0 0 24 24" class="stroke" stroke-width="1.6" opacity=".22"><path d="M12 3c6 1 9 6 9 12-6 1-11-2-13-8 2 0 4 1 5 3"/></svg>
-          </div>
-        </div>
-        <div class="tile">
-          <p class="tt">Locks kept</p>
-          <p class="tn">24<span style="font-size:13px;color:var(--ink-soft);font-weight:600"> / 28</span></p>
-          <p class="ts">4 skipped this week</p>
-          <div class="barmini"><i style="width:86%"></i></div>
-        </div>
-      </div>
-
-      <!-- MOST PAUSED APPS -->
-      <div class="card applist">
-        <p class="card-title">Most paused</p>
-        <p class="card-note">By total minutes this week</p>
-
-        <div class="arow">
-          <div class="aicon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-deep)" stroke-width="1.6"><path d="M8 6l12 6-12 6V6z" stroke-linejoin="round"/></svg>
-          </div>
-          <div class="ainfo">
-            <div class="aname">YouTube</div>
-            <div class="abar"><i style="width:88%"></i></div>
-          </div>
-          <div class="amin">1h 24m</div>
-        </div>
-
-        <div class="arow">
-          <div class="aicon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-deep)" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="16.2" cy="7.8" r=".9" fill="var(--green-deep)" stroke="none"/></svg>
-          </div>
-          <div class="ainfo">
-            <div class="aname">Instagram</div>
-            <div class="abar"><i style="width:64%"></i></div>
-          </div>
-          <div class="amin">58m</div>
-        </div>
-
-        <div class="arow">
-          <div class="aicon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-deep)" stroke-width="1.6"><path d="M9 4v11a3.2 3.2 0 1 1-2.4-3.1" stroke-linecap="round"/><path d="M9 4c.6 2.6 2.6 4.3 5 4.5" stroke-linecap="round"/></svg>
-          </div>
-          <div class="ainfo">
-            <div class="aname">TikTok</div>
-            <div class="abar"><i style="width:41%"></i></div>
-          </div>
-          <div class="amin">38m</div>
-        </div>
-
-        <div class="arow">
-          <div class="aicon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--green-deep)" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <div class="ainfo">
-            <div class="aname">X</div>
-            <div class="abar"><i style="width:22%"></i></div>
-          </div>
-          <div class="amin">22m</div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="navbar">
-      <div class="navitem">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 11l8-6 8 6M6 10v9h12v-9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Home</span>
-      </div>
-      <div class="navitem active">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19V10M12 19V5M19 19v-7" stroke-linecap="round"/></svg>
-        <span>Analytics</span>
-      </div>
-      <div class="navitem">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6a7 7 0 0 0 .1-1.2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Account</span>
-      </div>
-    </div>
+<section class="hero" aria-label="Summary">
+  <div class="two">
+    <div><div class="k">Pauses kept</div><div class="big" id="hp"></div></div>
+    <div><div class="k">Time saved</div><div class="big" id="hs"></div></div>
   </div>
+  <div class="delta" id="delta"></div>
+  <div class="all"><span>All time</span><span id="all"></span></div>
+</section>
 
-</body>
-</html>
+<section class="card">
+  <div class="head"><h2>Progress</h2>
+    <div class="pill" id="met"><button data-m="p">Pauses</button><button data-m="s">Time saved</button></div></div>
+  <p class="hint">Tap a bar to see its details.</p>
+  <div class="read" id="read"></div>
+  <svg id="chart" viewBox="0 0 340 150" role="img" aria-label="Bar chart of your progress"></svg>
+</section>
 
+<section class="card">
+  <div class="head"><h2>By app</h2></div>
+  <div id="apps"></div>
+</section>
+</main>
+
+<nav><div>
+  <span><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Home</span>
+  <span class="a"><svg viewBox="0 0 24 24"><path d="M6 20V11M12 20V4M18 20v-6"/></svg>Analytics</span>
+  <span><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Account</span>
+</div></nav>
+
+<script>
+(function(){
+/* Data is supplied by FocusLock from this device only.
+   P: {t: timestamp in ms, p: package name, s: minutes saved}
+   APPS: {p: package name, n: label, i: installed app icon data URI} */
+var APPS=[],H=36e5,D=864e5,now=Date.now(),P=[];
+var t0=new Date();t0.setHours(0,0,0,0);
+
+var st={r:'7d',m:'p',sel:null},$=function(i){return document.getElementById(i)};
+var SPAN={'24h':24*H,'7d':7*D,'30d':30*D},NAME={'24h':'24 hours','7d':'7 days','30d':'30 days'};
+function f(m){m=Math.round(m);var h=Math.floor(m/60);return h?h+'h '+(m%60)+'m':m+'m'}
+function sum(l){return l.reduce(function(x,p){return x+p.s},0)}
+function esc(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;')}
+function between(a,b){return P.filter(function(p){return p.t>=a&&p.t<b})}
+function buckets(){var b=[],i,n;
+ if(st.r=='24h'){for(i=0;i<24;i++){var e=now-(23-i)*H;b.push({s:e-H,e:e,l:new Date(e).toLocaleTimeString([],{hour:'numeric'}),full:'Hour ending '+new Date(e).toLocaleTimeString([],{hour:'numeric'})})}}
+ else{n=st.r=='7d'?7:30;for(i=0;i<n;i++){var s=t0.getTime()-(n-1-i)*D,dt=new Date(s);
+  b.push({s:s,e:s+D,l:n==7?dt.toLocaleDateString([],{weekday:'short'}):dt.getDate()+'',full:dt.toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'})})}}
+ return b}
+
+function summary(){
+ var sp=SPAN[st.r],cur=between(now-sp,now+1),prev=between(now-2*sp,now-sp),dl=cur.length-prev.length;
+ $('hp').textContent=cur.length;$('hs').textContent=f(sum(cur));
+ $('delta').textContent=dl>0?dl+' more pauses than the previous '+NAME[st.r]:dl<0?Math.abs(dl)+' fewer pauses than the previous '+NAME[st.r]:'Same number of pauses as the previous '+NAME[st.r];
+ $('all').textContent=P.length+' pauses · '+f(sum(P))+' saved'}
+
+function chart(){
+ var B=buckets(),m=st.m,vals=B.map(function(b){var l=between(b.s,b.e);return m=='p'?l.length:sum(l)});
+ var mx=Math.max.apply(null,vals)||1,W=340,h=118,n=B.length,w=W/n,bw=w*(n>20?.62:.5),k=n==24?6:n==30?5:1,s='';
+ if(st.sel==null||st.sel>=n)st.sel=n-1;
+ vals.forEach(function(v,i){var bh=Math.max(v?4:2,v/mx*h),x=i*w+(w-bw)/2;
+  s+='<rect class="bar'+(i==st.sel?' on':'')+'" x="'+x+'" y="'+(h-bh)+'" width="'+bw+'" height="'+bh+'" rx="'+Math.min(6,bw/2)+'"/>';
+  s+='<rect data-i="'+i+'" x="'+i*w+'" y="0" width="'+w+'" height="150" fill="transparent" style="cursor:pointer"/>';
+  if(i%k==0)s+='<text class="ax" x="'+(i*w+w/2)+'" y="140" text-anchor="middle">'+B[i].l+'</text>'});
+ $('chart').innerHTML=s;
+ var v=vals[st.sel];
+ $('read').innerHTML='<b>'+(m=='p'?v+(v==1?' pause':' pauses'):f(v)+' saved')+'</b><span>'+B[st.sel].full+'</span>'}
+
+function apps(){
+ var l=between(now-SPAN[st.r],now+1),g=APPS.map(function(a){var x=l.filter(function(p){return p.p==a.p});return{a:a,c:x.length,s:sum(x)}}).sort(function(x,y){return y.c-x.c}),mx=g.length&&g[0].c||1;
+ $('apps').innerHTML=g.length?g.map(function(x){return '<div class="app-r"><div class="ic"><img src="'+esc(x.a.i)+'" alt=""></div><div><div class="nm">'+esc(x.a.n)+'</div><div class="trk"><i style="width:'+(x.c/mx*100)+'%"></i></div></div><div class="rt">'+x.c+(x.c==1?' pause':' pauses')+'<small>'+f(x.s)+' saved</small></div></div>'}).join(''):'<p class="hint">Choose apps to protect and your activity will appear here.</p>'}
+
+function all(){
+ [].forEach.call(document.querySelectorAll('#rng button'),function(b){b.setAttribute('aria-pressed',b.dataset.r==st.r)});
+ [].forEach.call(document.querySelectorAll('#met button'),function(b){b.setAttribute('aria-pressed',b.dataset.m==st.m)});
+ summary();chart();apps()}
+$('rng').onclick=function(e){var b=e.target.closest('button');if(b){st.r=b.dataset.r;st.sel=null;all()}};
+$('met').onclick=function(e){var b=e.target.closest('button');if(b){st.m=b.dataset.m;all()}};
+$('chart').onclick=function(e){var i=e.target.getAttribute('data-i');if(i!=null){st.sel=+i;chart()}};
+window.setFocusLockData=function(events,apps){P=Array.isArray(events)?events:[];APPS=Array.isArray(apps)?apps:[];now=Date.now();t0=new Date();t0.setHours(0,0,0,0);st.sel=null;all()};
+all();
+})();
+</script></body></html>
