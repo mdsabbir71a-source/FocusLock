@@ -173,6 +173,8 @@ public final class SupabaseApi {
                 AccountStore.save(context, jwtClaim(normalizedAccessToken, "email"), "google");
                 long expiresAt = tokenExpiry(normalizedAccessToken, expiresIn);
                 SecureSessionStore.save(context, normalizedAccessToken, normalizedRefreshToken, userId, expiresAt);
+                SecureSessionStore.Session session = SecureSessionStore.get(context);
+                if (session != null) syncAccountData(context, session);
                 deliver(callback, new AuthResult(true, false), null);
             } catch (Exception e) { deliver(callback, null, friendly(e)); }
         });
@@ -389,6 +391,11 @@ public final class SupabaseApi {
         if (userId.isEmpty()) userId = jwtSubject(access);
         long expiresAt = tokenExpiry(access, json.optLong("expires_in", 3600));
         SecureSessionStore.save(context, access, refresh, userId, expiresAt);
+        // Register the installation immediately after authentication. The dashboard can
+        // then show a new signed-in person and their device without waiting for
+        // protection to be enabled or the monitor service to start.
+        SecureSessionStore.Session session = SecureSessionStore.get(context);
+        if (session != null) syncAccountData(context, session);
     }
 
     private static String jwtSubject(String token) throws Exception {
