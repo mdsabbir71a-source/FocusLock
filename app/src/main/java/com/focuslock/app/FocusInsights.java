@@ -2,7 +2,12 @@ package com.focuslock.app;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /** Lightweight, on-device focus metrics. It never affects protection decisions. */
 public final class FocusInsights {
@@ -12,6 +17,8 @@ public final class FocusInsights {
     private static final String PREVIOUS = "previous_screen_ms";
     private static final String PAUSES = "pauses";
     private static final String SAVED = "saved_ms";
+    private static final String PAUSE_EVENTS = "pause_events";
+    private static final int MAX_PAUSE_EVENTS = 500;
 
     private FocusInsights() { }
 
@@ -41,13 +48,40 @@ public final class FocusInsights {
         values.edit().putLong(TODAY, values.getLong(TODAY, 0L) + Math.max(0L, elapsedMs)).apply();
     }
 
-    public static void recordPause(Context context, long protectedMs) {
+    public static void recordPause(Context context, String packageName, long protectedMs) {
         rollDay(context);
         SharedPreferences values = prefs(context);
+        long saved = Math.max(0L, protectedMs);
+        Set<String> events = new HashSet<>(values.getStringSet(PAUSE_EVENTS, new HashSet<>()));
+        events.add(System.currentTimeMillis() + "|" + packageName + "|" + saved);
+        if (events.size() > MAX_PAUSE_EVENTS) {
+            ArrayList<String> ordered = new ArrayList<>(events);
+            java.util.Collections.sort(ordered);
+            while (ordered.size() > MAX_PAUSE_EVENTS) ordered.remove(0);
+            events = new HashSet<>(ordered);
+        }
         values.edit()
                 .putInt(PAUSES, values.getInt(PAUSES, 0) + 1)
-                .putLong(SAVED, values.getLong(SAVED, 0L) + Math.max(0L, protectedMs))
+                .putLong(SAVED, values.getLong(SAVED, 0L) + saved)
+                .putStringSet(PAUSE_EVENTS, events)
                 .apply();
+    }
+
+    /** Recent pause history for local analytics. Each entry is grouped by the protected package. */
+    public static List<Pause> pauses(Context context) {
+        ArrayList<Pause> result = new ArrayList<>();
+        for (String value : prefs(context).getStringSet(PAUSE_EVENTS, new HashSet<>())) {
+            String[] parts = value.split("\\|", 3);
+            if (parts.length != 3) continue;
+            try { result.add(new Pause(Long.parseLong(parts[0]), parts[1], Long.parseLong(parts[2]))); }
+            catch (NumberFormatException ignored) { }
+        }
+        java.util.Collections.sort(result, new Comparator<Pause>() {
+            @Override public int compare(Pause left, Pause right) {
+                return left.timeMs < right.timeMs ? -1 : left.timeMs == right.timeMs ? 0 : 1;
+            }
+        });
+        return result;
     }
 
     public static Snapshot snapshot(Context context) {
@@ -67,6 +101,17 @@ public final class FocusInsights {
             this.focusSavedMs = focusSavedMs;
             this.todayScreenMs = todayScreenMs;
             this.previousScreenMs = previousScreenMs;
+        }
+    }
+
+    public static final class Pause {
+        public final long timeMs;
+        public final String packageName;
+        public final long savedMs;
+        Pause(long timeMs, String packageName, long savedMs) {
+            this.timeMs = timeMs;
+            this.packageName = packageName;
+            this.savedMs = savedMs;
         }
     }
 }

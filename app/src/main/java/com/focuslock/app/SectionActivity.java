@@ -2,13 +2,22 @@ package com.focuslock.app;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.util.Base64;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 /** Full-screen, local-only account and analytics surfaces. They never participate in locking. */
 public final class SectionActivity extends Activity {
@@ -60,16 +69,56 @@ public final class SectionActivity extends Activity {
         } catch (Exception ignored) { return "<html><head>" + bridge() + "</head><body></body></html>"; }
     }
 
-    private static String bridge() { return "<style>html,body{width:100%;height:100%;overflow:hidden!important}body{padding:0!important;display:block!important;background:#F7F5EF!important}.phone{width:100vw!important;height:100vh!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}.status{display:none!important}</style><script>window.focusLockSection=function(email,saved,pauses,today,previous){var p=document.querySelector('.profile');if(p){var strong=p.querySelector('strong'),span=p.querySelector('span');if(strong)strong.textContent=email?email.split('@')[0]:'FocusLock user';if(span)span.textContent=email||'Signed in securely';}var nums=document.querySelectorAll('.hero-stats .num');if(nums.length){nums[0].textContent=saved;nums[1].textContent=pauses;nums[2].textContent=today;}var sub=document.querySelector('.sub');if(sub)sub.textContent=saved==='0m'?'Your focus story starts today.':'You kept '+saved+' for yourself.';var nav=document.querySelectorAll('.navitem,.nav>div');for(var i=0;i<nav.length;i++){(function(n,index){n.addEventListener('click',function(){location.href=index===0?'focuslock://home':index===1?'focuslock://insights':'focuslock://account';});})(nav[i],i);}};</script>"; }
+    private static String bridge() { return "<style>html,body{width:100%;min-height:100%}body{padding:0!important;display:block!important;background:#F7F5EF!important}.phone{width:100vw!important;height:100vh!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}.status{display:none!important}</style><script>window.focusLockNavigation=function(){var nav=document.querySelectorAll('.navitem,nav span');for(var i=0;i<nav.length;i++){(function(n,index){n.addEventListener('click',function(){location.href=index===0?'focuslock://home':index===1?'focuslock://insights':'focuslock://account';});})(nav[i],i);}};</script>"; }
     private void bind() {
         if (view == null) return;
-        FocusInsights.Snapshot s = FocusInsights.snapshot(this);
-        String email = AccountStore.email(this);
-        String today = friendly(s.todayScreenMs);
-        view.evaluateJavascript("if(window.focusLockSection){window.focusLockSection(" + js(email) + "," + js(friendly(s.focusSavedMs)) + "," + js(String.valueOf(s.pauses)) + "," + js(today) + "," + js(friendly(s.previousScreenMs)) + ");}", null);
+        view.evaluateJavascript("if(window.setFocusLockData){window.setFocusLockData(" + pauseEventsJson() + "," + appsJson() + ");}if(window.focusLockNavigation){window.focusLockNavigation();}", null);
     }
-    private static String friendly(long ms) { long minutes=Math.max(0L,ms)/60000L; return minutes>=60?(minutes/60)+"h "+(minutes%60)+"m":minutes+"m"; }
-    private static String js(String s) { return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ") + "'"; }
+
+    private String pauseEventsJson() {
+        StringBuilder json = new StringBuilder("[");
+        for (FocusInsights.Pause pause : FocusInsights.pauses(this)) {
+            if (json.length() > 1) json.append(',');
+            json.append("{\"t\":").append(pause.timeMs).append(",\"p\":")
+                    .append(json(pause.packageName)).append(",\"s\":").append(pause.savedMs / 60000L).append('}');
+        }
+        return json.append(']').toString();
+    }
+
+    private String appsJson() {
+        PackageManager manager = getPackageManager();
+        Set<String> selected = LockStore.packages(this);
+        ArrayList<String> packages = new ArrayList<>(selected);
+        Collections.sort(packages);
+        StringBuilder json = new StringBuilder("[");
+        for (String packageName : packages) {
+            try {
+                if (json.length() > 1) json.append(',');
+                CharSequence label = manager.getApplicationLabel(manager.getApplicationInfo(packageName, 0));
+                Drawable icon = manager.getApplicationIcon(packageName);
+                json.append("{\"p\":").append(json(packageName)).append(",\"n\":")
+                        .append(json(label == null ? packageName : label.toString())).append(",\"i\":")
+                        .append(json(iconData(icon))).append('}');
+            } catch (PackageManager.NameNotFoundException ignored) { }
+        }
+        return json.append(']').toString();
+    }
+
+    private static String iconData(Drawable drawable) {
+        int size = 48;
+        Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        drawable.setBounds(0, 0, size, size);
+        drawable.draw(canvas);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, output);
+        return "data:image/png;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP);
+    }
+
+    private static String json(String value) {
+        if (value == null) return "\"\"";
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ") + "\"";
+    }
     @Override public void onBackPressed() { startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)); finish(); }
     @Override protected void onDestroy() { if (view != null) view.destroy(); super.onDestroy(); }
 }
