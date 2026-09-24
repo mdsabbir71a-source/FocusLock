@@ -80,7 +80,7 @@ public final class SectionActivity extends Activity {
         for (FocusInsights.Pause pause : FocusInsights.pauses(this)) {
             if (json.length() > 1) json.append(',');
             json.append("{\"t\":").append(pause.timeMs).append(",\"p\":")
-                    .append(json(pause.packageName)).append(",\"s\":").append(pause.savedMs / 60000L).append('}');
+                    .append(json(pause.packageName)).append(",\"s\":").append(pause.savedMs).append('}');
         }
         return json.append(']').toString();
     }
