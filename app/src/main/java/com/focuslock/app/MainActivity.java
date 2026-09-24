@@ -44,7 +44,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.Locale;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -678,7 +680,8 @@ public class MainActivity extends Activity {
     private String friendlyPlanName() {
         String level = AccessStore.level(this);
         if (level == null || level.trim().isEmpty() || "free".equalsIgnoreCase(level)) return "Free access";
-        return level.substring(0, 1).toUpperCase() + level.substring(1).toLowerCase() + " plan";
+        return level.substring(0, 1).toUpperCase(Locale.ROOT)
+                + level.substring(1).toLowerCase(Locale.ROOT) + " plan";
     }
 
     private void showAccountDetailsDialog() {
@@ -1016,11 +1019,22 @@ public class MainActivity extends Activity {
         }
         Set<String> saved = LockStore.packages(this);
         List<ResolveInfo> apps = new ArrayList<>(unique.values());
-        apps.sort(Comparator
-                .comparingInt((ResolveInfo a) -> saved.contains(a.activityInfo.packageName) ? 0 : 1)
-                .thenComparingInt(a -> -AppSelectionStore.count(this, a.activityInfo.packageName))
-                .thenComparingInt(a -> appPriority(a.activityInfo.packageName))
-                .thenComparing(a -> a.loadLabel(pm).toString().toLowerCase()));
+        // List.sort and Comparator's fluent helpers are API 24+. Keep this
+        // comparator compatible with Android 6.0 (our minSdk is 23).
+        Collections.sort(apps, new Comparator<ResolveInfo>() {
+            @Override public int compare(ResolveInfo left, ResolveInfo right) {
+                String leftPackage = left.activityInfo.packageName;
+                String rightPackage = right.activityInfo.packageName;
+                int result = Boolean.compare(!saved.contains(leftPackage), !saved.contains(rightPackage));
+                if (result != 0) return result;
+                result = Integer.compare(AppSelectionStore.count(MainActivity.this, rightPackage),
+                        AppSelectionStore.count(MainActivity.this, leftPackage));
+                if (result != 0) return result;
+                result = Integer.compare(appPriority(leftPackage), appPriority(rightPackage));
+                if (result != 0) return result;
+                return left.loadLabel(pm).toString().compareToIgnoreCase(right.loadLabel(pm).toString());
+            }
+        });
         int visibleTiles = 0;
         for (ResolveInfo info : apps) {
             String pkg = info.activityInfo.packageName;
@@ -1091,7 +1105,7 @@ public class MainActivity extends Activity {
     }
 
     private int appPriority(String pkg) {
-        String value = pkg == null ? "" : pkg.toLowerCase();
+        String value = pkg == null ? "" : pkg.toLowerCase(Locale.ROOT);
         if (value.contains("instagram")) return 0;
         if (value.contains("tiktok")) return 1;
         if (value.contains("facebook") || value.contains("katana")) return 2;
