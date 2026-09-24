@@ -15,6 +15,10 @@ public final class SectionActivity extends Activity {
     public static final String EXTRA_SECTION = "section";
     private WebView view;
     private boolean account;
+    // These bundled pages do not change while the process is alive. Caching
+    // their prepared HTML removes repeated asset I/O between sections.
+    private static String analyticsHtml;
+    private static String accountHtml;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -44,11 +48,15 @@ public final class SectionActivity extends Activity {
 
     private void reload() { view.loadDataWithBaseURL("https://focuslock.local/", pageHtml(), "text/html", "UTF-8", null); }
     private String pageHtml() {
+        String cached = account ? accountHtml : analyticsHtml;
+        if (cached != null) return cached;
         String name = account ? "account" : "analytics";
         try (InputStream in = getAssets().open("sections/" + name + ".html"); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             byte[] bytes = new byte[4096]; int count;
             while ((count = in.read(bytes)) != -1) out.write(bytes, 0, count);
-            return out.toString("UTF-8").replace("</head>", bridge() + "</head>");
+            String html = out.toString("UTF-8").replace("</head>", bridge() + "</head>");
+            if (account) accountHtml = html; else analyticsHtml = html;
+            return html;
         } catch (Exception ignored) { return "<html><head>" + bridge() + "</head><body></body></html>"; }
     }
 
