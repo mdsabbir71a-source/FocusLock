@@ -22,8 +22,11 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Locale;
+import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -337,8 +340,8 @@ public final class SupabaseApi {
                     .put("battery_optimization_ignored", power != null && power.isIgnoringBatteryOptimizations(context.getPackageName()))
                     .put("notifications_granted", notificationsGranted)
                     .put("app_enabled", LockStore.isEnabled(context))
-                    .put("capabilities_updated_at", Instant.now().toString())
-                    .put("last_seen_at", Instant.now().toString());
+                    .put("capabilities_updated_at", isoTimestamp(System.currentTimeMillis()))
+                    .put("last_seen_at", isoTimestamp(System.currentTimeMillis()));
 
             // PostgREST upserts with a composite conflict key failed silently on
             // some installed builds. Resolve the row first, then create or update
@@ -356,7 +359,7 @@ public final class SupabaseApi {
             }
 
             requestWithSession(context, "PATCH", "/rest/v1/profiles?user_id=eq." + encode(session.userId),
-                    new JSONObject().put("last_seen_at", Instant.now().toString()).toString(), session,
+                    new JSONObject().put("last_seen_at", isoTimestamp(System.currentTimeMillis())).toString(), session,
                     "return=minimal");
 
             DiagnosticStore.Event event = DiagnosticStore.pending(context);
@@ -368,7 +371,7 @@ public final class SupabaseApi {
                         .put("app_version", BuildConfig.VERSION_NAME)
                         .put("android_version", String.valueOf(Build.VERSION.SDK_INT))
                         .put("device_model", Build.MANUFACTURER + " " + Build.MODEL)
-                        .put("occurred_at", Instant.ofEpochMilli(event.occurredAt).toString());
+                        .put("occurred_at", isoTimestamp(event.occurredAt));
                 Response diagnosticResponse = requestWithSession(context, "POST", "/rest/v1/app_diagnostics", diagnostic.toString(), session,
                         "return=minimal");
                 if (diagnosticResponse.ok()) DiagnosticStore.clearPending(context);
@@ -497,8 +500,30 @@ public final class SupabaseApi {
 
     private static boolean isFuture(String iso) {
         if (iso == null || iso.isEmpty() || "null".equals(iso)) return false;
-        try { return Instant.parse(iso).isAfter(Instant.now()); }
+        try { return parseIsoTimestamp(iso) > System.currentTimeMillis(); }
         catch (Exception ignored) { return false; }
+    }
+
+    /** ISO-8601 helpers that work on Android 6/7 as well as current Android. */
+    private static String isoTimestamp(long millis) {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
+        format.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return format.format(new Date(millis));
+    }
+
+    private static long parseIsoTimestamp(String value) throws ParseException {
+        String normalized = value.endsWith("Z")
+                ? value.substring(0, value.length() - 1) + "+00:00" : value;
+        ParseException failure = null;
+        String[] patterns = {"yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "yyyy-MM-dd'T'HH:mm:ssXXX"};
+        for (String pattern : patterns) {
+            try {
+                SimpleDateFormat format = new SimpleDateFormat(pattern, Locale.US);
+                Date parsed = format.parse(normalized);
+                if (parsed != null) return parsed.getTime();
+            } catch (ParseException error) { failure = error; }
+        }
+        throw failure == null ? new ParseException("Invalid timestamp", 0) : failure;
     }
 
     private static String nullableString(JSONObject object, String key) {

@@ -37,10 +37,19 @@ public final class LockStore {
     }
 
     public static void configure(Context context, Set<String> packages, long allowanceMs, long lockDurationMs) {
-        SharedPreferences.Editor edit = prefs(context).edit()
+        SharedPreferences preferences = prefs(context);
+        Set<String> previous = new HashSet<>(preferences.getStringSet(PACKAGES, new HashSet<>()));
+        SharedPreferences.Editor edit = preferences.edit()
                 .putStringSet(PACKAGES, new HashSet<>(packages))
                 .putLong(ALLOWANCE, allowanceMs)
                 .putLong(LOCK_DURATION, lockDurationMs);
+        // Remove state for deselected apps. This prevents an old lock or usage
+        // value from reappearing if an app is removed and later selected again.
+        for (String pkg : previous) {
+            if (!packages.contains(pkg)) {
+                edit.remove(usageKey(pkg)).remove(lockedKey(pkg)).remove(cardKey(pkg));
+            }
+        }
         for (String pkg : packages) edit.putLong(usageKey(pkg), 0).putLong(lockedKey(pkg), 0);
         edit.apply();
     }
