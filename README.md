@@ -2,6 +2,18 @@
 
 FocusLock lets a user choose distracting apps, set an actual foreground-use allowance, and lock only those apps for a chosen period when the allowance is used. The master switch controls selected-app monitoring.
 
+## Version 1.0.89 — rebuilt release line
+
+This is the maintained source line for the release rebuilt from the verified
+working FocusLock v1.0.88 test APK. It preserves the eight current lock-card
+designs, 200 ms foreground checks, selected-app-only locking, optional
+FocusLock self-lock, the custom timer controls, and the account/analytics
+sections. The previous versions are historical checkpoints only.
+
+Source recovery and release preservation rules are documented in
+[`docs/RELEASE_PROVENANCE.md`](docs/RELEASE_PROVENANCE.md). The production
+keystore is deliberately excluded from Git and source archives.
+
 ## Version 1.0.23
 
 The timer actions now use vibration feedback compatible with Android 8 and later.
