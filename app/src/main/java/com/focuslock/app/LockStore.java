@@ -99,7 +99,7 @@ public final class LockStore {
         if (total >= allowance(context)) {
             int cardIndex = (prefs(context).getInt(LAST_CARD_INDEX, -1) + 1) % LOCK_CARDS.length;
             prefs(context).edit().putLong(usageKey(pkg), 0).putLong(lockedKey(pkg), System.currentTimeMillis() + lockDuration(context)).putInt(cardKey(pkg), cardIndex).putInt(LAST_CARD_INDEX, cardIndex).apply();
-            FocusInsights.recordPause(context, lockDuration(context));
+            FocusInsights.recordPause(context, pkg, lockDuration(context));
             return true;
         }
         prefs(context).edit().putLong(usageKey(pkg), total).apply();
