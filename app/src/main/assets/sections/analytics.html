@@ -102,14 +102,14 @@ nav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stro
 <script>
 (function(){
 /* Data is supplied by FocusLock from this device only.
-   P: {t: timestamp in ms, p: package name, s: minutes saved}
+   P: {t: timestamp in ms, p: package name, s: milliseconds saved}
    APPS: {p: package name, n: label, i: installed app icon data URI} */
 var APPS=[],H=36e5,D=864e5,now=Date.now(),P=[];
 var t0=new Date();t0.setHours(0,0,0,0);
 
 var st={r:'7d',m:'p',sel:null},$=function(i){return document.getElementById(i)};
 var SPAN={'24h':24*H,'7d':7*D,'30d':30*D},NAME={'24h':'24 hours','7d':'7 days','30d':'30 days'};
-function f(m){m=Math.round(m);var h=Math.floor(m/60);return h?h+'h '+(m%60)+'m':m+'m'}
+function f(ms){var s=Math.max(0,Math.round(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+'h '+m+'m':m?m+'m':s+'s'}
 function sum(l){return l.reduce(function(x,p){return x+p.s},0)}
 function esc(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;')}
 function between(a,b){return P.filter(function(p){return p.t>=a&&p.t<b})}
