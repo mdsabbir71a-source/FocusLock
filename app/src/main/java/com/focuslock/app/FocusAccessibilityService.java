@@ -15,7 +15,9 @@ import android.view.accessibility.AccessibilityNodeInfo;
  * signal for phones whose Usage Access reports are delayed or incomplete.
  */
 public final class FocusAccessibilityService extends AccessibilityService {
-    private static final long TICK_MS = 500L;
+    // Accessibility is the direct foreground signal on OEM builds where
+    // Usage Access lags. Keep its cadence aligned with the main monitor.
+    private static final long TICK_MS = 200L;
     private static final long BLOCK_COOLDOWN_MS = 1_200L;
     private static final long OVERLAY_FALLBACK_DELAY_MS = 3_000L;
 
