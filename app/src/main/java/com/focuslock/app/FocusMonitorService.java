@@ -24,7 +24,9 @@ import java.util.List;
  * silently stop protection.
  */
 public class FocusMonitorService extends Service {
-    private static final long LOOP_MS = 350L;
+    // Fast enough to catch rapid app switches while still leaving almost all
+    // CPU time to the foreground app. This is the v1.0.88 reliability pass.
+    private static final long LOOP_MS = 200L;
     private static final long EVENT_OVERLAP_MS = 1_500L;
     private static final long FALLBACK_QUERY_MS = 1_250L;
     private static final long FOREGROUND_STALE_MS = 3_000L;
