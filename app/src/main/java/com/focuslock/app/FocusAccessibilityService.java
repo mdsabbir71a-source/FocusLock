@@ -17,6 +17,7 @@ import android.view.accessibility.AccessibilityNodeInfo;
 public final class FocusAccessibilityService extends AccessibilityService {
     private static final long TICK_MS = 500L;
     private static final long BLOCK_COOLDOWN_MS = 1_200L;
+    private static final long OVERLAY_FALLBACK_DELAY_MS = 3_000L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String foregroundPackage;
@@ -127,7 +128,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
                         && !BlockActivity.isVisible()) {
                     GardenLockOverlay.show(FocusAccessibilityService.this, target);
                 }
-            }, 1_300L);
+            }, OVERLAY_FALLBACK_DELAY_MS);
         }
     }
 
