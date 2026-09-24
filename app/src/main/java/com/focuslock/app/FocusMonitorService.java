@@ -28,6 +28,10 @@ public class FocusMonitorService extends Service {
     private static final long EVENT_OVERLAP_MS = 1_500L;
     private static final long FALLBACK_QUERY_MS = 1_250L;
     private static final long FOREGROUND_STALE_MS = 3_000L;
+    // A slow device can take more than a second to bring the full lock activity
+    // to the front. Give it time before showing the emergency overlay so users
+    // never see two lock surfaces flash in sequence.
+    private static final long OVERLAY_FALLBACK_DELAY_MS = 3_000L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private long lastKick;
@@ -244,7 +248,7 @@ public class FocusMonitorService extends Service {
                         && !BlockActivity.isVisible()) {
                     GardenLockOverlay.show(FocusMonitorService.this, blockedPackage);
                 }
-            }, 1_300L);
+            }, OVERLAY_FALLBACK_DELAY_MS);
         }
     }
 
