@@ -5,7 +5,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AppOpsManager;
 import android.animation.AnimatorSet;
-import android.animation.LayoutTransition;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Intent;
@@ -274,7 +273,6 @@ public class MainActivity extends Activity {
         setupCard = column();
         setupCard.setPadding(dp(15), dp(14), dp(15), dp(14));
         setupCard.setBackground(shape(SOFT_VIOLET, BORDER, 22));
-        setupCard.setLayoutTransition(new LayoutTransition());
         setupTitle = text("Quick setup", 15, INK, true);
         setupCard.addView(setupTitle);
         permissionSectionAnchor = setupCard;
@@ -324,7 +322,9 @@ public class MainActivity extends Activity {
 
         appGrid = new GridLayout(this);
         appGrid.setColumnCount(3);
-        appGrid.setLayoutTransition(new LayoutTransition());
+        // Do not attach a LayoutTransition here. Expanding a long app list
+        // otherwise starts an animation for every child and makes the screen
+        // stutter on lower-memory phones.
         addLaunchableApps(appGrid);
         appsCard.addView(appGrid, topMargin(9));
         showAppsButton = button("Show all apps  ↓", SOFT_VIOLET, VIOLET);
@@ -1128,22 +1128,13 @@ public class MainActivity extends Activity {
         if (appGrid != null) appGrid.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
         for (int i = 0; i < optionalAppTiles.size(); i++) {
             View tile = optionalAppTiles.get(i);
-            if (allAppsExpanded) {
-                tile.setVisibility(View.VISIBLE);
-                tile.setAlpha(0f);
-                tile.setScaleX(.88f);
-                tile.setScaleY(.88f);
-                tile.animate().alpha(1f).scaleX(1f).scaleY(1f)
-                        .setStartDelay(Math.min(180, i * 18L)).setDuration(220).start();
-            } else {
-                tile.animate().alpha(0f).scaleX(.9f).scaleY(.9f).setDuration(120)
-                        .withEndAction(() -> {
-                            tile.setVisibility(View.GONE);
-                            tile.setAlpha(1f);
-                            tile.setScaleX(1f);
-                            tile.setScaleY(1f);
-                        }).start();
-            }
+            // Visibility changes are intentionally immediate. Animating every
+            // hidden app was the main source of dropped frames in long lists.
+            tile.animate().cancel();
+            tile.setVisibility(allAppsExpanded ? View.VISIBLE : View.GONE);
+            tile.setAlpha(1f);
+            tile.setScaleX(1f);
+            tile.setScaleY(1f);
         }
         showAppsButton.setText(allAppsExpanded ? "Show fewer apps  ↑"
                 : "Show all " + appChecks.size() + " apps  ↓");
