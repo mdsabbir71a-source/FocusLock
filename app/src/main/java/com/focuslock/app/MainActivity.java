@@ -77,6 +77,10 @@ public class MainActivity extends Activity {
     private EditText durationInput;
     private EditText durationSecondsInput;
     private LinearLayout permissionRow;
+    private View usagePermissionCard;
+    private View overlayPermissionCard;
+    private View batteryPermissionCard;
+    private View compatibilityPermissionCard;
     private LinearLayout setupCard;
     private Button masterButton;
     private View masterCard;
@@ -291,7 +295,7 @@ public class MainActivity extends Activity {
         setupTitle = text("Quick setup", 15, INK, true);
         setupCard.addView(setupTitle);
         permissionSectionAnchor = setupCard;
-        permissionRow = row();
+        permissionRow = column();
         setupCard.addView(permissionRow, topMargin(9));
         easySetupButton = button("Continue  →", INK, Color.WHITE);
         easySetupButton.setTextSize(13);
@@ -536,7 +540,7 @@ public class MainActivity extends Activity {
         if (isFinishing()) return;
         getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit()
                 .putBoolean("welcome_seen", true).apply();
-        updateGuideStep(1, easySetupButton);
+        updateGuideStep(1, firstMissingPermissionCard());
     }
 
     private void openAuthentication() {
@@ -957,42 +961,33 @@ public class MainActivity extends Activity {
         permissionRow.removeAllViews();
         boolean usage = usageAccessEnabled();
         boolean overlay = Settings.canDrawOverlays(this);
-        View usageCard = permissionCard("Usage Access", "", usage, v -> {
+        usagePermissionCard = permissionCard("Usage Access", "Lets FocusLock measure selected-app time", usage, v -> {
             waitingForSpecialPermission = 1;
             showPermissionPrimer("Allow Usage Access", "Find FocusLock and turn it on.", () ->
                     startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
         });
-        View overlayCard = permissionCard("Gentle Lock", "", overlay, v -> {
+        overlayPermissionCard = permissionCard("Gentle Lock", "Lets the pause screen appear when time is up", overlay, v -> {
             waitingForSpecialPermission = 2;
             showPermissionPrimer("Allow Gentle Lock", "Turn on “Display over other apps”.", () ->
                     startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                             Uri.parse("package:" + getPackageName()))));
         });
-        LinearLayout.LayoutParams left = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        left.rightMargin = dp(5);
-        permissionRow.addView(usageCard, left);
-        LinearLayout.LayoutParams right = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        right.leftMargin = dp(4);
-        right.rightMargin = dp(4);
-        permissionRow.addView(overlayCard, right);
         boolean battery = batteryReliabilityEnabled();
-        View batteryCard = permissionCard("Background", "", battery, v -> {
+        batteryPermissionCard = permissionCard("Keep it active", "Helps FocusLock stay reliable in the background", battery, v -> {
             waitingForSpecialPermission = 3;
             showPermissionPrimer("Keep FocusLock active", "Tap Allow on the next screen.", this::requestBatteryReliability);
         });
-        LinearLayout.LayoutParams third = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        third.leftMargin = dp(4);
-        permissionRow.addView(batteryCard, third);
         boolean compatibility = CompatibilityAccess.isEnabled(this);
-        View compatibilityCard = permissionCard("Compatibility", "", compatibility, v -> {
+        compatibilityPermissionCard = permissionCard("Compatibility Mode", "Keeps protection dependable on more phones", compatibility, v -> {
             waitingForSpecialPermission = 4;
             showPermissionPrimer("Allow Compatibility Mode",
                     "On the next screen, tap FocusLock Compatibility Mode, then turn it on. It checks the active app only and never stores or sends text, messages, or passwords.",
                     () -> CompatibilityAccess.openSettings(this));
         });
-        LinearLayout.LayoutParams fourth = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        fourth.leftMargin = dp(4);
-        permissionRow.addView(compatibilityCard, fourth);
+        permissionRow.addView(usagePermissionCard);
+        permissionRow.addView(overlayPermissionCard, topMargin(8));
+        permissionRow.addView(batteryPermissionCard, topMargin(8));
+        permissionRow.addView(compatibilityPermissionCard, topMargin(8));
         boolean approvalsReady = usage && overlay && battery && compatibility;
         if (setupTitle != null) {
             int ready = (usage ? 1 : 0) + (overlay ? 1 : 0) + (battery ? 1 : 0) + (compatibility ? 1 : 0);
@@ -1012,15 +1007,32 @@ public class MainActivity extends Activity {
     }
 
     private View permissionCard(String title, String copy, boolean enabled, View.OnClickListener click) {
-        LinearLayout card = column();
-        card.setPadding(dp(11), dp(11), dp(11), dp(11));
+        LinearLayout card = row();
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setClickable(!enabled);
+        card.setOnClickListener(click);
+        card.setPadding(dp(13), dp(12), dp(11), dp(12));
         card.setBackground(shape(Color.WHITE, enabled ? Color.rgb(167, 243, 208) : BORDER, 18));
-        card.addView(text(enabled ? "✓" : "○", 14, enabled ? GREEN : VIOLET, true));
-        card.addView(text(title, 12, INK, true), topMargin(5));
+        TextView status = text(enabled ? "✓" : "○", 16, enabled ? GREEN : VIOLET, true);
+        status.setGravity(Gravity.CENTER);
+        status.setBackground(shape(enabled ? Color.rgb(236, 253, 245) : SOFT_VIOLET,
+                enabled ? Color.rgb(167, 243, 208) : BORDER, 18));
+        card.addView(status, new LinearLayout.LayoutParams(dp(36), dp(36)));
+        LinearLayout copyColumn = column();
+        copyColumn.addView(text(title, 13, INK, true));
+        copyColumn.addView(text(enabled ? "Ready to go" : copy, 10, MUTED, false), topMargin(2));
+        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        copyParams.leftMargin = dp(10);
+        copyParams.rightMargin = dp(9);
+        card.addView(copyColumn, copyParams);
         Button action = button(enabled ? "Ready" : "Allow", enabled ? Color.rgb(236, 253, 245) : INK, enabled ? GREEN : Color.WHITE);
+        action.setTextSize(12);
+        action.setMinHeight(dp(44));
+        action.setMinimumHeight(dp(44));
         action.setEnabled(!enabled);
         action.setOnClickListener(click);
-        card.addView(action, topMargin(7));
+        card.addView(action, new LinearLayout.LayoutParams(dp(84), dp(44)));
         return card;
     }
 
@@ -1590,7 +1602,7 @@ public class MainActivity extends Activity {
         }
         boolean permissionsReady = usageAccessEnabled() && Settings.canDrawOverlays(this)
                 && batteryReliabilityEnabled() && CompatibilityAccess.isEnabled(this);
-        if (!permissionsReady) updateGuideStep(1, permissionSectionAnchor);
+        if (!permissionsReady) updateGuideStep(1, firstMissingPermissionCard());
         else if (newGuideIntro || selectedAppCount() == 0) {
             newGuideIntro = false;
             updateGuideStep(2, appSectionAnchor);
@@ -1608,7 +1620,7 @@ public class MainActivity extends Activity {
         currentGuideStep = 0;
         if (!usageAccessEnabled() || !Settings.canDrawOverlays(this) || !batteryReliabilityEnabled()
                 || !CompatibilityAccess.isEnabled(this)) {
-            updateGuideStep(1, permissionSectionAnchor);
+            updateGuideStep(1, firstMissingPermissionCard());
         } else {
             updateGuideStep(2, appSectionAnchor);
         }
@@ -1637,7 +1649,7 @@ public class MainActivity extends Activity {
         guideCard.setVisibility(View.GONE);
         if (step == 1) {
             guideTitle.setText("1 / 5");
-            guideBody.setText("Allow required access");
+            guideBody.setText(permissionGuideMessage());
         } else if (step == 2) {
             guideTitle.setText("2 / 5");
             guideBody.setText(guideAppTarget == null
@@ -1676,7 +1688,7 @@ public class MainActivity extends Activity {
             if (!visible || isFinishing() || screenRoot == null || currentGuideStep != step
                     || generation != coachGeneration) return;
             Runnable action = null;
-            if (step == 1) action = this::startEasySetup;
+            if (step == 1) action = guideTarget::performClick;
             else if (step == 2) action = guideTarget::performClick;
             else if (step == 3) action = () -> showTimerWheel(true);
             else if (step == 4) action = () -> showTimerWheel(false);
@@ -1693,6 +1705,25 @@ public class MainActivity extends Activity {
             screenRoot.removeView(coachOverlay);
         }
         coachOverlay = null;
+    }
+
+    /** The guide always points to one real permission card, never the whole setup panel. */
+    private View firstMissingPermissionCard() {
+        if (!usageAccessEnabled() && usagePermissionCard != null) return usagePermissionCard;
+        if (!Settings.canDrawOverlays(this) && overlayPermissionCard != null) return overlayPermissionCard;
+        if (!batteryReliabilityEnabled() && batteryPermissionCard != null) return batteryPermissionCard;
+        if (!CompatibilityAccess.isEnabled(this) && compatibilityPermissionCard != null) {
+            return compatibilityPermissionCard;
+        }
+        return permissionSectionAnchor != null ? permissionSectionAnchor : easySetupButton;
+    }
+
+    private String permissionGuideMessage() {
+        if (!usageAccessEnabled()) return "Allow Usage Access";
+        if (!Settings.canDrawOverlays(this)) return "Allow Gentle Lock";
+        if (!batteryReliabilityEnabled()) return "Keep FocusLock active";
+        if (!CompatibilityAccess.isEnabled(this)) return "Allow Compatibility Mode";
+        return "Allow required access";
     }
 
     private void pulseTarget(View target) {
