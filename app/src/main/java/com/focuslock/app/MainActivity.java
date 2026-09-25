@@ -977,7 +977,7 @@ public class MainActivity extends Activity {
         View compatibilityCard = permissionCard("Compatibility", "", compatibility, v -> {
             waitingForSpecialPermission = 4;
             showPermissionPrimer("Allow Compatibility Mode",
-                    "The next screen opens FocusLock's own switch. Turn it on. It checks the active app only and never stores or sends text, messages, or passwords.",
+                    "On the next screen, tap FocusLock Compatibility Mode, then turn it on. It checks the active app only and never stores or sends text, messages, or passwords.",
                     () -> CompatibilityAccess.openSettings(this));
         });
         LinearLayout.LayoutParams fourth = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
@@ -1340,7 +1340,7 @@ public class MainActivity extends Activity {
         if (!CompatibilityAccess.isEnabled(this)) {
             waitingForSpecialPermission = 4;
             showPermissionPrimer("Allow Compatibility Mode",
-                    "The next screen opens FocusLock's own switch. Turn it on. It checks the active app only and never stores or sends text, messages, or passwords.",
+                    "On the next screen, tap FocusLock Compatibility Mode, then turn it on. It checks the active app only and never stores or sends text, messages, or passwords.",
                     () -> CompatibilityAccess.openSettings(this));
             return;
         }
