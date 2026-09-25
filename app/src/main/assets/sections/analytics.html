@@ -11,7 +11,7 @@
 body{margin:0;background:var(--bg);color:var(--ink);font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}
 button{font:inherit;cursor:pointer}
 button:focus-visible{outline:2px solid var(--g2);outline-offset:2px}
-.app{max-width:430px;margin:0 auto;padding:20px 16px 100px}
+.app{max-width:430px;margin:0 auto;padding:20px 16px 92px}
 .brand{font-weight:800;letter-spacing:.14em;font-size:13px;color:var(--g)}
 h1{font-size:32px;line-height:1.1;margin:6px 0 12px;font-weight:800;letter-spacing:-.02em}
 
@@ -59,7 +59,7 @@ svg{width:100%;height:auto;display:block}
 /* ---------- Bottom nav ---------- */
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 nav div{display:flex;max-width:430px;margin:0 auto;justify-content:space-around;padding:8px 0 10px}
-nav span{display:grid;justify-items:center;gap:2px;font-size:12px;font-weight:600;color:var(--mute)}
+nav span{display:grid;justify-items:center;gap:2px;font-size:10px;font-weight:700;color:var(--mute);cursor:pointer}
 nav .a{color:var(--g)}
 nav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 </style></head>
@@ -80,16 +80,16 @@ nav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stro
 </section>
 
 <section class="card">
+  <div class="head"><h2>By app</h2></div>
+  <div id="apps"></div>
+</section>
+
+<section class="card">
   <div class="head"><h2>Progress</h2>
     <div class="pill" id="met"><button data-m="p">Pauses</button><button data-m="s">Time saved</button></div></div>
   <p class="hint">Tap a bar to see its details.</p>
   <div class="read" id="read"></div>
   <svg id="chart" viewBox="0 0 340 150" role="img" aria-label="Bar chart of your progress"></svg>
-</section>
-
-<section class="card">
-  <div class="head"><h2>By app</h2></div>
-  <div id="apps"></div>
 </section>
 </main>
 

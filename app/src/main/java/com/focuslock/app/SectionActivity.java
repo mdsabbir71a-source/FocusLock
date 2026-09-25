@@ -49,7 +49,7 @@ public final class SectionActivity extends Activity {
 
     private boolean handle(String url) {
         if (url == null || !url.startsWith("focuslock://")) return false;
-        if (url.startsWith("focuslock://home")) { startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)); finish(); }
+        if (url.startsWith("focuslock://home")) { startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)); finish(); overridePendingTransition(0, 0); }
         else if (url.startsWith("focuslock://insights")) { if (account) { account=false; reload(); } }
         else if (url.startsWith("focuslock://account")) { if (!account) { account=true; reload(); } }
         return true;
@@ -119,6 +119,6 @@ public final class SectionActivity extends Activity {
         if (value == null) return "\"\"";
         return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ") + "\"";
     }
-    @Override public void onBackPressed() { startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)); finish(); }
+    @Override public void onBackPressed() { startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)); finish(); overridePendingTransition(0, 0); }
     @Override protected void onDestroy() { if (view != null) view.destroy(); super.onDestroy(); }
 }
