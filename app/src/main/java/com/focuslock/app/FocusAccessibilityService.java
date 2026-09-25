@@ -7,12 +7,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.view.accessibility.AccessibilityEvent;
-import android.view.accessibility.AccessibilityNodeInfo;
 
 /**
- * User-enabled compatibility monitor. It receives only window/app change events,
- * never reads text, passwords, or screen content. This is a direct foreground
- * signal for phones whose Usage Access reports are delayed or incomplete.
+ * User-enabled compatibility monitor. It receives only the package name from
+ * window-state events; it cannot read the view hierarchy, text, passwords, or
+ * screen content. This is a direct foreground signal for phones whose Usage
+ * Access reports are delayed or incomplete.
  */
 public final class FocusAccessibilityService extends AccessibilityService {
     // Accessibility is the direct foreground signal on OEM builds where
@@ -41,8 +41,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
 
     @Override protected void onServiceConnected() {
         AccessibilityServiceInfo info = getServiceInfo();
-        info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-                | AccessibilityEvent.TYPE_WINDOWS_CHANGED;
+        info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
         info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC;
         info.notificationTimeout = 60;
         info.flags = 0;
@@ -56,8 +55,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event == null) return;
         int type = event.getEventType();
-        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-                && type != AccessibilityEvent.TYPE_WINDOWS_CHANGED) return;
+        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
         CharSequence packageName = event.getPackageName();
         if (packageName == null || packageName.length() == 0) return;
         updateForegroundPackage(packageName.toString());
@@ -79,8 +77,6 @@ public final class FocusAccessibilityService extends AccessibilityService {
         lastTick = now;
         if (!AccessStore.isAllowed(this) || !LockStore.isEnabled(this)
                 || !RemoteConfigStore.appBlockingEnabled(this)) return;
-        String activeWindow = activeWindowPackage();
-        if (activeWindow != null) updateForegroundPackage(activeWindow);
         String target = foregroundPackage;
         if (target == null || target.isEmpty()) return;
         String own = getPackageName();
@@ -141,16 +137,4 @@ public final class FocusAccessibilityService extends AccessibilityService {
         lastTick = SystemClock.elapsedRealtime();
     }
 
-    private String activeWindowPackage() {
-        AccessibilityNodeInfo root = null;
-        try {
-            root = getRootInActiveWindow();
-            CharSequence packageName = root == null ? null : root.getPackageName();
-            return packageName == null || packageName.length() == 0 ? null : packageName.toString();
-        } catch (RuntimeException ignored) {
-            return null;
-        } finally {
-            if (root != null) root.recycle();
-        }
-    }
 }
