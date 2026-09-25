@@ -2,7 +2,7 @@ name: Build FocusLock private test APK
 
 on:
   push:
-    branches: [accessibility-compatibility-test]
+    branches: [main, accessibility-compatibility-test]
   workflow_dispatch:
 
 permissions:
@@ -43,6 +43,6 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: FocusLock-v1.0.73-Rotating-Lock-Cards-Test
+          name: FocusLock-v1.0.89-Permission-Guide-Test
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
