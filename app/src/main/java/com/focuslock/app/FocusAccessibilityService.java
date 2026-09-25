@@ -117,13 +117,13 @@ public final class FocusAccessibilityService extends AccessibilityService {
             // Use the simpler overlay only if Android actually rejects that launch.
             handler.postDelayed(() -> {
                 if (LockStore.isLocked(FocusAccessibilityService.this, target)
-                        && !BlockActivity.isVisible()) {
+                        && target.equals(foregroundPackage) && !BlockActivity.isVisible()) {
                     try { startActivity(block); } catch (RuntimeException ignored) { }
                 }
             }, 450L);
             handler.postDelayed(() -> {
                 if (LockStore.isLocked(FocusAccessibilityService.this, target)
-                        && !BlockActivity.isVisible()) {
+                        && target.equals(foregroundPackage) && !BlockActivity.isVisible()) {
                     GardenLockOverlay.show(FocusAccessibilityService.this, target);
                 }
             }, OVERLAY_FALLBACK_DELAY_MS);
