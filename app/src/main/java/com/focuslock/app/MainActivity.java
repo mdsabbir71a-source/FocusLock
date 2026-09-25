@@ -161,6 +161,9 @@ public class MainActivity extends Activity {
         new Handler().postDelayed(this::maybeExplainBatteryReliability, 650L);
         new Handler().postDelayed(this::maybeShowSelfLockGuide, 1100L);
         new Handler().postDelayed(this::maybeShowXiaomiReliabilityForExistingUser, 1450L);
+        // A coach mark can no longer remain over an unrelated screen after a
+        // user briefly backgrounds FocusLock during first-time setup.
+        new Handler().postDelayed(this::resumeGuide, 520L);
         // Re-check every time the signed-in main screen returns. This also
         // catches permissions changed directly in Android Settings, rather
         // than only Settings pages opened from FocusLock's setup cards.
@@ -190,6 +193,8 @@ public class MainActivity extends Activity {
 
     @Override protected void onPause() {
         visible = false;
+        dismissCoachOverlay();
+        guideHandler.removeCallbacksAndMessages(null);
         super.onPause();
     }
 
@@ -1652,7 +1657,7 @@ public class MainActivity extends Activity {
 
     private void showCoachStep(int step, View target, String message) {
         if (screenRoot == null || mainScroll == null || target == null || isFinishing()) return;
-        if (coachOverlay != null) screenRoot.removeView(coachOverlay);
+        dismissCoachOverlay();
         int[] targetLocation = new int[2];
         int[] scrollLocation = new int[2];
         target.getLocationOnScreen(targetLocation);
@@ -1661,7 +1666,7 @@ public class MainActivity extends Activity {
             mainScroll.smoothScrollBy(0, targetLocation[1] - scrollLocation[1] - dp(145));
         }
         mainScroll.postDelayed(() -> {
-            if (isFinishing() || screenRoot == null || currentGuideStep != step) return;
+            if (!visible || isFinishing() || screenRoot == null || currentGuideStep != step) return;
             Runnable action = null;
             if (step == 1) action = this::startEasySetup;
             else if (step == 2) action = target::performClick;
@@ -1672,6 +1677,13 @@ public class MainActivity extends Activity {
             screenRoot.addView(coachOverlay, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }, 430);
+    }
+
+    private void dismissCoachOverlay() {
+        if (coachOverlay != null && coachOverlay.getParent() == screenRoot) {
+            screenRoot.removeView(coachOverlay);
+        }
+        coachOverlay = null;
     }
 
     private void pulseTarget(View target) {
