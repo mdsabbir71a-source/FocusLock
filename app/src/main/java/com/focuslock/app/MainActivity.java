@@ -210,7 +210,8 @@ public class MainActivity extends Activity {
 
         LinearLayout root = column();
         contentRoot = root;
-        root.setPadding(dp(18), dp(14), dp(18), dp(122));
+        // Keep the full timer section reachable above the fixed save/navigation dock.
+        root.setPadding(dp(18), dp(14), dp(18), dp(184));
         scroll.addView(root, matchWrap());
 
         LinearLayout header = row();
@@ -431,26 +432,29 @@ public class MainActivity extends Activity {
         nav.setGravity(Gravity.CENTER);
         nav.setPadding(dp(10), dp(8), dp(10), dp(10));
         nav.setBackgroundColor(Color.rgb(253, 254, 252));
-        nav.addView(navButton("⌂", "Home", true, v -> mainScroll.smoothScrollTo(0, 0)),
+        nav.addView(navButton(R.drawable.ic_nav_home, "Home", true, v -> mainScroll.smoothScrollTo(0, 0)),
                 new LinearLayout.LayoutParams(0, dp(52), 1f));
-        nav.addView(navButton("✦", "Insights", false, v -> openSection("insights")),
+        nav.addView(navButton(R.drawable.ic_nav_analytics, "Analytics", false, v -> openSection("insights")),
                 new LinearLayout.LayoutParams(0, dp(52), 1f));
-        nav.addView(navButton("◌", "Account", false, v -> openSection("account")),
+        nav.addView(navButton(R.drawable.ic_nav_account, "Account", false, v -> openSection("account")),
                 new LinearLayout.LayoutParams(0, dp(52), 1f));
         return nav;
     }
 
     private void openSection(String section) {
         startActivity(new Intent(this, SectionActivity.class).putExtra(SectionActivity.EXTRA_SECTION, section));
+        overridePendingTransition(0, 0);
     }
 
-    private View navButton(String icon, String label, boolean active, View.OnClickListener click) {
+    private View navButton(int iconResource, String label, boolean active, View.OnClickListener click) {
         LinearLayout item = column();
         item.setGravity(Gravity.CENTER);
         item.setPadding(dp(4), dp(3), dp(4), dp(3));
         int tint = active ? VIOLET : MUTED;
-        TextView symbol = text(icon, 18, tint, true);
-        symbol.setGravity(Gravity.CENTER);
+        ImageView symbol = new ImageView(this);
+        symbol.setImageResource(iconResource);
+        symbol.setColorFilter(tint);
+        symbol.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         item.addView(symbol, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(25)));
         TextView copy = text(label, 10, tint, true);
         copy.setGravity(Gravity.CENTER);
