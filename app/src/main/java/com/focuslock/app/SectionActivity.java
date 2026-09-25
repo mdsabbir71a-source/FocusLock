@@ -38,10 +38,13 @@ public final class SectionActivity extends Activity {
         settings.setDomStorageEnabled(false);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
+        // Both section pages are bundled in the app. Blocking network loads
+        // avoids an unnecessary wait when opening Analytics or Account.
+        settings.setBlockNetworkLoads(true);
         view.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView web, String url) { return handle(url); }
             @Override public boolean shouldOverrideUrlLoading(WebView web, WebResourceRequest request) { return handle(request.getUrl().toString()); }
-            @Override public void onPageFinished(WebView web, String url) { web.postDelayed(SectionActivity.this::bind, 70L); }
+            @Override public void onPageFinished(WebView web, String url) { bind(); }
         });
         setContentView(view);
         view.loadDataWithBaseURL("https://focuslock.local/", pageHtml(), "text/html", "UTF-8", null);
@@ -69,7 +72,7 @@ public final class SectionActivity extends Activity {
         } catch (Exception ignored) { return "<html><head>" + bridge() + "</head><body></body></html>"; }
     }
 
-    private static String bridge() { return "<style>html,body{width:100%;min-height:100%}body{padding:0!important;display:block!important;background:#F7F5EF!important}.phone{width:100vw!important;height:100vh!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}.status{display:none!important}</style><script>window.focusLockNavigation=function(){var nav=document.querySelectorAll('.navitem,nav span');for(var i=0;i<nav.length;i++){(function(n,index){n.addEventListener('click',function(){location.href=index===0?'focuslock://home':index===1?'focuslock://insights':'focuslock://account';});})(nav[i],i);}};</script>"; }
+    private static String bridge() { return "<style>html,body{width:100%;min-height:100%}body{padding:0!important;display:block!important;background:#F7F5EF!important}.phone{width:100vw!important;height:100vh!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}.status{display:none!important}nav{padding-bottom:42px!important}nav div{padding-bottom:10px!important}.app{padding-bottom:142px!important}</style><script>window.focusLockNavigation=function(){var nav=document.querySelectorAll('.navitem,nav span');for(var i=0;i<nav.length;i++){(function(n,index){n.addEventListener('click',function(){location.href=index===0?'focuslock://home':index===1?'focuslock://insights':'focuslock://account';});})(nav[i],i);}};</script>"; }
     private void bind() {
         if (view == null) return;
         view.evaluateJavascript("if(window.setFocusLockData){window.setFocusLockData(" + pauseEventsJson() + "," + appsJson() + ");}if(window.focusLockNavigation){window.focusLockNavigation();}", null);
