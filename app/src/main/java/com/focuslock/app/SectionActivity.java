@@ -1,6 +1,7 @@
 package com.focuslock.app;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -8,6 +9,8 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Build;
+import android.provider.Settings;
 import android.util.Base64;
 import android.view.Gravity;
 import android.view.View;
@@ -16,10 +19,14 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.JavascriptInterface;
+import android.text.InputType;
 import android.widget.FrameLayout;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -51,6 +58,7 @@ public final class SectionActivity extends Activity {
         // Both section pages are bundled in the app. Blocking network loads
         // avoids an unnecessary wait when opening Analytics or Account.
         settings.setBlockNetworkLoads(true);
+        view.addJavascriptInterface(new AccountBridge(), "FocusLock");
         view.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView web, String url) { return handle(url); }
             @Override public boolean shouldOverrideUrlLoading(WebView web, WebResourceRequest request) { return handle(request.getUrl().toString()); }
@@ -87,11 +95,101 @@ public final class SectionActivity extends Activity {
         } catch (Exception ignored) { return "<html><head>" + bridge() + "</head><body></body></html>"; }
     }
 
-    private static String bridge() { return "<style>html,body{width:100%;min-height:100%;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}body{padding:0!important;display:block!important;background:#F7F5EF!important}.phone{width:100vw!important;height:100vh!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}.status,nav{display:none!important}.app{padding-bottom:96px!important}.scroll{padding-bottom:96px!important}</style>"; }
+    private static String bridge() { return "<style>html,body{width:100%;min-height:100%;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}body{padding:0!important;display:block!important;background:#F7F5EF!important}.phone{width:100vw!important;height:100vh!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}.status,nav{display:none!important}.app{padding-bottom:96px!important}.scroll{padding-bottom:96px!important}</style><script>document.addEventListener('click',function(e){var row=e.target.closest('[data-action]');if(row&&window.FocusLock){window.FocusLock.perform(row.dataset.action);}});window.setFocusLockAccount=function(email,provider){var name=document.querySelector('.profile strong'),detail=document.querySelector('.profile span'),avatar=document.querySelector('.avatar');if(name)name.textContent=email||'FocusLock user';if(detail)detail.textContent=provider==='google'?'Google account':'Signed in securely';if(avatar)avatar.textContent=(email||'F').charAt(0).toUpperCase();};</script>"; }
     private void bind() {
         if (view == null) return;
         view.evaluateJavascript("if(window.setFocusLockData){window.setFocusLockData(" + pauseEventsJson() + "," + appsJson() + ");}", null);
+        view.evaluateJavascript("if(window.setFocusLockAccount){window.setFocusLockAccount("
+                + json(AccountStore.email(this)) + "," + json(AccountStore.provider(this)) + ");}", null);
     }
+
+    /** Bridges the polished bundled Account page to real, native account actions. */
+    private final class AccountBridge {
+        @JavascriptInterface public void perform(String action) {
+            runOnUiThread(() -> performAccountAction(action));
+        }
+    }
+
+    private void performAccountAction(String action) {
+        if (!account || action == null) return;
+        if ("details".equals(action)) showAccountDetails();
+        else if ("notifications".equals(action)) openNotificationSettings();
+        else if ("support".equals(action)) showSupport();
+        else if ("password".equals(action)) showChangePassword();
+        else if ("signout".equals(action)) confirmSignOut();
+    }
+
+    private void showAccountDetails() {
+        SecureSessionStore.Session session = SecureSessionStore.get(this);
+        String email = AccountStore.email(this);
+        String provider = AccountStore.provider(this);
+        String accountId = session == null || session.userId.length() < 8
+                ? "Unavailable" : session.userId.substring(0, 8) + "…";
+        new AlertDialog.Builder(this).setTitle("Personal details")
+                .setMessage("Email\n" + (email.isEmpty() ? "Not available on this device" : email)
+                        + "\n\nSign-in method\n" + ("google".equalsIgnoreCase(provider) ? "Google" : "Email")
+                        + "\n\nAccount ID\n" + accountId
+                        + "\n\nApp version\n" + BuildConfig.VERSION_NAME)
+                .setPositiveButton("Done", null).show();
+    }
+
+    private void openNotificationSettings() {
+        try {
+            Intent intent = new Intent(Build.VERSION.SDK_INT >= 26
+                    ? Settings.ACTION_APP_NOTIFICATION_SETTINGS : Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            if (Build.VERSION.SDK_INT >= 26) intent.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+            else intent.setData(android.net.Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception error) { toast("Could not open notification settings."); }
+    }
+
+    private void showSupport() {
+        new AlertDialog.Builder(this).setTitle("Help & support")
+                .setMessage("Choose apps, set a use limit, and select a lock time. Only selected apps count toward your limit.\n\nIf protection stops, open Home and complete any permission repair prompts.")
+                .setPositiveButton("Email support", (dialog, which) -> sendSupportEmail())
+                .setNegativeButton("Done", null).show();
+    }
+
+    private void showChangePassword() {
+        EditText field = new EditText(this);
+        field.setHint("New password (8+ characters)");
+        field.setSingleLine(true);
+        field.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        int padding = dp(18);
+        field.setPadding(padding, dp(12), padding, dp(12));
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Change password").setView(field)
+                .setPositiveButton("Save", null).setNegativeButton("Cancel", null).create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String password = field.getText().toString();
+            if (password.length() < 8) { field.setError("Use at least 8 characters"); return; }
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+            SupabaseApi.updatePassword(this, password, (saved, error) -> {
+                if (!Boolean.TRUE.equals(saved)) {
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                    field.setError(error == null ? "Could not update password" : error);
+                } else { dialog.dismiss(); toast("Password updated."); }
+            });
+        }));
+        dialog.show();
+    }
+
+    private void confirmSignOut() {
+        new AlertDialog.Builder(this).setTitle("Sign out?")
+                .setMessage("You will need to sign in again to use FocusLock on this device.")
+                .setPositiveButton("Sign out", (dialog, which) -> {
+                    SupabaseApi.logout(this);
+                    startActivity(new Intent(this, AuthActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK));
+                    finish();
+                }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void sendSupportEmail() {
+        Intent email = new Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:" + BuildConfig.SUPPORT_EMAIL));
+        email.putExtra(Intent.EXTRA_SUBJECT, "FocusLock support — Android " + BuildConfig.VERSION_NAME);
+        try { startActivity(email); } catch (Exception error) { toast("Email support at " + BuildConfig.SUPPORT_EMAIL); }
+    }
+
+    private void toast(String message) { Toast.makeText(this, message, Toast.LENGTH_LONG).show(); }
 
     /** Native navigation stays above the WebView, so it can never scroll away
      * or be covered by Android's system navigation area. */
