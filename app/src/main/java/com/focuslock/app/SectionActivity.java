@@ -101,7 +101,8 @@ public final class SectionActivity extends Activity {
         LinearLayout nav = new LinearLayout(this);
         nav.setOrientation(LinearLayout.HORIZONTAL);
         nav.setGravity(Gravity.CENTER);
-        nav.setPadding(dp(10), dp(8), dp(10), dp(34));
+        // Match Home's bar exactly: same top/bottom spacing and icon baseline.
+        nav.setPadding(dp(10), dp(8), dp(10), dp(10));
         nav.setBackgroundColor(Color.rgb(247, 245, 239));
         nav.addView(navButton(R.drawable.ic_nav_home, "Home", false, this::goHome),
                 new LinearLayout.LayoutParams(0, dp(52), 1f));
