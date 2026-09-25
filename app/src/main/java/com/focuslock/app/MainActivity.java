@@ -977,8 +977,8 @@ public class MainActivity extends Activity {
         View compatibilityCard = permissionCard("Compatibility", "", compatibility, v -> {
             waitingForSpecialPermission = 4;
             showPermissionPrimer("Allow Compatibility Mode",
-                    "Turn on FocusLock. It checks the active app only and never stores or sends text, messages, or passwords.",
-                    () -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+                    "The next screen opens FocusLock's own switch. Turn it on. It checks the active app only and never stores or sends text, messages, or passwords.",
+                    () -> CompatibilityAccess.openSettings(this));
         });
         LinearLayout.LayoutParams fourth = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         fourth.leftMargin = dp(4);
@@ -1340,8 +1340,8 @@ public class MainActivity extends Activity {
         if (!CompatibilityAccess.isEnabled(this)) {
             waitingForSpecialPermission = 4;
             showPermissionPrimer("Allow Compatibility Mode",
-                    "Turn on FocusLock. It checks the active app only and never stores or sends text, messages, or passwords.",
-                    () -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+                    "The next screen opens FocusLock's own switch. Turn it on. It checks the active app only and never stores or sends text, messages, or passwords.",
+                    () -> CompatibilityAccess.openSettings(this));
             return;
         }
         if (OemReliability.needsXiaomiAutoStartHelp() && !xiaomiAutoStartPromptHandled()) {
@@ -1421,6 +1421,13 @@ public class MainActivity extends Activity {
         toggle.setPadding(dp(18), 0, dp(5), 0);
         toggle.setBackground(shape(GREEN, GREEN, 18));
         example.addView(toggle, new LinearLayout.LayoutParams(dp(58), dp(32)));
+        if ("Allow Compatibility Mode".equals(title)) {
+            ObjectAnimator cue = ObjectAnimator.ofFloat(toggle, "alpha", .45f, 1f);
+            cue.setDuration(760L);
+            cue.setRepeatCount(ObjectAnimator.INFINITE);
+            cue.setRepeatMode(ObjectAnimator.REVERSE);
+            cue.start();
+        }
         panel.addView(example, topMargin(18));
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setView(panel)
