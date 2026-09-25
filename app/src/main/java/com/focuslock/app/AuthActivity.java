@@ -341,8 +341,11 @@ public class AuthActivity extends Activity {
             busy("Choose a Google account…");
             final int attempt = ++authAttemptGeneration;
             final String nonce = randomUrlToken(32);
+            // Google stores the SHA-256 form in the ID token, while Supabase
+            // validates the original value sent with signInWithIdToken.
+            final String googleNonce = sha256Hex(nonce);
             GetSignInWithGoogleOption option = new GetSignInWithGoogleOption.Builder(
-                    BuildConfig.GOOGLE_WEB_CLIENT_ID).setNonce(nonce).build();
+                    BuildConfig.GOOGLE_WEB_CLIENT_ID).setNonce(googleNonce).build();
             GetCredentialRequest request = new GetCredentialRequest.Builder()
                     .addCredentialOption(option).build();
             credentialManager = CredentialManager.create(this);
@@ -701,6 +704,18 @@ public class AuthActivity extends Activity {
         byte[] value = new byte[bytes];
         new SecureRandom().nextBytes(value);
         return Base64.encodeToString(value, Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING);
+    }
+
+    private String sha256Hex(String value) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder output = new StringBuilder(hash.length * 2);
+            for (byte part : hash) output.append(String.format("%02x", part & 0xff));
+            return output.toString();
+        } catch (Exception error) {
+            throw new IllegalStateException("Could not secure Google sign-in", error);
+        }
     }
 
     private Map<String, String> parseFragment(String fragment) {
