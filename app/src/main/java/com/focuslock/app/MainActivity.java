@@ -123,6 +123,7 @@ public class MainActivity extends Activity {
     private boolean permissionPrimerShowing;
     private boolean commitmentInProgress;
     private boolean guideWasInterrupted;
+    private int coachGeneration;
     private SuccessBurstView successBurst;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -1662,7 +1663,8 @@ public class MainActivity extends Activity {
     private void showCoachStep(int step, View target, String message) {
         if (screenRoot == null || mainScroll == null || target == null || isFinishing()) return;
         dismissCoachOverlay();
-        View guideTarget = target;
+        final int generation = ++coachGeneration;
+        final View guideTarget = target;
         int[] targetLocation = new int[2];
         int[] scrollLocation = new int[2];
         target.getLocationOnScreen(targetLocation);
@@ -1670,15 +1672,23 @@ public class MainActivity extends Activity {
         if (step != 5) {
             mainScroll.smoothScrollBy(0, targetLocation[1] - scrollLocation[1] - dp(145));
         }
-        mainScroll.postDelayed(() -> {
-            if (!visible || isFinishing() || screenRoot == null || currentGuideStep != step) return;
-            // The target itself is the guide. A full-screen overlay can stack
-            // during Activity recreation and make setup appear frozen.
-            pulseTarget(guideTarget);
+        guideHandler.postDelayed(() -> {
+            if (!visible || isFinishing() || screenRoot == null || currentGuideStep != step
+                    || generation != coachGeneration) return;
+            Runnable action = null;
+            if (step == 1) action = this::startEasySetup;
+            else if (step == 2) action = guideTarget::performClick;
+            else if (step == 3) action = () -> showTimerWheel(true);
+            else if (step == 4) action = () -> showTimerWheel(false);
+            else if (step == 5) action = this::startCommitment;
+            coachOverlay = new CoachMarkOverlay(this, guideTarget, message, action);
+            screenRoot.addView(coachOverlay, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }, 430);
     }
 
     private void dismissCoachOverlay() {
+        coachGeneration++;
         if (coachOverlay != null && coachOverlay.getParent() == screenRoot) {
             screenRoot.removeView(coachOverlay);
         }
