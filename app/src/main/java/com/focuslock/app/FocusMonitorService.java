@@ -241,13 +241,13 @@ public class FocusMonitorService extends Service {
         if (!ownPackage.equals(blockedPackage)) {
             handler.postDelayed(() -> {
                 if (LockStore.isLocked(FocusMonitorService.this, blockedPackage)
-                        && !BlockActivity.isVisible()) {
+                        && blockedPackage.equals(currentPackage) && !BlockActivity.isVisible()) {
                     try { startActivity(block); } catch (RuntimeException ignored) { }
                 }
             }, 450L);
             handler.postDelayed(() -> {
                 if (LockStore.isLocked(FocusMonitorService.this, blockedPackage)
-                        && !BlockActivity.isVisible()) {
+                        && blockedPackage.equals(currentPackage) && !BlockActivity.isVisible()) {
                     GardenLockOverlay.show(FocusMonitorService.this, blockedPackage);
                 }
             }, OVERLAY_FALLBACK_DELAY_MS);
