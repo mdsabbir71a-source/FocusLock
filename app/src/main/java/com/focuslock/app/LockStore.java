@@ -36,6 +36,16 @@ public final class LockStore {
         return current % Math.max(1, count);
     }
 
+    /**
+     * Each time a lock card is presented, move to the next reminder. Unlike a
+     * lock-card design, a reminder is intentionally not pinned to the lock
+     * session: returning to a paused app should feel fresh and encouraging.
+     */
+    public static String nextLockReminder(Context context, String[] reminders) {
+        if (reminders == null || reminders.length == 0) return "Take a breath. This urge will pass.";
+        return reminders[nextReminderIndex(context, reminders.length)];
+    }
+
     public static void configure(Context context, Set<String> packages, long allowanceMs, long lockDurationMs) {
         SharedPreferences preferences = prefs(context);
         Set<String> previous = new HashSet<>(preferences.getStringSet(PACKAGES, new HashSet<>()));
@@ -97,6 +107,9 @@ public final class LockStore {
         FocusInsights.addScreenTime(context, counted);
         long total = usage(context, pkg) + counted;
         if (total >= allowance(context)) {
+            // Rotate the approved card gallery once per new lock session. The
+            // result is stored on the package so revisiting a still-locked app
+            // keeps its countdown/card stable instead of flickering.
             int cardIndex = (prefs(context).getInt(LAST_CARD_INDEX, -1) + 1) % LOCK_CARDS.length;
             prefs(context).edit().putLong(usageKey(pkg), 0).putLong(lockedKey(pkg), System.currentTimeMillis() + lockDuration(context)).putInt(cardKey(pkg), cardIndex).putInt(LAST_CARD_INDEX, cardIndex).apply();
             FocusInsights.recordPause(context, pkg, lockDuration(context));
