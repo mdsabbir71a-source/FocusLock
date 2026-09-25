@@ -5,13 +5,21 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.Base64;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -24,6 +32,8 @@ public final class SectionActivity extends Activity {
     public static final String EXTRA_SECTION = "section";
     private WebView view;
     private boolean account;
+    private FrameLayout shell;
+    private View nativeNavigation;
     // These bundled pages do not change while the process is alive. Caching
     // their prepared HTML removes repeated asset I/O between sections.
     private static String analyticsHtml;
@@ -46,15 +56,20 @@ public final class SectionActivity extends Activity {
             @Override public boolean shouldOverrideUrlLoading(WebView web, WebResourceRequest request) { return handle(request.getUrl().toString()); }
             @Override public void onPageFinished(WebView web, String url) { bind(); }
         });
-        setContentView(view);
+        shell = new FrameLayout(this);
+        shell.setBackgroundColor(Color.rgb(247, 245, 239));
+        shell.addView(view, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        refreshNativeNavigation();
+        setContentView(shell);
         view.loadDataWithBaseURL("https://focuslock.local/", pageHtml(), "text/html", "UTF-8", null);
     }
 
     private boolean handle(String url) {
         if (url == null || !url.startsWith("focuslock://")) return false;
-        if (url.startsWith("focuslock://home")) { startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)); finish(); overridePendingTransition(0, 0); }
-        else if (url.startsWith("focuslock://insights")) { if (account) { account=false; reload(); } }
-        else if (url.startsWith("focuslock://account")) { if (!account) { account=true; reload(); } }
+        if (url.startsWith("focuslock://home")) goHome();
+        else if (url.startsWith("focuslock://insights")) { if (account) { account=false; refreshNativeNavigation(); reload(); } }
+        else if (url.startsWith("focuslock://account")) { if (!account) { account=true; refreshNativeNavigation(); reload(); } }
         return true;
     }
 
@@ -72,11 +87,68 @@ public final class SectionActivity extends Activity {
         } catch (Exception ignored) { return "<html><head>" + bridge() + "</head><body></body></html>"; }
     }
 
-    private static String bridge() { return "<style>html,body{width:100%;min-height:100%}body{padding:0!important;display:block!important;background:#F7F5EF!important}.phone{width:100vw!important;height:100vh!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}.status{display:none!important}nav{padding-bottom:42px!important}nav div{padding-bottom:10px!important}.app{padding-bottom:142px!important}</style><script>window.focusLockNavigation=function(){var nav=document.querySelectorAll('.navitem,nav span');for(var i=0;i<nav.length;i++){(function(n,index){n.addEventListener('click',function(){location.href=index===0?'focuslock://home':index===1?'focuslock://insights':'focuslock://account';});})(nav[i],i);}};</script>"; }
+    private static String bridge() { return "<style>html,body{width:100%;min-height:100%;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}body{padding:0!important;display:block!important;background:#F7F5EF!important}.phone{width:100vw!important;height:100vh!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}.status,nav{display:none!important}.app{padding-bottom:96px!important}.scroll{padding-bottom:96px!important}</style>"; }
     private void bind() {
         if (view == null) return;
-        view.evaluateJavascript("if(window.setFocusLockData){window.setFocusLockData(" + pauseEventsJson() + "," + appsJson() + ");}if(window.focusLockNavigation){window.focusLockNavigation();}", null);
+        view.evaluateJavascript("if(window.setFocusLockData){window.setFocusLockData(" + pauseEventsJson() + "," + appsJson() + ");}", null);
     }
+
+    /** Native navigation stays above the WebView, so it can never scroll away
+     * or be covered by Android's system navigation area. */
+    private void refreshNativeNavigation() {
+        if (shell == null) return;
+        if (nativeNavigation != null) shell.removeView(nativeNavigation);
+        LinearLayout nav = new LinearLayout(this);
+        nav.setOrientation(LinearLayout.HORIZONTAL);
+        nav.setGravity(Gravity.CENTER);
+        nav.setPadding(dp(10), dp(8), dp(10), dp(34));
+        nav.setBackgroundColor(Color.rgb(247, 245, 239));
+        nav.addView(navButton(R.drawable.ic_nav_home, "Home", false, this::goHome),
+                new LinearLayout.LayoutParams(0, dp(52), 1f));
+        nav.addView(navButton(R.drawable.ic_nav_analytics, "Analytics", !account, v -> {
+            if (account) { account = false; refreshNativeNavigation(); reload(); }
+        }), new LinearLayout.LayoutParams(0, dp(52), 1f));
+        nav.addView(navButton(R.drawable.ic_nav_account, "Account", account, v -> {
+            if (!account) { account = true; refreshNativeNavigation(); reload(); }
+        }), new LinearLayout.LayoutParams(0, dp(52), 1f));
+        nativeNavigation = nav;
+        shell.addView(nav, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
+    }
+
+    private View navButton(int iconResource, String label, boolean active, View.OnClickListener click) {
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.VERTICAL);
+        item.setGravity(Gravity.CENTER);
+        item.setPadding(dp(4), dp(3), dp(4), dp(3));
+        item.setBackgroundColor(Color.TRANSPARENT);
+        item.setForeground(null);
+        int tint = active ? Color.rgb(52, 116, 76) : Color.rgb(107, 114, 128);
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(iconResource);
+        icon.setColorFilter(tint);
+        icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        item.addView(icon, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(25)));
+        TextView text = new TextView(this);
+        text.setText(label);
+        text.setTextColor(tint);
+        text.setTextSize(10);
+        text.setGravity(Gravity.CENTER);
+        text.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        item.addView(text, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
+        item.setContentDescription(label);
+        item.setOnClickListener(click);
+        return item;
+    }
+
+    private void goHome(View ignored) { goHome(); }
+    private void goHome() {
+        startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+        finish();
+        overridePendingTransition(0, 0);
+    }
+
+    private int dp(int value) { return (int) (value * getResources().getDisplayMetrics().density + .5f); }
 
     private String pauseEventsJson() {
         StringBuilder json = new StringBuilder("[");
