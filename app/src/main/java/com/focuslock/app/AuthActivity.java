@@ -35,11 +35,22 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.credentials.Credential;
+import androidx.credentials.CredentialManager;
+import androidx.credentials.CredentialManagerCallback;
+import androidx.credentials.CustomCredential;
+import androidx.credentials.GetCredentialException;
+import androidx.credentials.GetCredentialRequest;
+
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption;
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 /** FocusLock account entry with a simple two-choice welcome and a separate email flow. */
 public class AuthActivity extends Activity {
@@ -85,6 +96,8 @@ public class AuthActivity extends Activity {
     private String draftPassword = "";
     private int adviceIndex;
     private boolean emailScreenVisible;
+    private CredentialManager credentialManager;
+    private final Executor mainExecutor = command -> new Handler(Looper.getMainLooper()).post(command);
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -318,21 +331,45 @@ public class AuthActivity extends Activity {
 
     private void beginGoogle() {
         try {
-            String verifier = randomUrlToken(48);
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            String challenge = Base64.encodeToString(
-                    digest.digest(verifier.getBytes(StandardCharsets.US_ASCII)),
-                    Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING);
-            getSharedPreferences("focuslock_oauth", MODE_PRIVATE).edit()
-                    .putString("verifier", verifier).apply();
-            Uri url = Uri.parse(BuildConfig.SUPABASE_URL + "/auth/v1/authorize").buildUpon()
-                    .appendQueryParameter("provider", "google")
-                    .appendQueryParameter("redirect_to", CALLBACK)
-                    .appendQueryParameter("code_challenge", challenge)
-                    .appendQueryParameter("code_challenge_method", "s256")
-                    .build();
-            startActivity(new Intent(Intent.ACTION_VIEW, url));
-            show("Complete Google sign-in in your browser.", false);
+            busy("Choose a Google account…");
+            final String nonce = randomUrlToken(32);
+            GetSignInWithGoogleOption option = new GetSignInWithGoogleOption.Builder(
+                    BuildConfig.GOOGLE_WEB_CLIENT_ID).setNonce(nonce).build();
+            GetCredentialRequest request = new GetCredentialRequest.Builder()
+                    .addCredentialOption(option).build();
+            credentialManager = CredentialManager.create(this);
+            credentialManager.getCredentialAsync(this, request, null, mainExecutor,
+                    new CredentialManagerCallback<androidx.credentials.GetCredentialResponse,
+                            GetCredentialException>() {
+                        @Override public void onResult(androidx.credentials.GetCredentialResponse response) {
+                            Credential returned = response.getCredential();
+                            if (!(returned instanceof CustomCredential)
+                                    || !GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+                                    .equals(returned.getType())) {
+                                idle();
+                                show("Google did not return an account. Please try again.", true);
+                                return;
+                            }
+                            try {
+                                GoogleIdTokenCredential googleCredential = GoogleIdTokenCredential
+                                        .createFrom(((CustomCredential) returned).getData());
+                                busy("Signing you in…");
+                                SupabaseApi.signInWithGoogleIdToken(AuthActivity.this,
+                                        googleCredential.getIdToken(), nonce, (result, error) -> {
+                                            if (error != null) { idle(); show(error, true); }
+                                            else finishAuthentication();
+                                        });
+                            } catch (Exception error) {
+                                idle();
+                                show("Google sign-in could not be completed. Please try again.", true);
+                            }
+                        }
+
+                        @Override public void onError(GetCredentialException error) {
+                            idle();
+                            show("Google account selection was cancelled.", false);
+                        }
+                    });
         } catch (Exception e) { show("Could not start Google sign-in.", true); }
     }
 
