@@ -163,6 +163,24 @@ public final class SupabaseApi {
         });
     }
 
+    /** Exchanges a Google ID token from Android's native account chooser for a Supabase session. */
+    public static void signInWithGoogleIdToken(Context context, String idToken, String nonce,
+                                                Callback<AuthResult> callback) {
+        IO.execute(() -> {
+            try {
+                JSONObject body = new JSONObject()
+                        .put("provider", "google")
+                        .put("id_token", idToken);
+                if (nonce != null && !nonce.isEmpty()) body.put("nonce", nonce);
+                Response response = request("POST", "/auth/v1/token?grant_type=id_token",
+                        body.toString(), null, null);
+                if (!response.ok()) throw new ApiException(errorMessage(response));
+                saveAuthResponse(context, new JSONObject(response.body));
+                deliver(callback, new AuthResult(true, false), null);
+            } catch (Exception e) { deliver(callback, null, friendly(e)); }
+        });
+    }
+
     public static void importSessionTokens(Context context, String accessToken, String refreshToken,
                                            long expiresIn, Callback<AuthResult> callback) {
         final String rawAccessToken = accessToken;
