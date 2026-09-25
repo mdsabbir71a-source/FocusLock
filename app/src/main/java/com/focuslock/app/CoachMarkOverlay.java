@@ -130,7 +130,13 @@ public final class CoachMarkOverlay extends View {
     @Override public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() != MotionEvent.ACTION_UP) return true;
         updateSpotlight();
-        if (!spotlight.contains(event.getX(), event.getY())) return true;
+        // A guide is helpful, but it must never trap someone who returns to
+        // the app after leaving it halfway through setup.
+        if (!spotlight.contains(event.getX(), event.getY())) {
+            ViewGroup parent = (ViewGroup) getParent();
+            if (parent != null) parent.removeView(this);
+            return true;
+        }
         ViewGroup parent = (ViewGroup) getParent();
         if (parent != null) parent.removeView(this);
         if (action != null) action.run();
