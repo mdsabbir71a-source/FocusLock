@@ -122,6 +122,7 @@ public class MainActivity extends Activity {
     private boolean refreshingRemoteConfig;
     private boolean permissionPrimerShowing;
     private boolean commitmentInProgress;
+    private boolean guideWasInterrupted;
     private SuccessBurstView successBurst;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
@@ -161,9 +162,10 @@ public class MainActivity extends Activity {
         new Handler().postDelayed(this::maybeExplainBatteryReliability, 650L);
         new Handler().postDelayed(this::maybeShowSelfLockGuide, 1100L);
         new Handler().postDelayed(this::maybeShowXiaomiReliabilityForExistingUser, 1450L);
-        // A coach mark can no longer remain over an unrelated screen after a
-        // user briefly backgrounds FocusLock during first-time setup.
-        new Handler().postDelayed(this::resumeGuide, 520L);
+        if (guideWasInterrupted) {
+            guideWasInterrupted = false;
+            new Handler().postDelayed(this::resumeGuide, 520L);
+        }
         // Re-check every time the signed-in main screen returns. This also
         // catches permissions changed directly in Android Settings, rather
         // than only Settings pages opened from FocusLock's setup cards.
@@ -193,6 +195,8 @@ public class MainActivity extends Activity {
 
     @Override protected void onPause() {
         visible = false;
+        guideWasInterrupted = currentGuideStep > 0 && !getSharedPreferences(
+                "focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false);
         dismissCoachOverlay();
         guideHandler.removeCallbacksAndMessages(null);
         super.onPause();
@@ -1658,6 +1662,7 @@ public class MainActivity extends Activity {
     private void showCoachStep(int step, View target, String message) {
         if (screenRoot == null || mainScroll == null || target == null || isFinishing()) return;
         dismissCoachOverlay();
+        View guideTarget = target;
         int[] targetLocation = new int[2];
         int[] scrollLocation = new int[2];
         target.getLocationOnScreen(targetLocation);
@@ -1667,15 +1672,9 @@ public class MainActivity extends Activity {
         }
         mainScroll.postDelayed(() -> {
             if (!visible || isFinishing() || screenRoot == null || currentGuideStep != step) return;
-            Runnable action = null;
-            if (step == 1) action = this::startEasySetup;
-            else if (step == 2) action = target::performClick;
-            else if (step == 3) action = () -> showTimerWheel(true);
-            else if (step == 4) action = () -> showTimerWheel(false);
-            else if (step == 5) action = this::startCommitment;
-            coachOverlay = new CoachMarkOverlay(this, target, message, action);
-            screenRoot.addView(coachOverlay, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            // The target itself is the guide. A full-screen overlay can stack
+            // during Activity recreation and make setup appear frozen.
+            pulseTarget(guideTarget);
         }, 430);
     }
 
