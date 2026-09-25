@@ -98,6 +98,10 @@ public class AuthActivity extends Activity {
     private boolean emailScreenVisible;
     private CredentialManager credentialManager;
     private final Executor mainExecutor = command -> new Handler(Looper.getMainLooper()).post(command);
+    // Credential Manager can return after the user has moved to the email flow.
+    // Keep each Google request scoped to the screen that started it so a late
+    // cancellation/result can never overwrite an email sign-in message.
+    private int authAttemptGeneration;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -126,6 +130,7 @@ public class AuthActivity extends Activity {
     }
 
     private void showLanding(boolean returning) {
+        invalidateGoogleAttempt();
         refreshTheme();
         applySystemBars();
         adviceHandler.removeCallbacksAndMessages(null);
@@ -185,6 +190,7 @@ public class AuthActivity extends Activity {
     }
 
     private void showEmailScreen(boolean create) {
+        invalidateGoogleAttempt();
         refreshTheme();
         applySystemBars();
         adviceHandler.removeCallbacksAndMessages(null);
@@ -312,6 +318,7 @@ public class AuthActivity extends Activity {
     }
 
     private void authenticate(boolean create) {
+        invalidateGoogleAttempt();
         captureDraft();
         String enteredEmail = draftEmail.trim();
         String enteredPassword = draftPassword;
@@ -332,6 +339,7 @@ public class AuthActivity extends Activity {
     private void beginGoogle() {
         try {
             busy("Choose a Google account…");
+            final int attempt = ++authAttemptGeneration;
             final String nonce = randomUrlToken(32);
             GetSignInWithGoogleOption option = new GetSignInWithGoogleOption.Builder(
                     BuildConfig.GOOGLE_WEB_CLIENT_ID).setNonce(nonce).build();
@@ -342,6 +350,7 @@ public class AuthActivity extends Activity {
                     new CredentialManagerCallback<androidx.credentials.GetCredentialResponse,
                             GetCredentialException>() {
                         @Override public void onResult(androidx.credentials.GetCredentialResponse response) {
+                            if (!isCurrentGoogleAttempt(attempt)) return;
                             Credential returned = response.getCredential();
                             if (!(returned instanceof CustomCredential)
                                     || !GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
@@ -356,21 +365,32 @@ public class AuthActivity extends Activity {
                                 busy("Signing you in…");
                                 SupabaseApi.signInWithGoogleIdToken(AuthActivity.this,
                                         googleCredential.getIdToken(), nonce, (result, error) -> {
+                                            if (!isCurrentGoogleAttempt(attempt)) return;
                                             if (error != null) { idle(); show(error, true); }
                                             else finishAuthentication();
                                         });
                             } catch (Exception error) {
+                                if (!isCurrentGoogleAttempt(attempt)) return;
                                 idle();
                                 show("Google sign-in could not be completed. Please try again.", true);
                             }
                         }
 
                         @Override public void onError(GetCredentialException error) {
+                            if (!isCurrentGoogleAttempt(attempt)) return;
                             idle();
                             show("Google account selection was cancelled.", false);
                         }
                     });
-        } catch (Exception e) { show("Could not start Google sign-in.", true); }
+        } catch (Exception e) { idle(); show("Could not start Google sign-in.", true); }
+    }
+
+    private void invalidateGoogleAttempt() {
+        authAttemptGeneration++;
+    }
+
+    private boolean isCurrentGoogleAttempt(int attempt) {
+        return attempt == authAttemptGeneration && !emailScreenVisible && !isFinishing();
     }
 
     private void handleCallback(Intent intent) {
