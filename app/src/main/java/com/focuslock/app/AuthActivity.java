@@ -247,13 +247,14 @@ public class AuthActivity extends Activity {
         if (create) signUp = action; else signIn = action;
         card.addView(action, topMargin(18));
 
-        if (!create) {
-            TextView forgot = text("Forgot password?", 12, GREEN, true);
-            forgot.setGravity(Gravity.CENTER);
-            forgot.setPadding(dp(8), dp(14), dp(8), dp(4));
-            forgot.setOnClickListener(v -> requestPasswordReset());
-            card.addView(forgot);
-        }
+        // Password recovery must be easy to find from either email screen.
+        // It uses the email currently entered, whether the person arrived via
+        // Sign up or Log in, and never changes the Google sign-in flow.
+        TextView forgot = text("Forgot password?", 12, GREEN, true);
+        forgot.setGravity(Gravity.CENTER);
+        forgot.setPadding(dp(8), dp(14), dp(8), dp(4));
+        forgot.setOnClickListener(v -> requestPasswordReset());
+        card.addView(forgot);
         TextView switchMode = text(create
                 ? "Already a member?  Log in"
                 : "New here?  Create an account", 12, GREEN, true);
