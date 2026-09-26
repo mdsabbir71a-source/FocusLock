@@ -19,7 +19,7 @@ android {
         // Existing web OAuth client used by the FocusLock Supabase Google provider.
         // Client IDs are public identifiers; no OAuth secret is shipped in the app.
         buildConfigField 'String', 'GOOGLE_WEB_CLIENT_ID', '"903382171595-nvu86ovqovbago4lq10r9cekn52dm6k0.apps.googleusercontent.com"'
-        buildConfigField 'String', 'PUBLIC_SITE_URL', '"https://focuslock-app.mdsabbir71a.chatgpt.site"'
+        buildConfigField 'String', 'PUBLIC_SITE_URL', '"https://focuslock.io"'
         buildConfigField 'String', 'SUPPORT_EMAIL', '"mdsabbir71a@gmail.com"'
     }
 
