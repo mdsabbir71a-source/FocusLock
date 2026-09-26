@@ -91,7 +91,7 @@ public final class SupabaseApi {
         IO.execute(() -> {
             try {
                 JSONObject body = new JSONObject().put("email", email);
-                String redirect = URLEncoder.encode("https://focuslock.io/reset-password", "UTF-8");
+                String redirect = URLEncoder.encode("https://focuslock.io/reset-password.html", "UTF-8");
                 Response response = request("POST", "/auth/v1/recover?redirect_to=" + redirect, body.toString(), null, null);
                 if (!response.ok()) throw new ApiException(errorMessage(response));
                 deliver(callback, true, null);
