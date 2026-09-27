@@ -6,7 +6,9 @@ android {
     buildToolsVersion '36.0.0'
 
     defaultConfig {
-        applicationId 'com.focuslock.app'
+        // Permanent Google Play package for the FocusLock listing.
+        // The Java namespace stays unchanged to keep app internals and deep links stable.
+        applicationId 'io.focuslock.app'
         minSdk 23
         targetSdk 36
         // v1.0.89 is the first release rebuilt from the working 1.0.88 APK
