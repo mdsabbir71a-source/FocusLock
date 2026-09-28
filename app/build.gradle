@@ -14,8 +14,11 @@ android {
         targetSdk 36
         // Increment for the Play Console replacement bundle. Existing testers
         // can install this as an update over the current v1.0.89 release.
-        versionCode 200
-        versionName '1.1.0'
+        // Play Console permanently reserves uploaded version codes. Keep this
+        // release functionally identical while allowing it to replace the
+        // already-uploaded code 200 bundle.
+        versionCode 201
+        versionName '1.1.1'
         buildConfigField 'String', 'SUPABASE_URL', '"https://sfrwqrjwyzhabmquythi.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_Y3Xl3f_pmMX3bZblCvjXmw_c2l1iPM7"'
         // Existing web OAuth client used by the FocusLock Supabase Google provider.
