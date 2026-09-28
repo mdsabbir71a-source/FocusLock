@@ -5,6 +5,8 @@
         <item name="android:colorAccent">#8B5CF6</item>
         <item name="android:navigationBarColor">#FEFEFC</item>
         <item name="android:statusBarColor">#FEFEFC</item>
+        <item name="android:windowBackground">#F7F5EF</item>
+        <item name="android:windowDisablePreview">true</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowActionModeOverlay">true</item>
     </style>

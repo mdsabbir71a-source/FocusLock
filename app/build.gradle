@@ -6,16 +6,16 @@ android {
     buildToolsVersion '36.0.0'
 
     defaultConfig {
-        // Permanent Google Play package for the FocusLock listing.
-        // The Java namespace stays unchanged to keep app internals and deep links stable.
+        // Google Play app record was created with this permanent package name.
+        // Keep the namespace unchanged so the existing Java source packages
+        // and generated resource references remain stable.
         applicationId 'io.focuslock.app'
         minSdk 23
         targetSdk 36
-        // v1.0.89 is the first release rebuilt from the working 1.0.88 APK
-        // as a behavioral reference. Keep this higher than the test build so
-        // Play and test devices accept it as an update.
-        versionCode 189
-        versionName '1.0.89'
+        // Increment for the Play Console replacement bundle. Existing testers
+        // can install this as an update over the current v1.0.89 release.
+        versionCode 200
+        versionName '1.1.0'
         buildConfigField 'String', 'SUPABASE_URL', '"https://sfrwqrjwyzhabmquythi.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_Y3Xl3f_pmMX3bZblCvjXmw_c2l1iPM7"'
         // Existing web OAuth client used by the FocusLock Supabase Google provider.

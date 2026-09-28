@@ -35,7 +35,7 @@ h1{font-size:32px;line-height:1.1;margin:6px 0 12px;font-weight:800;letter-spaci
 /* ---------- Cards ---------- */
 .card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;margin-top:14px}
 @keyframes settle-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.hero{animation:settle-in .22s ease-out both}.card{animation:settle-in .26s ease-out both}.card:nth-of-type(2){animation-delay:.035s}.card:nth-of-type(3){animation-delay:.07s}
+.hero{animation:settle-in .22s ease-out both}.card{animation:settle-in .26s ease-out both}.card:nth-of-type(2){animation-delay:.035s}.card:nth-of-type(3){animation-delay:.07s}@keyframes bar-rise{from{transform:scaleY(.18);opacity:.35}to{transform:scaleY(1);opacity:1}}@keyframes row-in{from{opacity:0;transform:translateX(-7px)}to{opacity:1;transform:translateX(0)}}.seg button,.pill button{transition:transform .14s ease,background .18s ease,color .18s ease}.seg button:active,.pill button:active{transform:scale(.94)}.bar{transform-box:fill-box;transform-origin:bottom;animation:bar-rise .4s cubic-bezier(.2,.8,.2,1) both}.app-r{animation:row-in .28s ease-out both}.trk i{transition:width .42s cubic-bezier(.2,.8,.2,1)}
 .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .head h2{font-size:18px;margin:0;font-weight:600}
 .pill{display:flex;background:var(--tint);border-radius:999px;padding:3px}
@@ -144,7 +144,7 @@ function chart(){
 
 function apps(){
  var l=between(now-SPAN[st.r],now+1),g=APPS.map(function(a){var x=l.filter(function(p){return p.p==a.p});return{a:a,c:x.length,s:sum(x)}}).sort(function(x,y){return y.c-x.c}),mx=g.length&&g[0].c||1;
- $('apps').innerHTML=g.length?g.map(function(x){return '<div class="app-r"><div class="ic"><img src="'+esc(x.a.i)+'" alt=""></div><div><div class="nm">'+esc(x.a.n)+'</div><div class="trk"><i style="width:'+(x.c/mx*100)+'%"></i></div></div><div class="rt">'+x.c+(x.c==1?' pause':' pauses')+'<small>'+f(x.s)+' saved</small></div></div>'}).join(''):'<p class="hint">Choose apps to protect and your activity will appear here.</p>'}
+ $('apps').innerHTML=g.length?g.map(function(x,i){return '<div class="app-r" style="animation-delay:'+(i*.045)+'s"><div class="ic"><img src="'+esc(x.a.i)+'" alt=""></div><div><div class="nm">'+esc(x.a.n)+'</div><div class="trk"><i style="width:'+(x.c/mx*100)+'%"></i></div></div><div class="rt">'+x.c+(x.c==1?' pause':' pauses')+'<small>'+f(x.s)+' saved</small></div></div>'}).join(''):'<p class="hint">Choose apps to protect and your activity will appear here.</p>'}
 
 function all(){
  [].forEach.call(document.querySelectorAll('#rng button'),function(b){b.setAttribute('aria-pressed',b.dataset.r==st.r)});

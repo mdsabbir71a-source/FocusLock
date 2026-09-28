@@ -91,6 +91,10 @@ public final class SupabaseApi {
         IO.execute(() -> {
             try {
                 JSONObject body = new JSONObject().put("email", email);
+                // Password recovery must work from every device, including a
+                // desktop browser where an Android-only custom scheme cannot
+                // be opened. The FocusLock site receives the one-time session
+                // fragment and lets the person choose a new password securely.
                 String redirect = URLEncoder.encode("https://focuslock.io/reset-password.html", "UTF-8");
                 Response response = request("POST", "/auth/v1/recover?redirect_to=" + redirect, body.toString(), null, null);
                 if (!response.ok()) throw new ApiException(errorMessage(response));
@@ -99,16 +103,29 @@ public final class SupabaseApi {
         });
     }
 
-    public static void updatePassword(Context context, String newPassword, Callback<Boolean> callback) {
+    public static void updatePassword(Context context, String currentPassword, String newPassword,
+                                      Callback<Boolean> callback) {
         IO.execute(() -> {
             try {
                 SecureSessionStore.Session session = freshSession(context);
+                JSONObject body = new JSONObject().put("password", newPassword);
+                // Supabase projects can require the existing password before
+                // allowing a change. Supplying it makes this work with either
+                // security setting and never stores it locally.
+                if (currentPassword != null && !currentPassword.isEmpty()) {
+                    body.put("current_password", currentPassword);
+                }
                 Response response = requestWithSession(context, "PUT", "/auth/v1/user",
-                        new JSONObject().put("password", newPassword).toString(), session, null);
+                        body.toString(), session, null);
                 if (!response.ok()) throw new ApiException(errorMessage(response));
                 deliver(callback, true, null);
             } catch (Exception e) { deliver(callback, false, friendly(e)); }
         });
+    }
+
+    /** Used by recovery screens where the current password is not known. */
+    public static void updatePassword(Context context, String newPassword, Callback<Boolean> callback) {
+        updatePassword(context, null, newPassword, callback);
     }
 
     public static void updateEmail(Context context, String newEmail, Callback<Boolean> callback) {

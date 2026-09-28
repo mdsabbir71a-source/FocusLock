@@ -34,32 +34,22 @@ Deno.serve(async (request: Request) => {
     return new Response(JSON.stringify({ error: "User account was not found." }), { status: 401, headers: cors });
   }
 
-  const payload = await request.json().catch(() => ({}));
-  const targetUserId = typeof payload?.targetUserId === "string" ? payload.targetUserId.trim() : "";
-  if (targetUserId && !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(targetUserId)) {
-    return new Response(JSON.stringify({ error: "Invalid account selection." }), { status: 400, headers: cors });
-  }
-
   const adminResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/current_user_is_admin`, {
     method: "POST",
     headers: { apikey: anonKey, Authorization: authorization, "Content-Type": "application/json" },
     body: "{}",
   });
   const isAdmin = adminResponse.ok && (await adminResponse.json()) === true;
-  const userId = targetUserId || user.id;
-  if (targetUserId && !isAdmin) {
-    return new Response(JSON.stringify({ error: "Only the FocusLock owner can remove another account." }), { status: 403, headers: cors });
-  }
-  if (isAdmin && userId === user.id) {
-    return new Response(JSON.stringify({ error: "The FocusLock owner account cannot be deleted here." }), { status: 403, headers: cors });
+  if (isAdmin) {
+    return new Response(JSON.stringify({ error: "The FocusLock owner account cannot be deleted inside the app." }), { status: 403, headers: cors });
   }
 
-  const deleteResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+  const deleteResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(user.id)}`, {
     method: "DELETE",
     headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json" },
   });
   if (!deleteResponse.ok) {
     return new Response(JSON.stringify({ error: "Account deletion could not be completed. Please contact support." }), { status: 502, headers: cors });
   }
-  return new Response(JSON.stringify({ deleted: true, userId }), { status: 200, headers: cors });
+  return new Response(JSON.stringify({ deleted: true }), { status: 200, headers: cors });
 });

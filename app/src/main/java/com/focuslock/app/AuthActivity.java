@@ -176,13 +176,25 @@ public class AuthActivity extends Activity {
         google.setOnClickListener(v -> beginGoogle());
         actions.addView(google);
 
-        signUp = button("Sign up with email", darkTheme ? Color.rgb(35, 50, 42) : Color.argb(238, 247, 245, 239), INK, darkTheme ? Color.rgb(65, 160, 92) : Color.argb(82, 31, 107, 59));
+        signUp = button("Continue with email", darkTheme ? Color.rgb(35, 50, 42) : Color.argb(238, 247, 245, 239), INK, darkTheme ? Color.rgb(65, 160, 92) : Color.argb(82, 31, 107, 59));
         signUp.setOnClickListener(v -> showEmailScreen(true));
         actions.addView(signUp, topMargin(11));
         root.addView(actions, matchWrap());
 
+        TextView forgot = text("Forgot password?", 12, GREEN, true);
+        forgot.setGravity(Gravity.CENTER);
+        forgot.setPadding(dp(8), dp(14), dp(8), dp(3));
+        forgot.setOnClickListener(v -> showPasswordResetScreen());
+        root.addView(forgot, matchWrap());
+
+        TextView login = text("Already a member?  Log in", 12, GREEN, true);
+        login.setGravity(Gravity.CENTER);
+        login.setPadding(dp(8), dp(8), dp(8), dp(3));
+        login.setOnClickListener(v -> showEmailScreen(false));
+        root.addView(login, matchWrap());
+
         status = statusText();
-        root.addView(status, topMargin(8));
+        root.addView(status, topMargin(6));
         root.addView(legalText(), topMargin(8));
 
         setContentView(scene);
@@ -253,7 +265,7 @@ public class AuthActivity extends Activity {
         TextView forgot = text("Forgot password?", 12, GREEN, true);
         forgot.setGravity(Gravity.CENTER);
         forgot.setPadding(dp(8), dp(14), dp(8), dp(4));
-        forgot.setOnClickListener(v -> requestPasswordReset());
+        forgot.setOnClickListener(v -> showPasswordResetScreen());
         card.addView(forgot);
         TextView switchMode = text(create
                 ? "Already a member?  Log in"
@@ -262,6 +274,82 @@ public class AuthActivity extends Activity {
         switchMode.setPadding(dp(8), dp(15), dp(8), dp(3));
         switchMode.setOnClickListener(v -> showEmailScreen(!create));
         card.addView(switchMode);
+        root.addView(card, topMargin(25));
+
+        status = statusText();
+        root.addView(status, topMargin(10));
+        root.addView(legalText(), topMargin(6));
+
+        setContentView(scene);
+        root.setAlpha(0f);
+        root.setTranslationY(dp(12));
+        root.animate().alpha(1f).translationY(0f).setDuration(360)
+                .setInterpolator(new DecelerateInterpolator()).start();
+        ObjectAnimator artworkBreath = ObjectAnimator.ofFloat(fullPageArt, "alpha", .82f, 1f, .82f);
+        artworkBreath.setDuration(4300);
+        artworkBreath.setRepeatCount(ObjectAnimator.INFINITE);
+        artworkBreath.setInterpolator(new AccelerateDecelerateInterpolator());
+        artworkBreath.start();
+    }
+
+    /** A focused recovery screen keeps password reset clear and low-friction. */
+    private void showPasswordResetScreen() {
+        invalidateGoogleAttempt();
+        refreshTheme();
+        applySystemBars();
+        adviceHandler.removeCallbacksAndMessages(null);
+        emailScreenVisible = true;
+        captureDraft();
+        advice = null;
+        google = null;
+        signIn = null;
+        signUp = null;
+
+        FrameLayout scene = new FrameLayout(this);
+        scene.setBackgroundColor(BACKGROUND);
+        FocusWelcomeAnimationView fullPageArt = new FocusWelcomeAnimationView(this, true);
+        scene.addView(fullPageArt, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        ScrollView scroll = screen();
+        scroll.setBackgroundColor(Color.TRANSPARENT);
+        LinearLayout root = column();
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        root.setPadding(dp(26), dp(8), dp(26), dp(24));
+        scroll.addView(root, matchWrap());
+        scene.addView(scroll, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        root.addView(horizonWordmark(true), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(136)));
+
+        TextView title = text("Reset your password", 29, INK, true);
+        title.setGravity(Gravity.CENTER);
+        title.setLetterSpacing(-.03f);
+        root.addView(title);
+        TextView subtitle = text("Enter your email and we'll send a secure reset link.", 14, MUTED, false);
+        subtitle.setGravity(Gravity.CENTER);
+        subtitle.setLineSpacing(0, 1.2f);
+        root.addView(subtitle, topMargin(9));
+
+        LinearLayout card = column();
+        card.setPadding(dp(18), dp(18), dp(18), dp(18));
+        card.setBackground(shape(darkTheme ? Color.argb(238, 31, 45, 37) : Color.argb(230, 247, 245, 239), darkTheme ? Color.argb(115, 100, 201, 121) : Color.argb(65, 31, 107, 59), 24));
+        card.addView(text("EMAIL ADDRESS", 10, GREEN, true));
+        email = input("you@example.com", false);
+        email.setText(draftEmail);
+        card.addView(email, topMargin(6));
+
+        Button send = button("Send reset link", BRIGHT_GREEN, Color.WHITE, BRIGHT_GREEN);
+        send.setOnClickListener(v -> requestPasswordReset());
+        signUp = send;
+        card.addView(send, topMargin(18));
+
+        TextView returnToLogin = text("Back to log in", 12, GREEN, true);
+        returnToLogin.setGravity(Gravity.CENTER);
+        returnToLogin.setPadding(dp(8), dp(15), dp(8), dp(3));
+        returnToLogin.setOnClickListener(v -> showEmailScreen(false));
+        card.addView(returnToLogin);
         root.addView(card, topMargin(25));
 
         status = statusText();
@@ -345,6 +433,10 @@ public class AuthActivity extends Activity {
             // Google stores the SHA-256 form in the ID token, while Supabase
             // validates the original value sent with signInWithIdToken.
             final String googleNonce = sha256Hex(nonce);
+            // This is Google's explicit sign-in button flow. Unlike the
+            // credential lookup request, it opens the chooser for the Google
+            // accounts already on the phone, including first-time FocusLock
+            // sign-ins.
             GetSignInWithGoogleOption option = new GetSignInWithGoogleOption.Builder(
                     BuildConfig.GOOGLE_WEB_CLIENT_ID).setNonce(googleNonce).build();
             GetCredentialRequest request = new GetCredentialRequest.Builder()
@@ -383,7 +475,7 @@ public class AuthActivity extends Activity {
                         @Override public void onError(GetCredentialException error) {
                             if (!isCurrentGoogleAttempt(attempt)) return;
                             idle();
-                            show("Google account selection was cancelled.", false);
+                            show("Google sign-in could not be completed. Please try again.", true);
                         }
                     });
         } catch (Exception e) { idle(); show("Could not start Google sign-in.", true); }
@@ -455,7 +547,9 @@ public class AuthActivity extends Activity {
             if (Boolean.TRUE.equals(allowed)) {
                 startActivity(new Intent(this, MainActivity.class)
                         .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK));
+                overridePendingTransition(0, 0);
                 finish();
+                overridePendingTransition(0, 0);
             } else {
                 idle();
                 show(error == null ? AccessStore.reason(this) : error, true);
@@ -597,8 +691,8 @@ public class AuthActivity extends Activity {
         SpannableString span = new SpannableString(value);
         int termsStart = value.indexOf("Terms");
         int privacyStart = value.indexOf("Privacy Policy");
-        span.setSpan(link("/terms"), termsStart, termsStart + 5, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        span.setSpan(link("/privacy"), privacyStart, value.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        span.setSpan(link("/terms.html"), termsStart, termsStart + 5, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        span.setSpan(link("/privacy.html"), privacyStart, value.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         TextView legal = text("", 10, MUTED, false);
         legal.setText(span);
         legal.setGravity(Gravity.CENTER);

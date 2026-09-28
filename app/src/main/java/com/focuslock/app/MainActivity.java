@@ -132,18 +132,27 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(BACKGROUND));
         if (!SecureSessionStore.hasSession(this) || !AccessStore.isAllowed(this)) {
             openAuthentication();
             return;
         }
+        LockStore.pruneUninstalled(this);
         SharedPreferences onboarding = getSharedPreferences("focuslock_onboarding", MODE_PRIVATE);
         boolean welcomed = onboarding.getBoolean("welcome_seen", false);
         newGuideIntro = !welcomed;
         if (newGuideIntro) {
             onboarding.edit().putBoolean("interactive_guide_v104_seen", true).putBoolean("guide_complete", false).apply();
         }
-        setContentView(buildUi());
-        if (!welcomed) new Handler().postDelayed(this::showFirstLaunchSetup, 550);
+        // Show a finished brand surface before enumerating installed apps and
+        // decoding their icons. That work is intentionally deferred one frame
+        // so Android never exposes a black launch frame after Google sign-in.
+        setContentView(buildLaunchPlaceholder());
+        new Handler().post(() -> {
+            if (isFinishing()) return;
+            setContentView(buildUi());
+            if (!welcomed) new Handler().postDelayed(this::showFirstLaunchSetup, 550);
+        });
     }
 
     @Override protected void onResume() {
@@ -151,6 +160,8 @@ public class MainActivity extends Activity {
         visible = true;
         if (!SecureSessionStore.hasSession(this)) { openAuthentication(); return; }
         if (!AccessStore.isAllowed(this)) { stopProtectionForAccess(); openAuthentication(); return; }
+        boolean removedApps = LockStore.pruneUninstalled(this);
+        if (removedApps) removeUninstalledTiles();
         if (!LockStore.isEnabled(this)) {
             stopService(new Intent(this, FocusMonitorService.class));
             ProtectionRestarter.cancel(this);
@@ -441,6 +452,33 @@ public class MainActivity extends Activity {
         startLogoAnimation();
         mainScroll.post(this::resumeGuide);
         return screenRoot;
+    }
+
+    private View buildLaunchPlaceholder() {
+        FrameLayout launch = new FrameLayout(this);
+        launch.setBackgroundColor(BACKGROUND);
+        LinearLayout card = column();
+        card.setGravity(Gravity.CENTER);
+        TextView emblem = text("F", 24, Color.WHITE, true);
+        emblem.setGravity(Gravity.CENTER);
+        emblem.setBackground(shape(GREEN, GREEN, 28));
+        card.addView(emblem, new LinearLayout.LayoutParams(dp(56), dp(56)));
+        TextView brand = text("FOCUSLOCK", 12, GREEN, true);
+        brand.setLetterSpacing(.16f);
+        brand.setGravity(Gravity.CENTER);
+        card.addView(brand, topMargin(12));
+        TextView copy = text("Preparing your focus space", 11, MUTED, false);
+        copy.setGravity(Gravity.CENTER);
+        card.addView(copy, topMargin(4));
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        params.leftMargin = dp(24);
+        params.rightMargin = dp(24);
+        launch.addView(card, params);
+        card.setAlpha(0f);
+        card.setTranslationY(dp(8));
+        card.animate().alpha(1f).translationY(0f).setDuration(160).start();
+        return launch;
     }
 
     private View buildBottomNavigation() {
@@ -1098,8 +1136,14 @@ public class MainActivity extends Activity {
                 if (selectedAppCount() == 0) {
                     updateGuideStep(2, appSectionAnchor);
                 } else if (checked) {
-                    maybeGuideToTime();
+                    dismissCoachOverlay();
+                    check.postDelayed(() -> showAppTimerChoice(check), 150L);
                 }
+            });
+            check.setOnLongClickListener(v -> {
+                if (!check.isChecked()) return false;
+                showAppTimerChoice(check);
+                return true;
             });
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
             lp.width = 0;
@@ -1151,7 +1195,7 @@ public class MainActivity extends Activity {
         selectedCount.setText(count == 0 ? "None" : count + " selected");
         selectedCount.setTextColor(count == 0 ? MUTED : VIOLET);
         if (appSectionHint != null) {
-            appSectionHint.setText(count == 0 ? "Tap to select" : "Ready to protect");
+            appSectionHint.setText(count == 0 ? "Tap to select" : "Hold a selected app to edit its timer");
             appSectionHint.animate().cancel();
             appSectionHint.setAlpha(.35f);
             appSectionHint.animate().alpha(1f).setDuration(220).start();
@@ -1162,6 +1206,21 @@ public class MainActivity extends Activity {
         int count = 0;
         for (CheckBox check : appChecks) if (check.isChecked()) count++;
         return count;
+    }
+
+    private void removeUninstalledTiles() {
+        for (CheckBox check : appChecks) {
+            if (!(check.getTag() instanceof String)) continue;
+            try {
+                getPackageManager().getApplicationInfo((String) check.getTag(), 0);
+            } catch (PackageManager.NameNotFoundException missing) {
+                check.setOnCheckedChangeListener(null);
+                check.setChecked(false);
+                check.setVisibility(View.GONE);
+            }
+        }
+        refreshSelectedCount();
+        refreshStatus();
     }
 
     private void toggleAllApps() {
@@ -1539,20 +1598,25 @@ public class MainActivity extends Activity {
                 || LockStore.lockFocusLock(this)
                 || LockStore.isLocked(this, getPackageName())) return;
         onboarding.edit().putBoolean("self_lock_guide_seen", true).apply();
-        new AlertDialog.Builder(this)
-                .setTitle("Lock FocusLock too?")
-                .setMessage("When a selected app is paused, this option also keeps FocusLock unavailable until that pause ends. You can change it anytime just below Protection.")
-                .setPositiveButton("Turn on", (dialog, which) -> {
-                    lockFocusLockCheck.setChecked(true);
-                    markDirty();
-                    pulseTarget(selfLockCard);
-                    toast("Tap Save & start to apply this option.");
-                })
-                .setNegativeButton("Skip for now", (dialog, which) -> {
-                    lockFocusLockCheck.setChecked(false);
-                    toast("FocusLock will stay available during pauses.");
-                })
-                .show();
+        LinearLayout panel = focusPromptPanel("EXTRA PROTECTION", "Lock FocusLock during pauses?",
+                "When a selected app is paused, FocusLock can stay unavailable too. This makes the boundary harder to bypass, and you can change it anytime.", "⌁");
+        Button turnOn = focusPromptButton("Turn on protection", true);
+        Button keepOpen = focusPromptButton("Keep FocusLock available", false);
+        panel.addView(turnOn, topMargin(16));
+        panel.addView(keepOpen, topMargin(8));
+        AlertDialog dialog = showFocusPrompt(panel);
+        turnOn.setOnClickListener(v -> {
+            lockFocusLockCheck.setChecked(true);
+            markDirty();
+            pulseTarget(selfLockCard);
+            dialog.dismiss();
+            toast("Tap Save & start to apply this option.");
+        });
+        keepOpen.setOnClickListener(v -> {
+            lockFocusLockCheck.setChecked(false);
+            dialog.dismiss();
+            toast("FocusLock will stay available during pauses.");
+        });
     }
 
     private long parseDuration(EditText minutesInput, EditText secondsInput, String label) {
@@ -1985,6 +2049,162 @@ public class MainActivity extends Activity {
             picker.setTextSize(dp(20));
         }
         return picker;
+    }
+
+    private void showAppTimerChoice(CheckBox check) {
+        if (check == null || !check.isChecked() || !(check.getTag() instanceof String)) return;
+        dismissCoachOverlay();
+        String pkg = (String) check.getTag();
+        String name = check.getContentDescription() == null ? "this app" : check.getContentDescription().toString();
+        boolean custom = LockStore.hasCustomTiming(this, pkg);
+        LinearLayout panel = focusPromptPanel("APP TIMER", "How should " + name + " be timed?",
+                custom ? "This app has its own timer. You can keep it separate or return it to the shared schedule."
+                        : "Use your shared schedule, or give this app its own focus boundary.", "◷");
+        Button shared = focusPromptButton("Use shared timer", true);
+        Button separate = focusPromptButton("Set a custom timer", false);
+        panel.addView(shared, topMargin(15));
+        panel.addView(separate, topMargin(8));
+        AlertDialog dialog = showFocusPrompt(panel);
+        shared.setOnClickListener(v -> {
+            LockStore.clearPackageTiming(this, pkg);
+            styleAppTile(check);
+            refreshSelectedCount();
+            markDirty();
+            dialog.dismiss();
+            resumeTimerGuideAfterChoice();
+        });
+        separate.setOnClickListener(v -> {
+            dialog.dismiss();
+            check.postDelayed(() -> showAppTimerEditor(check), 90L);
+        });
+        attachPressAnimation(shared);
+        attachPressAnimation(separate);
+    }
+
+    private LinearLayout focusPromptPanel(String eyebrow, String title, String body, String symbol) {
+        LinearLayout panel = column();
+        panel.setPadding(dp(20), dp(20), dp(20), dp(18));
+        panel.setBackground(shape(Color.WHITE, BORDER, 26));
+        LinearLayout top = row();
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        TextView icon = text(symbol, 23, Color.WHITE, true);
+        icon.setGravity(Gravity.CENTER);
+        icon.setBackground(shape(GREEN, GREEN, 22));
+        top.addView(icon, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        TextView brand = text(eyebrow, 10, GREEN, true);
+        brand.setLetterSpacing(.12f);
+        LinearLayout.LayoutParams brandParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        brandParams.leftMargin = dp(11);
+        top.addView(brand, brandParams);
+        panel.addView(top);
+        panel.addView(text(title, 20, INK, true), topMargin(13));
+        TextView copy = text(body, 12, MUTED, false);
+        copy.setLineSpacing(dp(3), 1f);
+        panel.addView(copy, topMargin(5));
+        return panel;
+    }
+
+    private Button focusPromptButton(String label, boolean primary) {
+        Button action = button(label, primary ? GREEN : SOFT_VIOLET, primary ? Color.WHITE : VIOLET);
+        action.setTextSize(13);
+        action.setMinHeight(dp(50));
+        action.setMinimumHeight(dp(50));
+        action.setBackground(shape(primary ? GREEN : SOFT_VIOLET, primary ? GREEN : BORDER, 17));
+        return action;
+    }
+
+    private AlertDialog showFocusPrompt(LinearLayout panel) {
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(panel).create();
+        dialog.setOnShowListener(ignored -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+                dialog.getWindow().setLayout((int) (getResources().getDisplayMetrics().widthPixels * .90f), ViewGroup.LayoutParams.WRAP_CONTENT);
+            }
+            panel.setAlpha(0f);
+            panel.setTranslationY(dp(12));
+            panel.animate().alpha(1f).translationY(0f).setDuration(180).start();
+        });
+        dialog.show();
+        return dialog;
+    }
+
+    private void showAppTimerEditor(CheckBox check) {
+        if (check == null || !(check.getTag() instanceof String)) return;
+        String pkg = (String) check.getTag();
+        String name = check.getContentDescription() == null ? "App" : check.getContentDescription().toString();
+        long useMs = LockStore.allowance(this, pkg);
+        long lockMs = LockStore.lockDuration(this, pkg);
+        LinearLayout panel = focusPromptPanel("CUSTOM TIMER", "Timer for " + name,
+                "Set a separate use limit and lock length. It uses the same exact scroll controls as your shared timer.", "◷");
+
+        TextView usePreview = text("Use limit  ·  " + friendly(useMs), 13, VIOLET, true);
+        usePreview.setPadding(dp(10), dp(10), dp(10), dp(6));
+        panel.addView(usePreview, topMargin(12));
+        NumberPicker[] usePickers = timerPickers(panel, useMs, 12, usePreview, "Use limit");
+
+        TextView lockPreview = text("Lock length  ·  " + friendly(lockMs), 13, VIOLET, true);
+        lockPreview.setPadding(dp(10), dp(12), dp(10), dp(6));
+        panel.addView(lockPreview, topMargin(6));
+        NumberPicker[] lockPickers = timerPickers(panel, lockMs, 48, lockPreview, "Lock length");
+
+        Button save = focusPromptButton("Save custom timer", true);
+        TextView back = text("Back", 12, MUTED, true);
+        back.setGravity(Gravity.CENTER);
+        back.setPadding(dp(8), dp(12), dp(8), dp(2));
+        panel.addView(save, topMargin(12));
+        panel.addView(back);
+        AlertDialog dialog = showFocusPrompt(panel);
+        save.setOnClickListener(v -> {
+            long nextUse = pickerSeconds(usePickers);
+            long nextLock = pickerSeconds(lockPickers);
+            if (nextUse < 1 || nextLock < 1) {
+                toast("Choose at least 1 second for both timers.");
+                return;
+            }
+            LockStore.setPackageTiming(this, pkg, nextUse, nextLock);
+            styleAppTile(check);
+            toast("Custom timer saved for " + name + ".");
+            refreshSelectedCount();
+            markDirty();
+            dialog.dismiss();
+            resumeTimerGuideAfterChoice();
+        });
+        back.setOnClickListener(v -> {
+            dialog.dismiss();
+            check.postDelayed(() -> showAppTimerChoice(check), 90L);
+        });
+        attachPressAnimation(save);
+        attachPressAnimation(back);
+    }
+
+    private void resumeTimerGuideAfterChoice() {
+        if (getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false)
+                || selectedAppCount() == 0) return;
+        guideHandler.postDelayed(() -> {
+            if (!isFinishing() && selectedAppCount() > 0) updateGuideStep(3, settingsAnchor);
+        }, 150L);
+    }
+
+    private NumberPicker[] timerPickers(LinearLayout panel, long milliseconds, int maxHours,
+                                        TextView preview, String prefix) {
+        int total = (int) Math.max(1L, milliseconds / 1000L);
+        LinearLayout row = row();
+        row.setGravity(Gravity.CENTER);
+        NumberPicker hours = scrollPicker(0, maxHours, Math.min(maxHours, total / 3600));
+        NumberPicker minutes = scrollPicker(0, 59, (total % 3600) / 60);
+        NumberPicker seconds = scrollPicker(0, 59, total % 60);
+        NumberPicker[] pickers = {hours, minutes, seconds};
+        for (NumberPicker picker : pickers) {
+            picker.setOnValueChangedListener((source, oldValue, newValue) ->
+                    preview.setText(prefix + "  ·  " + friendly(pickerSeconds(pickers))));
+            row.addView(picker, new LinearLayout.LayoutParams(0, dp(126), 1f));
+        }
+        panel.addView(row);
+        return pickers;
+    }
+
+    private long pickerSeconds(NumberPicker[] pickers) {
+        return (pickers[0].getValue() * 3600L + pickers[1].getValue() * 60L + pickers[2].getValue()) * 1000L;
     }
 
     private void animateWheelPreview(TextView preview, long nextMs, boolean increasing) {
