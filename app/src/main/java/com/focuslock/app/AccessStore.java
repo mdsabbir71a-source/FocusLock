@@ -3,7 +3,7 @@ package com.focuslock.app;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-/** Cached server entitlement. Online verification is required at least once every 24 hours. */
+/** Core protection is local-first; sign-in must never block FocusLock. */
 public final class AccessStore {
     private static final String PREFS = "focuslock_access";
     private static final long OFFLINE_GRACE_MS = 24L * 60L * 60L * 1000L;
@@ -27,9 +27,7 @@ public final class AccessStore {
     }
 
     public static boolean isAllowed(Context context) {
-        SharedPreferences p = prefs(context);
-        return p.getBoolean("allowed", false)
-                && System.currentTimeMillis() - p.getLong("checked_at", 0) <= OFFLINE_GRACE_MS;
+        return true;
     }
 
     public static String reason(Context context) {
@@ -37,7 +35,7 @@ public final class AccessStore {
     }
 
     public static String level(Context context) {
-        return prefs(context).getString("level", "free");
+        return "free";
     }
 
     public static void clear(Context context) { prefs(context).edit().clear().apply(); }

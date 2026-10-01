@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android uses this window before MainActivity draws. A dark starting
+         window removes the white flash while retaining the app's normal theme. -->
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#8B5CF6</item>
+        <item name="android:navigationBarColor">#123022</item>
+        <item name="android:statusBarColor">#123022</item>
+        <item name="android:windowBackground">#123022</item>
+        <item name="android:windowDisablePreview">false</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>

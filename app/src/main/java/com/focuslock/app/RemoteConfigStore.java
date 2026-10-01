@@ -44,7 +44,8 @@ public final class RemoteConfigStore {
                 .apply();
     }
 
-    public static boolean appBlockingEnabled(Context context) { return prefs(context).getBoolean("app_blocking_enabled", true); }
+    // A stale remote setting must never disable a user's local protection.
+    public static boolean appBlockingEnabled(Context context) { return true; }
     public static int defaultUseSeconds(Context context) { return prefs(context).getInt("default_use_seconds", DEFAULT_USE_SECONDS); }
     public static int defaultLockSeconds(Context context) { return prefs(context).getInt("default_lock_seconds", DEFAULT_LOCK_SECONDS); }
     public static int latestVersionCode(Context context) { return prefs(context).getInt("latest_version_code", BuildConfig.VERSION_CODE); }

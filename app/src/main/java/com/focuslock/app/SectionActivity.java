@@ -128,12 +128,11 @@ public final class SectionActivity extends Activity {
         } catch (Exception ignored) { return "<html><head>" + bridge() + "</head><body></body></html>"; }
     }
 
-    private static String bridge() { return "<style>html,body{width:100%;min-height:100%;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}body{padding:0!important;display:block!important;background:#F7F5EF!important}.phone{width:100vw!important;height:100vh!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}.status,nav{display:none!important}.app{padding-bottom:96px!important}.scroll{padding-bottom:96px!important}[data-action]{transition:transform .14s ease,background .16s ease}[data-action]:active{transform:scale(.985)}</style><script>document.addEventListener('click',function(e){var row=e.target.closest('[data-action]');if(row&&window.FocusLock){window.FocusLock.perform(row.dataset.action);}});window.setFocusLockAccount=function(email,provider){var name=document.querySelector('.profile strong'),detail=document.querySelector('.profile span'),avatar=document.querySelector('.avatar');if(name)name.textContent=email||'FocusLock user';if(detail)detail.textContent=provider==='google'?'Google account':'Signed in securely';if(avatar)avatar.textContent=(email||'F').charAt(0).toUpperCase();};</script>"; }
+    private static String bridge() { return "<style>html,body{width:100%;min-height:100%;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}body{padding:0!important;display:block!important;background:#F7F5EF!important}.phone{width:100vw!important;height:100vh!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}.status,nav{display:none!important}.app{padding-bottom:96px!important}.scroll{padding-bottom:96px!important}[data-action]{transition:transform .14s ease,background .16s ease}[data-action]:active{transform:scale(.985)}</style><script>document.addEventListener('click',function(e){var row=e.target.closest('[data-action]');if(row&&window.FocusLock){window.FocusLock.perform(row.dataset.action);}});window.setFocusLockAccount=function(){var name=document.querySelector('.profile strong'),detail=document.querySelector('.profile span'),avatar=document.querySelector('.avatar');if(name)name.textContent='Your FocusLock';if(detail)detail.textContent='Private setup on this device';if(avatar)avatar.textContent='F';};</script>"; }
     private void bind(WebView target) {
         if (target == null) return;
         target.evaluateJavascript("if(window.setFocusLockData){window.setFocusLockData(" + pauseEventsJson() + "," + appsJson() + ");}", null);
-        target.evaluateJavascript("if(window.setFocusLockAccount){window.setFocusLockAccount("
-                + json(AccountStore.email(this)) + "," + json(AccountStore.provider(this)) + ");}", null);
+        target.evaluateJavascript("if(window.setFocusLockAccount){window.setFocusLockAccount();}", null);
     }
 
     /** Bridges the polished bundled Account page to real, native account actions. */
@@ -151,22 +150,13 @@ public final class SectionActivity extends Activity {
         else if ("privacy".equals(action)) openWebsitePath("/privacy.html");
         else if ("terms".equals(action)) openWebsitePath("/terms.html");
         else if ("support".equals(action)) showSupport();
-        else if ("password".equals(action)) showChangePassword();
-        else if ("signout".equals(action)) confirmSignOut();
-        else if ("delete".equals(action)) confirmDeleteAccount();
+        else if ("password".equals(action) || "signout".equals(action) || "delete".equals(action))
+            toast("FocusLock does not require an account.");
     }
 
     private void showAccountDetails() {
-        SecureSessionStore.Session session = SecureSessionStore.get(this);
-        String email = AccountStore.email(this);
-        String provider = AccountStore.provider(this);
-        String accountId = session == null || session.userId.length() < 8
-                ? "Unavailable" : session.userId.substring(0, 8) + "…";
-        new AlertDialog.Builder(this).setTitle("Personal details")
-                .setMessage("Email\n" + (email.isEmpty() ? "Not available on this device" : email)
-                        + "\n\nSign-in method\n" + ("google".equalsIgnoreCase(provider) ? "Google" : "Email")
-                        + "\n\nAccount ID\n" + accountId
-                        + "\n\nApp version\n" + BuildConfig.VERSION_NAME)
+        new AlertDialog.Builder(this).setTitle("This device")
+                .setMessage("FocusLock runs without an account. Your settings stay on this device.\n\nApp version\n" + BuildConfig.VERSION_NAME)
                 .setPositiveButton("Done", null).show();
     }
 
@@ -318,8 +308,7 @@ public final class SectionActivity extends Activity {
                 if (!Boolean.TRUE.equals(deleted)) { dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true); confirmation.setError(error == null ? "Could not delete account" : error); return; }
                 stopService(new Intent(this, FocusMonitorService.class));
                 LocalDataStore.clearAfterAccountDeletion(this);
-                startActivity(new Intent(this, AuthActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK));
-                finish();
+                toast("FocusLock does not require an account.");
             });
         }));
         dialog.show();
@@ -330,8 +319,7 @@ public final class SectionActivity extends Activity {
                 .setMessage("You will need to sign in again to use FocusLock on this device.")
                 .setPositiveButton("Sign out", (dialog, which) -> {
                     SupabaseApi.logout(this);
-                    startActivity(new Intent(this, AuthActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK));
-                    finish();
+                    toast("FocusLock does not require an account.");
                 }).setNegativeButton("Cancel", null).show();
     }
 

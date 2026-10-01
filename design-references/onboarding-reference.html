@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FocusLock — "Designed to distract" screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night-bg:#123022;--night-bg2:#0F2A1E;--night-ink:#F3F0E6;--line:#EFEAD9;--accent:#E8B45C;
+    --page-bg:#141C17;--page-ink:#DDE5DE;
+    box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:inherit}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+  body{margin:0;min-height:100%;background:var(--page-bg);color:var(--page-ink);font-family:"Schibsted Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;display:flex;align-items:center;justify-content:center;padding:32px 16px}
+
+  .phone{
+    width:330px;height:714px;max-width:100%;border-radius:38px;position:relative;overflow:hidden;
+    background:linear-gradient(165deg,var(--night-bg) 0%,var(--night-bg2) 100%);
+    color:var(--night-ink);
+    box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 18px 40px -18px rgba(0,0,0,.6);
+    display:flex;flex-direction:column;
+  }
+  .status{display:flex;justify-content:space-between;align-items:center;padding:14px 22px 0;font-size:12px;font-weight:500;color:rgba(243,240,230,.8)}
+  .status i{display:block;width:12px;height:8px;border:1px solid currentColor;border-radius:2px;opacity:.6}
+
+  .topbar{display:flex;align-items:center;justify-content:center;position:relative;padding:18px 22px 0}
+  .brand{display:flex;align-items:center;gap:9px}
+  .brand svg{width:20px;height:20px}
+  .brand span{font-size:14px;font-weight:700;letter-spacing:.14em;color:var(--night-ink)}
+  .close{position:absolute;right:22px;top:18px;width:22px;height:22px;opacity:.7}
+
+  .stage{position:relative;flex:1;display:flex;align-items:center;justify-content:center;margin-top:6px}
+  .stage svg{width:100%;height:100%;max-height:260px}
+  .stroke{fill:none;stroke:var(--line);stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+  .buzz{stroke:var(--accent)}
+
+  .copy{padding:0 26px;text-align:center}
+  h2.headline{font-size:28px;line-height:1.22;font-weight:800;letter-spacing:-.02em;margin:0}
+  h2.headline .hl{color:var(--accent)}
+  .body-text{font-size:15px;line-height:1.55;color:rgba(243,240,230,.78);margin:16px auto 0;max-width:30ch}
+  .body-text b{color:var(--night-ink);font-weight:700}
+
+  .footer{padding:22px 26px 26px}
+  .btn{display:flex;align-items:center;justify-content:center;width:100%;height:56px;border-radius:999px;font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-family:inherit;text-decoration:none;background:rgba(243,240,230,.14);color:var(--night-ink);border:1.5px solid rgba(243,240,230,.22)}
+  .homebar{width:112px;height:4px;border-radius:99px;margin:16px auto 0;background:rgba(243,240,230,.22)}
+
+  @media (max-width:400px){ .phone{height:min(714px,calc(92vw * 2.163))} }
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="status"><span>8:35<span style="font-size:10px"> AM</span></span><i></i></div>
+
+    <div class="topbar">
+      <div class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M26 5C13 4 5 11 5 20c0 4 2 7 5 7 9 0 17-8 16-22z" fill="none" stroke="#F3F0E6" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="M7 27C11 20 17 14 24 10" fill="none" stroke="#F3F0E6" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span>FOCUSLOCK</span>
+      </div>
+      <svg class="close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>
+    </div>
+
+    <div class="stage">
+      <svg viewBox="0 0 330 300" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <!-- faint rings behind the hand -->
+        <g class="stroke" opacity=".12" stroke-width="1">
+          <circle cx="150" cy="150" r="118"/>
+          <circle cx="150" cy="150" r="140"/>
+        </g>
+
+        <!-- static lines on the left, calm / unread -->
+        <g class="stroke" opacity=".5" stroke-width="1.3">
+          <path d="M10 70h120M10 96h90M10 122h120M10 148h70"/>
+        </g>
+
+        <!-- hand + phone, simple line art, no fill -->
+        <g class="stroke" opacity=".85" stroke-width="1.8">
+          <!-- phone body -->
+          <rect x="108" y="40" width="88" height="172" rx="16"/>
+          <path d="M136 198h32" opacity=".6"/>
+          <!-- thumb crossing the lower phone -->
+          <path d="M80 190c10-18 26-28 40-30"/>
+          <path d="M80 190c-6 10-6 20 2 28 10 10 24 10 34 2"/>
+          <!-- palm / fingers cupping from below -->
+          <path d="M70 222c-4 20 2 38 18 48 18 12 40 12 56-2 12-10 18-24 18-40"/>
+          <path d="M86 236c6 6 14 8 22 6M118 246c6 4 13 4 19 0"/>
+          <!-- opposite hand fingers wrapping from the right -->
+          <path d="M230 198c10 2 18 10 20 22M224 180c10 0 18 8 20 20"/>
+        </g>
+
+        <!-- distraction squiggles pouring off the screen, amber -->
+        <g class="stroke buzz" opacity=".9" stroke-width="2">
+          <path d="M196 70c14-10 24-10 34 0s20 10 34 0 24-10 36 2"/>
+          <path d="M196 98c12-9 22-9 32 0s20 9 32 0 22-9 34 1"/>
+          <path d="M196 126c10-8 20-8 30 0s18 8 28 0 20-8 32 2"/>
+          <path d="M196 154c8-7 18-7 26 0s16 7 24 0 18-7 28 2"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="copy">
+      <h2 class="headline">We live in a world <span class="hl">designed to distract</span> you.</h2>
+      <p class="body-text">Constant <b>pings</b>, endless <b>scrolling</b>, too many <b>tabs</b>. It's easy to feel scattered and drained.</p>
+    </div>
+
+    <div class="footer">
+      <a class="btn" href="#">Continue</a>
+      <div class="homebar"></div>
+    </div>
+  </div>
+</body>
+</html>

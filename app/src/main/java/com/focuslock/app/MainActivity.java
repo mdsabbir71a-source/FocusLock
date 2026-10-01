@@ -3,6 +3,7 @@ package com.focuslock.app;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.AppOpsManager;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
@@ -129,37 +130,129 @@ public class MainActivity extends Activity {
     private boolean guideWasInterrupted;
     private int coachGeneration;
     private SuccessBurstView successBurst;
+    private Dialog permissionOnboardingDialog;
+    private LinearLayout permissionOnboardingRows;
+    private View permissionOnboardingSurface;
+    private TextView permissionOnboardingStatus;
+    private Button permissionOnboardingAction;
+    private boolean finishingPermissionOnboarding;
+    private boolean permissionRowsTransitioning;
+    private boolean homeContentBuilt;
+    private View preparedHomeContent;
+    private boolean preparingHomeContent;
+    private volatile PreparedAppList preparedAppList;
+
+    private static final class PreparedAppList {
+        final List<ResolveInfo> apps;
+        final Map<String, String> labels;
+        final Map<String, Drawable> icons;
+        PreparedAppList(List<ResolveInfo> apps, Map<String, String> labels, Map<String, Drawable> icons) {
+            this.apps = apps; this.labels = labels; this.icons = icons;
+        }
+    }
+
+    private void prepareAppListInBackground() {
+        final PackageManager manager = getPackageManager();
+        new Thread(() -> {
+            try {
+                List<ResolveInfo> apps = manager.queryIntentActivities(
+                        new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0);
+                Map<String, String> labels = new LinkedHashMap<>();
+                Map<String, Drawable> icons = new LinkedHashMap<>();
+                for (ResolveInfo app : apps) {
+                    String pkg = app.activityInfo.packageName;
+                    if (pkg.equals(getPackageName()) || labels.containsKey(pkg)) continue;
+                    labels.put(pkg, app.loadLabel(manager).toString());
+                    try { icons.put(pkg, app.loadIcon(manager)); } catch (Exception ignored) {}
+                }
+                preparedAppList = new PreparedAppList(apps, labels, icons);
+            } catch (Exception ignored) {
+                // The normal picker path remains available if preparation fails.
+            }
+        }, "focuslock-app-list").start();
+    }
+    private final Handler permissionReturnHandler = new Handler();
+    private int watchedOnboardingPermission;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(BACKGROUND));
-        if (!SecureSessionStore.hasSession(this) || !AccessStore.isAllowed(this)) {
-            openAuthentication();
-            return;
-        }
         LockStore.pruneUninstalled(this);
         SharedPreferences onboarding = getSharedPreferences("focuslock_onboarding", MODE_PRIVATE);
-        boolean welcomed = onboarding.getBoolean("welcome_seen", false);
-        newGuideIntro = !welcomed;
-        if (newGuideIntro) {
+        boolean welcomed = onboarding.getBoolean("welcome_handoff_v117_seen", false);
+        boolean permissionsFinished = onboarding.getBoolean("permission_onboarding_done", false);
+        boolean designSeen = onboarding.getBoolean("distraction_onboarding_v119_seen", false);
+        if (!permissionsFinished && designSeen && permissionsReady()) {
+            permissionsFinished = true;
+            onboarding.edit().putBoolean("permission_onboarding_done", true).apply();
+        }
+        final boolean shouldShowOnboarding = !welcomed || !designSeen || !permissionsFinished;
+        if (shouldShowOnboarding) prepareAppListInBackground();
+        getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
+                shouldShowOnboarding ? Color.rgb(18, 48, 34) : BACKGROUND));
+        setOnboardingSystemBars(shouldShowOnboarding);
+        newGuideIntro = !welcomed || !designSeen;
+        if (newGuideIntro && !onboarding.getBoolean("guide_complete", false)) {
             onboarding.edit().putBoolean("interactive_guide_v104_seen", true).putBoolean("guide_complete", false).apply();
         }
-        // Show a finished brand surface before enumerating installed apps and
-        // decoding their icons. That work is intentionally deferred one frame
-        // so Android never exposes a black launch frame after Google sign-in.
-        setContentView(buildLaunchPlaceholder());
+        // Use the new onboarding surface from the first frame. The old home
+        // placeholder was visible for a moment before the dialog opened.
+        setContentView(buildLaunchPlaceholder(shouldShowOnboarding));
         new Handler().post(() -> {
             if (isFinishing()) return;
-            setContentView(buildUi());
-            if (!welcomed) new Handler().postDelayed(this::showFirstLaunchSetup, 550);
+            if (shouldShowOnboarding) {
+                if (welcomed) showPermissionsOnboarding(); else showWelcomeCards();
+            } else {
+                showHomeContent();
+            }
         });
+    }
+
+    /** Builds the expensive app-picker only once the setup surface has handed off. */
+    private void showHomeContent() {
+        if (homeContentBuilt || isFinishing()) return;
+        homeContentBuilt = true;
+        setOnboardingSystemBars(false);
+        boolean wasPrepared = preparedHomeContent != null;
+        View home = wasPrepared ? preparedHomeContent : buildUi();
+        preparedHomeContent = null;
+        refreshPermissionCards();
+        refreshMasterButton();
+        refreshStatus();
+        home.setAlpha(0f);
+        setContentView(home);
+        if (wasPrepared) startLogoAnimation();
+        home.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+            @Override public boolean onPreDraw() {
+                home.getViewTreeObserver().removeOnPreDrawListener(this);
+                if (!finishingPermissionOnboarding) {
+                    home.animate().alpha(1f).setDuration(260L)
+                            .setInterpolator(new AccelerateDecelerateInterpolator()).start();
+                }
+                return true;
+            }
+        });
+    }
+
+    /** Keeps the status and navigation bars part of each surface, never a flash of the old page. */
+    private void setOnboardingSystemBars(boolean dark) {
+        int color = dark ? Color.rgb(18, 48, 34) : BACKGROUND;
+        getWindow().setStatusBarColor(color);
+        getWindow().setNavigationBarColor(color);
+        int flags = getWindow().getDecorView().getSystemUiVisibility();
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (dark) flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            else flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        }
+        if (Build.VERSION.SDK_INT >= 26) {
+            if (dark) flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            else flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        }
+        getWindow().getDecorView().setSystemUiVisibility(flags);
     }
 
     @Override protected void onResume() {
         super.onResume();
         visible = true;
-        if (!SecureSessionStore.hasSession(this)) { openAuthentication(); return; }
-        if (!AccessStore.isAllowed(this)) { stopProtectionForAccess(); openAuthentication(); return; }
         boolean removedApps = LockStore.pruneUninstalled(this);
         if (removedApps) removeUninstalledTiles();
         if (!LockStore.isEnabled(this)) {
@@ -170,14 +263,14 @@ public class MainActivity extends Activity {
                 && RemoteConfigStore.appBlockingEnabled(this)) {
             startSavedMonitoring();
         }
-        refreshRemoteAccess();
-        refreshLiveConfig();
-        refreshStatus();
-        refreshPermissionCards();
-        refreshMasterButton();
-        new Handler().postDelayed(this::maybeExplainBatteryReliability, 650L);
-        new Handler().postDelayed(this::maybeShowSelfLockGuide, 1100L);
-        new Handler().postDelayed(this::maybeShowXiaomiReliabilityForExistingUser, 1450L);
+        if (homeContentBuilt) {
+            refreshStatus();
+            refreshPermissionCards();
+            refreshMasterButton();
+            new Handler().postDelayed(this::maybeExplainBatteryReliability, 650L);
+            new Handler().postDelayed(this::maybeShowSelfLockGuide, 1100L);
+            new Handler().postDelayed(this::maybeShowXiaomiReliabilityForExistingUser, 1450L);
+        }
         if (guideWasInterrupted) {
             guideWasInterrupted = false;
             new Handler().postDelayed(this::resumeGuide, 520L);
@@ -189,12 +282,16 @@ public class MainActivity extends Activity {
         if (waitingForSpecialPermission != 0) {
             int returningFrom = waitingForSpecialPermission;
             waitingForSpecialPermission = 0;
+            stopWatchingOnboardingPermission();
             new Handler().postDelayed(() -> {
                 boolean allowed = returningFrom == 1 ? usageAccessEnabled() : Settings.canDrawOverlays(this);
                 if (returningFrom == 3) allowed = batteryReliabilityEnabled();
                 if (returningFrom == 4) allowed = CompatibilityAccess.isEnabled(this);
                 if (returningFrom == 5) allowed = true; // Xiaomi exposes no readable Auto-start status.
-                if (!allowed) {
+                if (permissionOnboardingDialog != null && permissionOnboardingDialog.isShowing()) {
+                    refreshPermissionOnboarding();
+                    if (!allowed) toast("That permission is still off. Tap Allow again when you are ready.");
+                } else if (!allowed) {
                     guidedSetup = false;
                     toast(returningFrom == 3
                             ? "Battery reliability was skipped. FocusLock will still retry automatically."
@@ -216,6 +313,22 @@ public class MainActivity extends Activity {
         dismissCoachOverlay();
         guideHandler.removeCallbacksAndMessages(null);
         super.onPause();
+        if (permissionOnboardingDialog != null && permissionOnboardingDialog.isShowing()
+                && !homeContentBuilt && preparedHomeContent == null) {
+            // The user is in Settings: prepare the actual native interface now,
+            // rather than constructing it after the last approval.
+            permissionReturnHandler.post(() -> {
+                if (isFinishing() || homeContentBuilt || preparedHomeContent != null) return;
+                preparingHomeContent = true;
+                try { preparedHomeContent = buildUi(); }
+                finally { preparingHomeContent = false; }
+            });
+        }
+    }
+
+    @Override protected void onDestroy() {
+        stopWatchingOnboardingPermission();
+        super.onDestroy();
     }
 
     public static boolean isVisible() { return visible; }
@@ -378,7 +491,7 @@ public class MainActivity extends Activity {
         timerStep.setBackground(shape(GREEN, GREEN, 17));
         timerHeader.addView(timerStep, new LinearLayout.LayoutParams(dp(34), dp(34)));
         LinearLayout timerCopy = column();
-        timerCopy.addView(text("Set the timer", 17, INK, true));
+        timerCopy.addView(text("Set the shared timer", 17, INK, true));
         timerCopy.addView(text("Tap + or − to adjust", 10, MUTED, false), topMargin(1));
         LinearLayout.LayoutParams timerCopyLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         timerCopyLp.leftMargin = dp(10);
@@ -443,31 +556,34 @@ public class MainActivity extends Activity {
         refreshMasterButton();
         refreshStatus();
         if (LockStore.packages(this).isEmpty()) markDirty(); else markSaved();
-        reveal(header, 20);
-        reveal(master, 90);
-        reveal(appsCard, 170);
-        reveal(settings, 250);
-        reveal(useTimerCard, 330);
-        reveal(lockTimerCard, 430);
-        startLogoAnimation();
-        mainScroll.post(this::resumeGuide);
+        if (!finishingPermissionOnboarding && !preparingHomeContent) {
+            reveal(header, 20);
+            reveal(master, 90);
+            reveal(appsCard, 170);
+            reveal(settings, 250);
+            reveal(useTimerCard, 330);
+            reveal(lockTimerCard, 430);
+            mainScroll.post(this::resumeGuide);
+        }
+        if (!preparingHomeContent) startLogoAnimation();
         return screenRoot;
     }
 
-    private View buildLaunchPlaceholder() {
+    private View buildLaunchPlaceholder(boolean onboarding) {
         FrameLayout launch = new FrameLayout(this);
-        launch.setBackgroundColor(BACKGROUND);
+        launch.setBackgroundColor(onboarding ? Color.rgb(18, 48, 34) : BACKGROUND);
         LinearLayout card = column();
         card.setGravity(Gravity.CENTER);
-        TextView emblem = text("F", 24, Color.WHITE, true);
-        emblem.setGravity(Gravity.CENTER);
-        emblem.setBackground(shape(GREEN, GREEN, 28));
-        card.addView(emblem, new LinearLayout.LayoutParams(dp(56), dp(56)));
-        TextView brand = text("FOCUSLOCK", 12, GREEN, true);
+        ImageView emblem = new ImageView(this);
+        emblem.setImageResource(R.drawable.focuslock_logo);
+        emblem.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        card.addView(emblem, new LinearLayout.LayoutParams(dp(54), dp(54)));
+        TextView brand = text("FOCUSLOCK", 12, onboarding ? Color.rgb(243, 240, 230) : GREEN, true);
         brand.setLetterSpacing(.16f);
         brand.setGravity(Gravity.CENTER);
         card.addView(brand, topMargin(12));
-        TextView copy = text("Preparing your focus space", 11, MUTED, false);
+        TextView copy = text(onboarding ? "" : "Preparing your focus space", 11,
+                onboarding ? Color.TRANSPARENT : MUTED, false);
         copy.setGravity(Gravity.CENTER);
         card.addView(copy, topMargin(4));
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
@@ -581,10 +697,463 @@ public class MainActivity extends Activity {
         updateGuideStep(1, firstMissingPermissionCard());
     }
 
+    private CharSequence onboardingHeadline(int index) {
+        String copy = index == 1
+                ? "Focuslock is designed to\nbreak the distraction\nwith small pauses"
+                : index == 2 ? "Small pauses that makes\na bigger diffrence"
+                : "We Live in a world\ndesigned to distract you";
+        android.text.SpannableString styled = new android.text.SpannableString(copy);
+        String accent = index == 1 ? "Focuslock" : index == 2 ? "bigger diffrence" : "designed to distract";
+        int start = copy.indexOf(accent);
+        styled.setSpan(new android.text.style.ForegroundColorSpan(Color.rgb(232, 180, 92)),
+                start, start + accent.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return styled;
+    }
+
+    /** Full-screen onboarding based on the supplied "Designed to distract" card. */
+    private void showWelcomeCards() {
+        if (isFinishing()) return;
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Color.rgb(18, 48, 34));
+        LinearLayout page = column();
+        page.setGravity(Gravity.CENTER_HORIZONTAL);
+        page.setPadding(dp(26), dp(34), dp(26), dp(26));
+        root.addView(page, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        LinearLayout brandHeader = column();
+        brandHeader.setGravity(Gravity.CENTER_HORIZONTAL);
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.focuslock_logo);
+        logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        brandHeader.addView(logo, new LinearLayout.LayoutParams(dp(46), dp(46)));
+        TextView brand = text("FOCUSLOCK", 13, Color.rgb(243, 240, 230), true);
+        brand.setLetterSpacing(.12f);
+        brand.setGravity(Gravity.CENTER);
+        brandHeader.addView(brand, topMargin(7));
+        page.addView(brandHeader, matchWrap());
+        DistractionOnboardingArtView art = new DistractionOnboardingArtView(this);
+        page.addView(art, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, .82f));
+        TextView headline = text("", 28, Color.rgb(243, 240, 230), true);
+        headline.setGravity(Gravity.CENTER);
+        headline.setLineSpacing(dp(3), 1f);
+        headline.setText(onboardingHeadline(0));
+        headline.setMinHeight(dp(148));
+        headline.setPadding(0, dp(8), 0, dp(8));
+        page.addView(headline, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        Handler headlineHandler = new Handler();
+        Runnable rotateHeadline = new Runnable() {
+            int headlineIndex;
+            @Override public void run() {
+                if (!dialog.isShowing()) return;
+                headline.animate().alpha(0f).setDuration(550L)
+                        .withEndAction(() -> {
+                            if (!dialog.isShowing()) return;
+                            headlineIndex = (headlineIndex + 1) % 3;
+                            headline.setText(onboardingHeadline(headlineIndex));
+                            headline.animate().alpha(1f).setDuration(650L).start();
+                            headlineHandler.postDelayed(this, 4600L);
+                        }).start();
+            }
+        };
+        dialog.setOnDismissListener(ignored -> {
+            headlineHandler.removeCallbacksAndMessages(null);
+            headline.animate().cancel();
+        });
+        headlineHandler.postDelayed(rotateHeadline, 4600L);
+        Button continueButton = button("Get started", Color.argb(36, 243, 240, 230), Color.rgb(243, 240, 230));
+        continueButton.setAllCaps(false);
+        continueButton.setTextSize(14);
+        continueButton.setLetterSpacing(.08f);
+        continueButton.setMinHeight(dp(56));
+        continueButton.setBackground(shape(Color.argb(36, 243, 240, 230), Color.argb(58, 243, 240, 230), 28));
+        page.addView(new View(this), new LinearLayout.LayoutParams(1, 0, .18f));
+        page.addView(continueButton, topMargin(22));
+        attachPressAnimation(continueButton);
+        dialog.setContentView(root);
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setCancelable(false);
+        dialog.setOnShowListener(ignored -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+                dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            }
+            page.setAlpha(0f); page.setTranslationY(dp(18));
+            page.animate().alpha(1f).translationY(0f).setDuration(520).setInterpolator(new DecelerateInterpolator()).start();
+        });
+        continueButton.setOnClickListener(v -> page.animate().alpha(1f).translationY(0f).setDuration(0)
+                .withEndAction(() -> {
+                    getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit()
+                            .putBoolean("welcome_seen", true).putBoolean("welcome_handoff_v117_seen", true).apply();
+                    continueButton.setEnabled(false);
+                    showPermissionsOnboarding();
+                    new Handler().postDelayed(dialog::dismiss, 420L);
+                }).start());
+        dialog.show();
+    }
+
+    private boolean permissionsReady() {
+        return usageAccessEnabled() && Settings.canDrawOverlays(this)
+                && batteryReliabilityEnabled() && CompatibilityAccess.isEnabled(this);
+    }
+
+    /** Separate required-access card; Home only becomes available after all four checks pass. */
+    private void showPermissionsOnboarding() {
+        if (isFinishing()) return;
+        if (permissionOnboardingDialog != null && permissionOnboardingDialog.isShowing()) return;
+        setOnboardingSystemBars(false);
+        finishingPermissionOnboarding = false;
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        FrameLayout root = new FrameLayout(this);
+        // Keep this surface still. The old continuously-redrawing welcome art made
+        // the system-settings return look like a visual flash.
+        root.addView(new PermissionOnboardingBackdropView(this), new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        LinearLayout page = column();
+        page.setPadding(dp(22), dp(32), dp(22), dp(24));
+        ScrollView permissionScroll = new ScrollView(this);
+        permissionScroll.setFillViewport(true);
+        permissionScroll.setClipToPadding(false);
+        permissionScroll.addView(page, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(permissionScroll, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        permissionOnboardingSurface = root;
+        LinearLayout brandHeader = column();
+        brandHeader.setGravity(Gravity.CENTER_HORIZONTAL);
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.focuslock_logo);
+        logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        brandHeader.addView(logo, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        TextView eyebrow = text("FOCUSLOCK", 12, Color.rgb(23, 83, 46), true);
+        eyebrow.setLetterSpacing(.13f);
+        eyebrow.setGravity(Gravity.CENTER);
+        brandHeader.addView(eyebrow, topMargin(6));
+        page.addView(brandHeader, matchWrap());
+        page.addView(text("A few permissions to get started", 20, INK, true), topMargin(19));
+        TextView introduction = text("We never collect or share your data.", 12, MUTED, false);
+        introduction.setLineSpacing(dp(3), 1f);
+        page.addView(introduction, topMargin(5));
+
+        LinearLayout card = column();
+        card.setPadding(dp(16), dp(16), dp(16), dp(15));
+        card.setBackground(shape(Color.WHITE, BORDER, 26));
+        permissionOnboardingStatus = text("", 12, VIOLET, true);
+        card.addView(permissionOnboardingStatus);
+        permissionOnboardingRows = column();
+        card.addView(permissionOnboardingRows, topMargin(11));
+        // Keep the permission stack directly under the introduction. A weighted
+        // spacer here pinned the remaining cards at the bottom after approval
+        // and created the blank gap shown in the test screenshot.
+        page.addView(card, topMargin(20));
+        permissionOnboardingAction = button("", INK, Color.WHITE);
+        permissionOnboardingAction.setTextSize(14);
+        permissionOnboardingAction.setMinHeight(dp(54));
+        permissionOnboardingAction.setBackground(shape(INK, INK, 18));
+        page.addView(permissionOnboardingAction, topMargin(15));
+        permissionOnboardingAction.setVisibility(View.GONE);
+        attachPressAnimation(permissionOnboardingAction);
+
+        dialog.setContentView(root);
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.setCancelable(false);
+        dialog.setOnShowListener(ignored -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+                dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            }
+            page.setAlpha(1f); page.setTranslationY(0f);
+            root.animate().alpha(1f).setDuration(360L).setInterpolator(new AccelerateDecelerateInterpolator()).start();
+            refreshPermissionOnboarding();
+        });
+        dialog.setOnDismissListener(ignored -> { permissionOnboardingDialog = null; permissionOnboardingSurface = null; });
+        permissionOnboardingDialog = dialog;
+        root.setAlpha(0f);
+        refreshPermissionOnboarding();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setWindowAnimations(0);
+            dialog.getWindow().setDimAmount(0f);
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        }
+        dialog.show();
+    }
+
+    private void refreshPermissionOnboarding() {
+        if (permissionOnboardingRows == null || permissionOnboardingAction == null) return;
+        if (permissionRowsTransitioning) return;
+        boolean usage = usageAccessEnabled();
+        boolean overlay = Settings.canDrawOverlays(this);
+        boolean battery = batteryReliabilityEnabled();
+        boolean compatibility = CompatibilityAccess.isEnabled(this);
+        boolean[] ready = {usage, overlay, battery, compatibility};
+        String[] titles = {"Usage Access", "Gentle Lock", "Keep it active", "Compatibility Mode"};
+        String[] descriptions = {"Measures time in selected apps", "Shows the pause screen", "Prevents Android from stopping FocusLock", "Keeps blocking dependable on more phones"};
+        int next = -1;
+        for (int i = 0; i < ready.length; i++) if (!ready[i]) { next = i; break; }
+        int complete = (usage ? 1 : 0) + (overlay ? 1 : 0) + (battery ? 1 : 0) + (compatibility ? 1 : 0);
+        permissionOnboardingStatus.setText(complete == 4 ? "ALL SET  ·  4 / 4 READY" : "STEP " + (next + 1) + " OF 4     " + complete + " / 4 READY");
+
+        // Android Settings only changes a permission from missing to ready. Keep
+        // the remaining cards alive and gently remove the approved one instead
+        // of clearing the whole list (which exposed a blank white page in use).
+        boolean hasRows = permissionOnboardingRows.getChildCount() > 0;
+        if (hasRows) {
+            View approvedRow = null;
+            for (int child = permissionOnboardingRows.getChildCount() - 1; child >= 0; child--) {
+                View row = permissionOnboardingRows.getChildAt(child);
+                Object tag = row.getTag();
+                int index = tag instanceof Integer ? (Integer) tag : -1;
+                if (index >= 0 && ready[index]) {
+                    approvedRow = row;
+                } else if (index >= 0) {
+                    // Move the visual focus to the next required permission
+                    // before the approved card finishes leaving the page.
+                    row.setBackground(shape(Color.argb(236, 255, 255, 255),
+                            index == next ? Color.rgb(47, 122, 74) : BORDER, 18));
+                }
+            }
+            if (approvedRow != null) {
+                animateApprovedPermissionAway(approvedRow, next < 0);
+                return;
+            }
+        } else {
+            for (int i = 0; i < ready.length; i++) {
+                if (ready[i]) continue;
+                final int index = i;
+                View row = onboardingPermissionRow(i + 1, titles[i], descriptions[i], i == next,
+                        v -> openOnboardingPermission(index + 1));
+                row.setTag(i);
+                permissionOnboardingRows.addView(row,
+                        permissionOnboardingRows.getChildCount() == 0 ? matchWrap() : topMargin(12));
+            }
+        }
+        if (next < 0) {
+            if (!finishingPermissionOnboarding) {
+                finishingPermissionOnboarding = true;
+                enterAppAfterPermissions();
+            }
+        }
+    }
+
+    /** Uses a FLIP-style move so the next permission visibly glides into place. */
+    private void animateApprovedPermissionAway(View approvedRow, boolean finishAfter) {
+        if (approvedRow == null || approvedRow.getParent() != permissionOnboardingRows) return;
+        if (finishAfter) {
+            // Keep the final card visible while Home is prepared; never expose
+            // an empty permission stack during the handoff.
+            finishingPermissionOnboarding = true;
+            enterAppAfterPermissions();
+            return;
+        }
+        permissionRowsTransitioning = true;
+        Map<View, Integer> oldPositions = new LinkedHashMap<>();
+        for (int i = 0; i < permissionOnboardingRows.getChildCount(); i++) {
+            View child = permissionOnboardingRows.getChildAt(i);
+            if (child != approvedRow) {
+                int[] location = new int[2];
+                child.getLocationOnScreen(location);
+                oldPositions.put(child, location[1]);
+            }
+        }
+        approvedRow.animate().cancel();
+        approvedRow.animate().alpha(0f).translationX(dp(18)).setDuration(160L)
+                .setInterpolator(new AccelerateDecelerateInterpolator()).withEndAction(() -> {
+                    if (approvedRow.getParent() == permissionOnboardingRows) {
+                        permissionOnboardingRows.removeView(approvedRow);
+                    }
+                    android.view.ViewTreeObserver.OnPreDrawListener moveOnLayout = new android.view.ViewTreeObserver.OnPreDrawListener() {
+                        @Override public boolean onPreDraw() {
+                            if (permissionOnboardingRows.getViewTreeObserver().isAlive()) {
+                                permissionOnboardingRows.getViewTreeObserver().removeOnPreDrawListener(this);
+                            }
+                        for (Map.Entry<View, Integer> entry : oldPositions.entrySet()) {
+                            View row = entry.getKey();
+                            if (row.getParent() != permissionOnboardingRows) continue;
+                            int[] location = new int[2];
+                            row.getLocationOnScreen(location);
+                            float distance = entry.getValue() - location[1];
+                            // The weighted spacer can anchor later cards in place.
+                            // Give those cards the same gentle upward movement too.
+                            if (Math.abs(distance) < dp(2)) distance = dp(28);
+                            row.animate().cancel();
+                            row.setTranslationY(distance);
+                            row.setAlpha(.96f);
+                            row.animate().translationY(0f).alpha(1f).setDuration(300L)
+                                    .setInterpolator(new DecelerateInterpolator()).start();
+                        }
+                        permissionRowsTransitioning = false;
+                        if (finishAfter) {
+                            if (!finishingPermissionOnboarding) {
+                                finishingPermissionOnboarding = true;
+                                MainActivity.this.enterAppAfterPermissions();
+                            }
+                        } else {
+                            permissionReturnHandler.postDelayed(MainActivity.this::refreshPermissionOnboarding, 280L);
+                        }
+                            return true;
+                        }
+                    };
+                    permissionOnboardingRows.getViewTreeObserver().addOnPreDrawListener(moveOnLayout);
+                    permissionOnboardingRows.requestLayout();
+                }).start();
+    }
+
+    private View onboardingPermissionRow(int number, String title, String detail, boolean highlighted, View.OnClickListener click) {
+        LinearLayout card = column();
+        card.setPadding(dp(16), dp(16), dp(16), dp(15));
+        card.setBackground(shape(Color.argb(236, 255, 255, 255), highlighted ? Color.rgb(47, 122, 74) : BORDER, 18));
+        LinearLayout header = row();
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        TextView num = text(String.valueOf(number), 11, Color.rgb(23, 83, 46), true);
+        num.setGravity(Gravity.CENTER);
+        num.setBackground(shape(Color.WHITE, Color.rgb(179, 207, 186), 15));
+        header.addView(num, new LinearLayout.LayoutParams(dp(28), dp(28)));
+        TextView icon = text(number == 1 ? "◌" : number == 2 ? "⌑" : number == 3 ? "◇" : "✦", 17, Color.rgb(23, 83, 46), true);
+        icon.setGravity(Gravity.CENTER);
+        icon.setBackground(shape(Color.rgb(242, 248, 243), Color.rgb(223, 236, 224), 11));
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(38), dp(38));
+        iconLp.leftMargin = dp(10); header.addView(icon, iconLp);
+        TextView heading = text(title, 15, INK, true);
+        LinearLayout.LayoutParams headingLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        headingLp.leftMargin = dp(12); header.addView(heading, headingLp);
+        card.addView(header);
+        TextView description = text(detail, 12, MUTED, false);
+        description.setLineSpacing(dp(3), 1f);
+        card.addView(description, topMargin(10));
+        Button grant = button("Grant permission  ››", Color.rgb(23, 83, 46), Color.rgb(244, 247, 242));
+        grant.setTextSize(13);
+        grant.setMinHeight(dp(46));
+        grant.setBackground(shape(Color.rgb(23, 83, 46), Color.rgb(23, 83, 46), 24));
+        grant.setOnClickListener(click);
+        attachPressAnimation(grant);
+        card.addView(grant, topMargin(14));
+        card.setOnClickListener(click);
+        return card;
+    }
+
+    private void enterAppAfterPermissions() {
+        if (permissionOnboardingDialog == null || !permissionOnboardingDialog.isShowing()) return;
+        getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit()
+                .putBoolean("welcome_seen", true).putBoolean("permission_onboarding_done", true)
+                .putBoolean("distraction_onboarding_v119_seen", true).apply();
+        Dialog departingPermissions = permissionOnboardingDialog;
+        newGuideIntro = !getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false);
+        showHomeContent();
+        View departingSurface = permissionOnboardingSurface;
+        screenRoot.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+            @Override public boolean onPreDraw() {
+                screenRoot.getViewTreeObserver().removeOnPreDrawListener(this);
+                // Slide both pages together in one window, like an automatic right swipe.
+                screenRoot.setAlpha(1f);
+                FrameLayout transitionRoot = (FrameLayout) departingSurface;
+                if (departingPermissions.getWindow() != null) {
+                    departingPermissions.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+                    departingPermissions.getWindow().setWindowAnimations(0);
+                }
+                android.graphics.Bitmap homeFrame = android.graphics.Bitmap.createBitmap(
+                        screenRoot.getWidth(), screenRoot.getHeight(), android.graphics.Bitmap.Config.ARGB_8888);
+                screenRoot.draw(new android.graphics.Canvas(homeFrame));
+                ImageView incomingHome = new ImageView(MainActivity.this);
+                incomingHome.setImageBitmap(homeFrame);
+                incomingHome.setScaleType(ImageView.ScaleType.FIT_XY);
+                incomingHome.setAlpha(1f);
+                float slideWidth = transitionRoot.getWidth();
+                incomingHome.setTranslationX(-slideWidth);
+                transitionRoot.animate().cancel();
+                transitionRoot.setAlpha(1f);
+                transitionRoot.addView(incomingHome, new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                ValueAnimator handoff = ValueAnimator.ofFloat(0f, 1f);
+                handoff.setDuration(380L);
+                handoff.setInterpolator(new AccelerateDecelerateInterpolator());
+                handoff.addUpdateListener(animation -> {
+                    float progress = (Float) animation.getAnimatedValue();
+                    for (int i = 0; i < transitionRoot.getChildCount() - 1; i++) {
+                        View outgoing = transitionRoot.getChildAt(i);
+                        outgoing.setAlpha(1f);
+                        outgoing.setTranslationX(slideWidth * progress);
+                    }
+                    incomingHome.setTranslationX(-slideWidth * (1f - progress));
+                });
+                handoff.addListener(new android.animation.AnimatorListenerAdapter() {
+                    @Override public void onAnimationEnd(android.animation.Animator animation) {
+                        screenRoot.setAlpha(1f);
+                        departingPermissions.dismiss();
+                        incomingHome.setImageDrawable(null);
+                        homeFrame.recycle();
+                        guideHandler.postDelayed(() -> updateGuideStep(2, appSectionAnchor), 150L);
+                    }
+                });
+                handoff.start();
+                return true;
+            }
+        });
+    }
+
+    private void openOnboardingPermission(int step) {
+        if (step == 1) {
+            waitingForSpecialPermission = 1;
+            showPermissionPrimer("Allow Usage Access", "Find FocusLock and turn it on.",
+                    () -> openOnboardingSettings(step, () -> startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))));
+        } else if (step == 2) {
+            waitingForSpecialPermission = 2;
+            showPermissionPrimer("Allow Gentle Lock", "Turn on “Display over other apps”.",
+                    () -> openOnboardingSettings(step, () -> startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())))));
+        } else if (step == 3) {
+            waitingForSpecialPermission = 3;
+            showPermissionPrimer("Keep FocusLock active", "Tap Allow on the next Android screen.",
+                    () -> openOnboardingSettings(step, this::requestBatteryReliability));
+        } else {
+            waitingForSpecialPermission = 4;
+            showPermissionPrimer("Allow Compatibility Mode", "On the next screen, tap FocusLock Compatibility Mode, then turn it on.",
+                    () -> openOnboardingSettings(step, () -> CompatibilityAccess.openSettings(this)));
+        }
+    }
+
+    /** Watches only while the user is in a FocusLock-initiated Settings page. */
+    private void openOnboardingSettings(int step, Runnable action) {
+        action.run();
+        watchForOnboardingPermission(step);
+    }
+
+    private void watchForOnboardingPermission(int step) {
+        stopWatchingOnboardingPermission();
+        watchedOnboardingPermission = step;
+        permissionReturnHandler.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (watchedOnboardingPermission != step || isFinishing()) return;
+                if (onboardingPermissionGranted(step)) {
+                    stopWatchingOnboardingPermission();
+                    // This Settings flow was initiated from the user's own tap.
+                    // Bring the existing setup page forward once Android applies it.
+                    Intent returnToSetup = new Intent(MainActivity.this, MainActivity.class);
+                    returnToSetup.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    startActivity(returnToSetup);
+                    return;
+                }
+                permissionReturnHandler.postDelayed(this, 300L);
+            }
+        }, 360L);
+    }
+
+    private boolean onboardingPermissionGranted(int step) {
+        if (step == 1) return usageAccessEnabled();
+        if (step == 2) return Settings.canDrawOverlays(this);
+        if (step == 3) return batteryReliabilityEnabled();
+        return CompatibilityAccess.isEnabled(this);
+    }
+
+    private void stopWatchingOnboardingPermission() {
+        watchedOnboardingPermission = 0;
+        permissionReturnHandler.removeCallbacksAndMessages(null);
+    }
+
     private void openAuthentication() {
-        startActivity(new Intent(this, AuthActivity.class)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK));
-        finish();
+        // Kept as a compatibility path for older code: FocusLock no longer
+        // has an account screen or a sign-in dependency.
+        toast("FocusLock is ready on this device.");
     }
 
 
@@ -675,13 +1244,8 @@ public class MainActivity extends Activity {
         LinearLayout panel = column();
         panel.setPadding(dp(18), dp(2), dp(18), dp(8));
 
-        String email = AccountStore.email(this);
-        String provider = AccountStore.provider(this);
-        TextView identity = text(email.isEmpty() ? "Signed in securely" : email,
-                15, INK, true);
-        TextView identityDetail = text(provider.equalsIgnoreCase("google")
-                ? "Google account"
-                : "FocusLock account", 10, MUTED, false);
+        TextView identity = text("Your FocusLock", 15, INK, true);
+        TextView identityDetail = text("Private setup on this device", 10, MUTED, false);
         LinearLayout identityCard = column();
         identityCard.setPadding(dp(14), dp(13), dp(14), dp(13));
         identityCard.setBackground(shape(SOFT_VIOLET, BORDER, 18));
@@ -689,11 +1253,9 @@ public class MainActivity extends Activity {
         identityCard.addView(identityDetail, topMargin(3));
         panel.addView(identityCard);
 
-        panel.addView(text("ACCOUNT", 10, VIOLET, true), topMargin(16));
-        panel.addView(accountRow("Account details", "Email, sign-in method, app version", v -> showAccountDetailsDialog()), topMargin(7));
-        panel.addView(accountRow("Manage subscription", friendlyPlanName() + "  ·  Manage access", v -> showSubscriptionDialog()), topMargin(7));
-        panel.addView(accountRow("Change password", "Update your password", v -> showChangePasswordDialog()), topMargin(7));
-        panel.addView(accountRow("Change email", "Update your sign-in email", v -> showChangeEmailDialog()), topMargin(7));
+        panel.addView(text("FOCUSLOCK", 10, VIOLET, true), topMargin(16));
+        panel.addView(accountRow("This device", "Your focus plan is stored locally", v -> showAccountDetailsDialog()), topMargin(7));
+        panel.addView(accountRow("Manage subscription", "FocusLock is currently free", v -> showSubscriptionDialog()), topMargin(7));
 
         panel.addView(text("HELP & PRIVACY", 10, VIOLET, true), topMargin(16));
         panel.addView(accountRow("FocusLock FAQ", "Answers about blocking and timers", v -> showFaqDialog()), topMargin(7));
@@ -701,9 +1263,6 @@ public class MainActivity extends Activity {
         panel.addView(accountRow("Terms of service", "The rules for using FocusLock", v -> openWebsitePath("/terms")), topMargin(7));
         panel.addView(accountRow("Contact us", "Get help from the FocusLock team", v -> sendSupportEmail()), topMargin(7));
 
-        panel.addView(text("SECURITY", 10, VIOLET, true), topMargin(16));
-        panel.addView(accountRow("Sign out", "Sign out on this device", v -> signOut()), topMargin(7));
-        panel.addView(accountRow("Delete account and data", "Permanently remove your account", v -> showDeleteAccountDialog()), topMargin(7));
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -743,16 +1302,7 @@ public class MainActivity extends Activity {
     }
 
     private void showAccountDetailsDialog() {
-        SecureSessionStore.Session session = SecureSessionStore.get(this);
-        String email = AccountStore.email(this);
-        String provider = AccountStore.provider(this);
-        String method = provider.equalsIgnoreCase("google") ? "Google" : "Email";
-        String accountId = session == null || session.userId.length() < 8
-                ? "Unavailable" : session.userId.substring(0, 8) + "…";
-        String details = "Email\n" + (email.isEmpty() ? "Not available on this device" : email)
-                + "\n\nSign-in method\n" + method
-                + "\n\nAccount ID\n" + accountId
-                + "\n\nApp version\n" + BuildConfig.VERSION_NAME;
+        String details = "FocusLock does not require an account. Your selected apps, timers, and protection settings stay on this device.\n\nApp version\n" + BuildConfig.VERSION_NAME;
         new AlertDialog.Builder(this)
                 .setTitle("Account details")
                 .setMessage(details)
@@ -1077,7 +1627,8 @@ public class MainActivity extends Activity {
     private void addLaunchableApps(GridLayout grid) {
         PackageManager pm = getPackageManager();
         Intent launcher = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        List<ResolveInfo> resolved = pm.queryIntentActivities(launcher, 0);
+        final PreparedAppList prepared = preparedAppList;
+        List<ResolveInfo> resolved = prepared == null ? pm.queryIntentActivities(launcher, 0) : prepared.apps;
         Map<String, ResolveInfo> unique = new LinkedHashMap<>();
         for (ResolveInfo info : resolved) {
             String pkg = info.activityInfo.packageName;
@@ -1085,6 +1636,10 @@ public class MainActivity extends Activity {
         }
         Set<String> saved = LockStore.packages(this);
         List<ResolveInfo> apps = new ArrayList<>(unique.values());
+        final Map<String, String> labels = prepared == null ? new LinkedHashMap<>() : prepared.labels;
+        if (prepared == null) {
+            for (ResolveInfo app : apps) labels.put(app.activityInfo.packageName, app.loadLabel(pm).toString());
+        }
         // List.sort and Comparator's fluent helpers are API 24+. Keep this
         // comparator compatible with Android 6.0 (our minSdk is 23).
         Collections.sort(apps, new Comparator<ResolveInfo>() {
@@ -1098,7 +1653,7 @@ public class MainActivity extends Activity {
                 if (result != 0) return result;
                 result = Integer.compare(appPriority(leftPackage), appPriority(rightPackage));
                 if (result != 0) return result;
-                return left.loadLabel(pm).toString().compareToIgnoreCase(right.loadLabel(pm).toString());
+                return labels.get(leftPackage).compareToIgnoreCase(labels.get(rightPackage));
             }
         });
         int visibleTiles = 0;
@@ -1106,7 +1661,7 @@ public class MainActivity extends Activity {
             String pkg = info.activityInfo.packageName;
             CheckBox check = new CheckBox(this);
             check.setTag(pkg);
-            String label = info.loadLabel(pm).toString();
+            String label = labels.get(pkg);
             check.setContentDescription(label);
             check.setText(label);
             check.setTextSize(10);
@@ -1116,7 +1671,8 @@ public class MainActivity extends Activity {
             check.setPadding(dp(6), dp(10), dp(6), dp(8));
             check.setMaxLines(2);
             try {
-                Drawable icon = info.loadIcon(pm);
+                Drawable icon = prepared == null ? info.loadIcon(pm) : prepared.icons.get(pkg);
+                if (icon == null) icon = info.loadIcon(pm);
                 icon.setBounds(0, 0, dp(34), dp(34));
                 check.setCompoundDrawables(null, icon, null, null);
                 check.setCompoundDrawablePadding(dp(7));
@@ -1137,7 +1693,9 @@ public class MainActivity extends Activity {
                     updateGuideStep(2, appSectionAnchor);
                 } else if (checked) {
                     dismissCoachOverlay();
-                    check.postDelayed(() -> showAppTimerChoice(check), 150L);
+                    // Let the tile finish its tactile selection motion before the
+                    // timer choice begins, rather than overlapping two animations.
+                    check.postDelayed(() -> showAppTimerChoice(check), 340L);
                 }
             });
             check.setOnLongClickListener(v -> {
@@ -1359,6 +1917,11 @@ public class MainActivity extends Activity {
         playSuccessCelebration();
         updateGuideStep(6, saveButton);
         getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit().putBoolean("guide_complete", true).apply();
+        currentGuideStep = 0;
+        newGuideIntro = false;
+        guideWasInterrupted = false;
+        guideHandler.removeCallbacksAndMessages(null);
+        dismissCoachOverlay();
         guideHandler.postDelayed(() -> {
             if (guideCard != null && !isFinishing()) {
                 guideCard.animate().alpha(0f).setDuration(300).withEndAction(() -> guideCard.setVisibility(View.GONE)).start();
@@ -1705,6 +2268,13 @@ public class MainActivity extends Activity {
     }
 
     private void updateGuideStep(int step, View target) {
+        if (getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false)) {
+            currentGuideStep = 0;
+            guideHandler.removeCallbacksAndMessages(null);
+            dismissCoachOverlay();
+            if (guideCard != null) guideCard.setVisibility(View.GONE);
+            return;
+        }
         if (guideCard == null || target == null || contentRoot == null) return;
         if (step == 2 && guideAppTarget != null) target = guideAppTarget;
         if (step == 3 && guideTimerTarget != null) target = guideTimerTarget;
@@ -2060,22 +2630,26 @@ public class MainActivity extends Activity {
         LinearLayout panel = focusPromptPanel("APP TIMER", "How should " + name + " be timed?",
                 custom ? "This app has its own timer. You can keep it separate or return it to the shared schedule."
                         : "Use your shared schedule, or give this app its own focus boundary.", "◷");
-        Button shared = focusPromptButton("Use shared timer", true);
-        Button separate = focusPromptButton("Set a custom timer", false);
+        View shared = timerChoiceCard("Use shared timer",
+                "Follow the same focus plan as your other selected apps.", "↗", true);
+        View separate = timerChoiceCard("Set a custom timer",
+                "Give " + name + " its own use limit and pause length.", "◷", false);
         panel.addView(shared, topMargin(15));
         panel.addView(separate, topMargin(8));
         AlertDialog dialog = showFocusPrompt(panel);
+        addTimerPromptClose(panel, dialog);
         shared.setOnClickListener(v -> {
-            LockStore.clearPackageTiming(this, pkg);
-            styleAppTile(check);
-            refreshSelectedCount();
-            markDirty();
-            dialog.dismiss();
-            resumeTimerGuideAfterChoice();
+            dismissFocusPrompt(dialog, panel, () -> {
+                LockStore.clearPackageTiming(this, pkg);
+                styleAppTile(check);
+                refreshSelectedCount();
+                markDirty();
+                resumeTimerGuideAfterChoice();
+            });
         });
         separate.setOnClickListener(v -> {
-            dialog.dismiss();
-            check.postDelayed(() -> showAppTimerEditor(check), 90L);
+            dismissFocusPrompt(dialog, panel,
+                    () -> showAppTimerEditor(check));
         });
         attachPressAnimation(shared);
         attachPressAnimation(separate);
@@ -2105,27 +2679,107 @@ public class MainActivity extends Activity {
     }
 
     private Button focusPromptButton(String label, boolean primary) {
-        Button action = button(label, primary ? GREEN : SOFT_VIOLET, primary ? Color.WHITE : VIOLET);
+        Button action = button(label, INK, Color.WHITE);
         action.setTextSize(13);
         action.setMinHeight(dp(50));
         action.setMinimumHeight(dp(50));
-        action.setBackground(shape(primary ? GREEN : SOFT_VIOLET, primary ? GREEN : BORDER, 17));
+        action.setBackground(shape(INK, INK, 17));
         return action;
+    }
+
+    private View timerChoiceCard(String title, String detail, String symbol, boolean featured) {
+        LinearLayout choice = row();
+        choice.setGravity(Gravity.CENTER_VERTICAL);
+        choice.setPadding(dp(14), dp(13), dp(14), dp(13));
+        choice.setBackground(shape(featured ? INK : Color.WHITE, featured ? INK : BORDER, 19));
+        TextView icon = text(symbol, 19, featured ? INK : Color.WHITE, true);
+        icon.setGravity(Gravity.CENTER);
+        icon.setBackground(shape(featured ? Color.WHITE : INK, featured ? Color.WHITE : INK, 17));
+        choice.addView(icon, new LinearLayout.LayoutParams(dp(39), dp(39)));
+        LinearLayout copy = column();
+        copy.addView(text(title, 14, featured ? Color.WHITE : INK, true));
+        TextView hint = text(detail, 10, featured ? Color.rgb(220, 235, 224) : MUTED, false);
+        hint.setLineSpacing(dp(2), 1f);
+        copy.addView(hint, topMargin(2));
+        LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        copyParams.leftMargin = dp(11);
+        choice.addView(copy, copyParams);
+        TextView arrow = text("›", 23, featured ? Color.WHITE : INK, true);
+        arrow.setGravity(Gravity.CENTER);
+        choice.addView(arrow, new LinearLayout.LayoutParams(dp(22), dp(40)));
+        attachPressAnimation(choice);
+        return choice;
+    }
+
+    private void addTimerPromptClose(LinearLayout panel, AlertDialog dialog) {
+        LinearLayout header = (LinearLayout) panel.getChildAt(0);
+        TextView close = text("×", 26, INK, false);
+        close.setGravity(Gravity.CENTER);
+        close.setContentDescription("Cancel timer selection");
+        header.addView(close, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        close.setOnClickListener(v -> dismissFocusPrompt(dialog, panel, null));
     }
 
     private AlertDialog showFocusPrompt(LinearLayout panel) {
         AlertDialog dialog = new AlertDialog.Builder(this).setView(panel).create();
+        dialog.setCanceledOnTouchOutside(false);
+        android.view.Window window = dialog.getWindow();
+        if (window != null) {
+            window.setWindowAnimations(0);
+            window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            window.setDimAmount(0f);
+            window.getDecorView().setAlpha(0f);
+        }
         dialog.setOnShowListener(ignored -> {
-            if (dialog.getWindow() != null) {
-                dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-                dialog.getWindow().setLayout((int) (getResources().getDisplayMetrics().widthPixels * .90f), ViewGroup.LayoutParams.WRAP_CONTENT);
-            }
-            panel.setAlpha(0f);
-            panel.setTranslationY(dp(12));
-            panel.animate().alpha(1f).translationY(0f).setDuration(180).start();
+            android.view.Window shownWindow = dialog.getWindow();
+            if (shownWindow == null) return;
+            shownWindow.setLayout((int) (getResources().getDisplayMetrics().widthPixels * .90f), ViewGroup.LayoutParams.WRAP_CONTENT);
+            View surface = shownWindow.getDecorView();
+            surface.setAlpha(0f);
+            surface.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+                @Override public boolean onPreDraw() {
+                    surface.getViewTreeObserver().removeOnPreDrawListener(this);
+                    surface.animate().alpha(1f).setDuration(260L)
+                            .setInterpolator(new AccelerateDecelerateInterpolator()).start();
+                    animatePromptDim(dialog, 0f, .16f, 260L);
+                    return true;
+                }
+            });
+        });
+        dialog.setOnCancelListener(ignored -> dismissFocusPrompt(dialog, panel, null));
+        // Back uses the same fade as the close button rather than Dialog.cancel().
+        dialog.setOnKeyListener((ignored, keyCode, event) -> {
+            if (keyCode != android.view.KeyEvent.KEYCODE_BACK) return false;
+            if (event.getAction() == android.view.KeyEvent.ACTION_UP)
+                dismissFocusPrompt(dialog, panel, null);
+            return true;
         });
         dialog.show();
         return dialog;
+    }
+
+    private void animatePromptDim(AlertDialog dialog, float from, float to, long duration) {
+        ValueAnimator dim = ValueAnimator.ofFloat(from, to);
+        dim.setDuration(duration);
+        dim.setInterpolator(new AccelerateDecelerateInterpolator());
+        dim.addUpdateListener(animation -> {
+            if (dialog.isShowing() && dialog.getWindow() != null)
+                dialog.getWindow().setDimAmount((Float) animation.getAnimatedValue());
+        });
+        dim.start();
+    }
+
+    private void dismissFocusPrompt(AlertDialog dialog, View panel, Runnable after) {
+        if (!dialog.isShowing() || Boolean.TRUE.equals(panel.getTag(R.id.timer_prompt_closing))) return;
+        panel.setTag(R.id.timer_prompt_closing, true);
+        View surface = dialog.getWindow() == null ? panel : dialog.getWindow().getDecorView();
+        surface.animate().cancel();
+        animatePromptDim(dialog, .16f, 0f, 180L);
+        surface.animate().alpha(0f).setDuration(180L)
+                .setInterpolator(new AccelerateDecelerateInterpolator()).withEndAction(() -> {
+                    dialog.dismiss();
+                    if (after != null) after.run();
+                }).start();
     }
 
     private void showAppTimerEditor(CheckBox check) {
@@ -2154,6 +2808,7 @@ public class MainActivity extends Activity {
         panel.addView(save, topMargin(12));
         panel.addView(back);
         AlertDialog dialog = showFocusPrompt(panel);
+        addTimerPromptClose(panel, dialog);
         save.setOnClickListener(v -> {
             long nextUse = pickerSeconds(usePickers);
             long nextLock = pickerSeconds(lockPickers);
@@ -2166,12 +2821,11 @@ public class MainActivity extends Activity {
             toast("Custom timer saved for " + name + ".");
             refreshSelectedCount();
             markDirty();
-            dialog.dismiss();
-            resumeTimerGuideAfterChoice();
+            dismissFocusPrompt(dialog, panel, this::resumeTimerGuideAfterChoice);
         });
         back.setOnClickListener(v -> {
-            dialog.dismiss();
-            check.postDelayed(() -> showAppTimerChoice(check), 90L);
+            dismissFocusPrompt(dialog, panel,
+                    () -> showAppTimerChoice(check));
         });
         attachPressAnimation(save);
         attachPressAnimation(back);
