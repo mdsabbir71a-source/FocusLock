@@ -29,6 +29,7 @@ import java.util.Locale;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Minimal Supabase Auth/PostgREST client. Only the publishable client key is embedded. */
 public final class SupabaseApi {
@@ -45,6 +46,13 @@ public final class SupabaseApi {
 
     private static final ExecutorService IO = Executors.newFixedThreadPool(3);
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    /**
+     * Settings returns, service starts and the periodic monitor can all request a
+     * device snapshot. Coalescing those requests keeps a busy device from
+     * opening a backlog of identical network calls when connectivity is slow.
+     */
+    private static final AtomicBoolean DEVICE_SYNC_IN_FLIGHT = new AtomicBoolean(false);
+    private static final AtomicBoolean DEVICE_SYNC_PENDING = new AtomicBoolean(false);
     /**
      * Supabase rotates refresh tokens.  Serialising refreshes prevents two
      * simultaneous API calls (for example entitlement and remote config on
@@ -236,12 +244,22 @@ public final class SupabaseApi {
      * monitor so the owner dashboard never has to guess a permission status.
      */
     public static void syncDeviceState(Context context) {
+        Context appContext = context.getApplicationContext();
+        if (!DEVICE_SYNC_IN_FLIGHT.compareAndSet(false, true)) {
+            // Keep just one follow-up request. It captures the newest
+            // permission/protection state after the active request finishes.
+            DEVICE_SYNC_PENDING.set(true);
+            return;
+        }
         IO.execute(() -> {
             try {
-                SecureSessionStore.Session session = freshSession(context);
-                syncAccountData(context, session);
+                SecureSessionStore.Session session = freshSession(appContext);
+                syncAccountData(appContext, session);
             } catch (Exception ignored) {
                 // Device telemetry must never interrupt FocusLock protection.
+            } finally {
+                DEVICE_SYNC_IN_FLIGHT.set(false);
+                if (DEVICE_SYNC_PENDING.getAndSet(false)) syncDeviceState(appContext);
             }
         });
     }
