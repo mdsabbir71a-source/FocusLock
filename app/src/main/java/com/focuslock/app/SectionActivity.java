@@ -34,6 +34,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -411,8 +412,16 @@ public final class SectionActivity extends Activity {
 
     private String appsJson() {
         PackageManager manager = getPackageManager();
-        Set<String> selected = LockStore.packages(this);
-        ArrayList<String> packages = new ArrayList<>(selected);
+        // Analytics history is independent from the active protection list.
+        // Keep rows for deselected apps when their locally recorded pauses
+        // still exist, while also showing apps selected for the first time.
+        Set<String> tracked = new HashSet<>(LockStore.packages(this));
+        for (FocusInsights.Pause pause : FocusInsights.pauses(this)) {
+            if (pause.packageName != null && !pause.packageName.isEmpty()) {
+                tracked.add(pause.packageName);
+            }
+        }
+        ArrayList<String> packages = new ArrayList<>(tracked);
         Collections.sort(packages);
         StringBuilder json = new StringBuilder("[");
         for (String packageName : packages) {
