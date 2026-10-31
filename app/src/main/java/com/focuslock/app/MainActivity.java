@@ -2051,6 +2051,10 @@ public class MainActivity extends Activity {
     private void showPermissionPrimer(String title, String message, Runnable action) {
         if (permissionPrimerShowing || isFinishing()) return;
         permissionPrimerShowing = true;
+        boolean accessibilityDisclosure = "Allow Compatibility Mode".equals(title);
+        if (accessibilityDisclosure) {
+            message = "FocusLock uses Android's Accessibility service to detect which app is on screen, even when FocusLock is closed or not in use. This lets it count time in the apps you choose and show the lock screen when your limit is reached.\n\nThe service processes the active app's identity on your device. It does not read screen content, messages, or passwords.\n\nTap Agree and continue to open Android settings, then enable FocusLock Compatibility Mode. You can choose Not now instead.";
+        }
         LinearLayout panel = column();
         panel.setPadding(dp(22), dp(22), dp(22), dp(18));
         panel.addView(text(title, 21, INK, true));
@@ -2075,8 +2079,8 @@ public class MainActivity extends Activity {
         panel.addView(example, topMargin(18));
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setView(panel)
-                .setPositiveButton("Enable", null)
-                .setNegativeButton("Later", null)
+                .setPositiveButton(accessibilityDisclosure ? "Agree and continue" : "Enable", null)
+                .setNegativeButton(accessibilityDisclosure ? "Not now" : "Later", null)
                 .create();
         dialog.setOnShowListener(ignored -> {
             Button enable = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
