@@ -1319,7 +1319,7 @@ public class MainActivity extends Activity {
     }
 
     private void showSubscriptionDialog(Runnable onClosed) {
-        Dialog dialog = new Dialog(this);
+        Dialog dialog = new Dialog(this, android.R.style.Theme_Material_Light_NoActionBar);
         FrameLayout frame = new FrameLayout(this);
         frame.setBackgroundColor(BACKGROUND);
         frame.addView(new NatureLineArtView(this, 0), new FrameLayout.LayoutParams(-1, -1));
@@ -1336,28 +1336,46 @@ public class MainActivity extends Activity {
         panel.addView(text("Less scrolling.\nMore living.", 30, INK, true), topMargin(12));
         panel.addView(text("Make room for the moments that matter.", 14, MUTED, false), topMargin(8));
 
-        TextView feature = text("Pause distracting apps", 16, INK, true);
-        feature.setGravity(Gravity.CENTER);
-        feature.setPadding(dp(14), dp(18), dp(14), dp(18));
-        feature.setBackground(shape(Color.WHITE, BORDER, 18));
-        panel.addView(feature, new LinearLayout.LayoutParams(-1, dp(88)));
-        TextView featureLabel = text("FOCUSLOCK FEATURES  ·  1 / 3", 10, MUTED, true);
+        TextView sampleLabel = text("EXAMPLE REVIEWS  ·  NOT REAL CUSTOMER REVIEWS", 9, MUTED, true);
+        sampleLabel.setGravity(Gravity.CENTER);
+        panel.addView(sampleLabel, topMargin(24));
+        LinearLayout reviewCard = column();
+        reviewCard.setGravity(Gravity.CENTER_VERTICAL);
+        reviewCard.setPadding(dp(22), dp(18), dp(22), dp(18));
+        reviewCard.setBackground(shape(Color.WHITE, BORDER, 20));
+        reviewCard.addView(text("SAMPLE REVIEW", 10, GREEN, true));
+        TextView feature = text("“The little pauses help me be more intentional with my time.”", 16, INK, true);
+        reviewCard.addView(feature, topMargin(10));
+        panel.addView(reviewCard, new LinearLayout.LayoutParams(-1, dp(138)));
+        TextView featureLabel = text("1 / 3", 10, MUTED, true);
         featureLabel.setGravity(Gravity.CENTER);
         panel.addView(featureLabel, topMargin(8));
-        final String[] messages = {"Pause distracting apps", "Set limits that work for you", "See your progress over time"};
+        final String[] messages = {
+                "“The little pauses help me be more intentional with my time.”",
+                "“I like being able to set limits for each app.”",
+                "“Seeing my progress reminds me to keep going.”"};
         Handler carousel = new Handler();
         Runnable rotate = new Runnable() {
             int index = 0;
             @Override public void run() {
                 if (!dialog.isShowing()) return;
                 index = (index + 1) % messages.length;
-                feature.setText(messages[index]);
-                featureLabel.setText("FOCUSLOCK FEATURES  ·  " + (index + 1) + " / 3");
+                final int nextIndex = index;
+                reviewCard.animate().cancel();
+                reviewCard.animate().alpha(0f).translationX(-dp(14)).setDuration(180L)
+                        .withEndAction(() -> {
+                            if (!dialog.isShowing()) return;
+                            feature.setText(messages[nextIndex]);
+                            featureLabel.setText((nextIndex + 1) + " / 3");
+                            reviewCard.setTranslationX(dp(14));
+                            reviewCard.animate().alpha(1f).translationX(0f).setDuration(220L).start();
+                        }).start();
                 carousel.postDelayed(this, 4000);
             }
         };
         dialog.setOnDismissListener(d -> {
             carousel.removeCallbacks(rotate);
+            reviewCard.animate().cancel();
             if (onClosed != null && !isFinishing() && !isDestroyed()) onClosed.run();
         });
 
