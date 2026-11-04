@@ -1332,9 +1332,16 @@ public class MainActivity extends Activity {
         close.setGravity(Gravity.END);
         close.setOnClickListener(v -> dialog.dismiss());
         panel.addView(close, new LinearLayout.LayoutParams(-1, dp(44)));
-        panel.addView(text("FOCUSLOCK  ·  DESIGN PREVIEW", 10, GREEN, true), topMargin(8));
-        panel.addView(text("Less scrolling.\nMore living.", 30, INK, true), topMargin(12));
-        panel.addView(text("Make room for the moments that matter.", 14, MUTED, false), topMargin(8));
+        TextView previewHeading = text("FOCUSLOCK  ·  DESIGN PREVIEW", 10, GREEN, true);
+        previewHeading.setGravity(Gravity.CENTER);
+        panel.addView(previewHeading, topMargin(4));
+        TextView headline = text("Less scrolling.\nMore living.", 30, INK, true);
+        headline.setGravity(Gravity.CENTER);
+        headline.setTypeface(android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD));
+        panel.addView(headline, topMargin(10));
+        TextView subtitle = text("Make room for the moments that matter.", 14, MUTED, false);
+        subtitle.setGravity(Gravity.CENTER);
+        panel.addView(subtitle, topMargin(8));
 
         TextView sampleLabel = text("EXAMPLE REVIEWS  ·  NOT REAL CUSTOMER REVIEWS", 9, MUTED, true);
         sampleLabel.setGravity(Gravity.CENTER);
@@ -1379,6 +1386,26 @@ public class MainActivity extends Activity {
             if (onClosed != null && !isFinishing() && !isDestroyed()) onClosed.run();
         });
 
+        LinearLayout featureCard = column();
+        featureCard.setPadding(dp(18), dp(16), dp(18), dp(16));
+        featureCard.setBackground(shape(Color.rgb(31, 77, 58), Color.rgb(31, 77, 58), 20));
+        featureCard.addView(text("INCLUDED WITH FOCUSLOCK", 10, Color.rgb(169, 211, 179), true));
+        String[][] benefits = {
+                {"Multiple apps", "Per-app timers"},
+                {"Shared timers", "Mindful lock screens"},
+                {"Gentle reminders", "Progress insights"}
+        };
+        for (String[] pair : benefits) {
+            LinearLayout benefitRow = row();
+            for (String benefit : pair) {
+                TextView benefitText = text("✓  " + benefit, 12, Color.WHITE, true);
+                benefitText.setPadding(0, dp(5), dp(4), dp(5));
+                benefitRow.addView(benefitText, new LinearLayout.LayoutParams(0, -2, 1f));
+            }
+            featureCard.addView(benefitRow);
+        }
+        panel.addView(featureCard, topMargin(16));
+
         TextView yearly = text("◉   Yearly  ·  7-day free trial\n       $39 / year after trial", 15, INK, true);
         TextView monthly = text("○   Monthly\n       $5.99 / month", 15, INK, true);
         yearly.setPadding(dp(16), dp(15), dp(16), dp(15));
@@ -1398,7 +1425,7 @@ public class MainActivity extends Activity {
         Runnable selectYear = () -> {
             yearly.setBackground(shape(SOFT_VIOLET, GREEN, 16));
             monthly.setBackground(shape(Color.WHITE, BORDER, 16));
-            yearly.setText("◉   Yearly  ·  7-day free trial\n       $39 / year after trial");
+            yearly.setText("◉   Yearly  ·  7-day free trial  ·  Save 46%\n       $39 / year after trial  ·  $3.25/mo equivalent");
             monthly.setText("○   Monthly\n       $5.99 / month");
             action.setText("Start 7-day free trial");
             terms.setText("7 days free, then $39/year. Renews automatically until canceled. Manage or cancel in Google Play.");
@@ -1407,7 +1434,7 @@ public class MainActivity extends Activity {
         monthly.setOnClickListener(v -> {
             yearly.setBackground(shape(Color.WHITE, BORDER, 16));
             monthly.setBackground(shape(SOFT_VIOLET, GREEN, 16));
-            yearly.setText("○   Yearly  ·  7-day free trial\n       $39 / year after trial");
+            yearly.setText("○   Yearly  ·  7-day free trial  ·  Save 46%\n       $39 / year after trial  ·  $3.25/mo equivalent");
             monthly.setText("◉   Monthly\n       $5.99 / month");
             action.setText("Continue with monthly");
             terms.setText("$5.99/month, charged immediately. Renews automatically until canceled. Manage or cancel in Google Play.");
