@@ -1083,7 +1083,11 @@ public class MainActivity extends Activity {
                         departingPermissions.dismiss();
                         incomingHome.setImageDrawable(null);
                         homeFrame.recycle();
-                        guideHandler.postDelayed(() -> updateGuideStep(2, appSectionAnchor), 150L);
+                        guideHandler.postDelayed(() -> {
+                            if (isFinishing() || isDestroyed()) return;
+                            showSubscriptionDialog(() -> guideHandler.postDelayed(
+                                    () -> updateGuideStep(2, appSectionAnchor), 150L));
+                        }, 150L);
                     }
                 });
                 handoff.start();
@@ -1311,6 +1315,10 @@ public class MainActivity extends Activity {
     }
 
     private void showSubscriptionDialog() {
+        showSubscriptionDialog(null);
+    }
+
+    private void showSubscriptionDialog(Runnable onClosed) {
         Dialog dialog = new Dialog(this);
         FrameLayout frame = new FrameLayout(this);
         frame.setBackgroundColor(BACKGROUND);
@@ -1348,7 +1356,10 @@ public class MainActivity extends Activity {
                 carousel.postDelayed(this, 4000);
             }
         };
-        dialog.setOnDismissListener(d -> carousel.removeCallbacks(rotate));
+        dialog.setOnDismissListener(d -> {
+            carousel.removeCallbacks(rotate);
+            if (onClosed != null && !isFinishing() && !isDestroyed()) onClosed.run();
+        });
 
         TextView yearly = text("◉   Yearly  ·  7-day free trial\n       $39 / year after trial", 15, INK, true);
         TextView monthly = text("○   Monthly\n       $5.99 / month", 15, INK, true);
