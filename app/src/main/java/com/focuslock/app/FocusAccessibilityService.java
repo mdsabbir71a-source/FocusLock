@@ -20,11 +20,18 @@ public final class FocusAccessibilityService extends AccessibilityService {
     private static final long TICK_MS = 200L;
     private static final long BLOCK_COOLDOWN_MS = 1_200L;
     private static final long OVERLAY_FALLBACK_DELAY_MS = 3_000L;
+    private static volatile long navigationGeneration;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String foregroundPackage;
     private long lastTick;
     private long lastBlock;
+    private long observedNavigationGeneration;
+
+    /** The previous foreground signal is no longer reliable after the lock UI loses focus. */
+    public static void onLockScreenPaused() {
+        navigationGeneration++;
+    }
 
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
@@ -58,6 +65,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
         if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
         CharSequence packageName = event.getPackageName();
         if (packageName == null || packageName.length() == 0) return;
+        observedNavigationGeneration = navigationGeneration;
         updateForegroundPackage(packageName.toString());
         handler.removeCallbacks(ticker);
         handler.post(ticker);
@@ -75,6 +83,11 @@ public final class FocusAccessibilityService extends AccessibilityService {
         long now = SystemClock.elapsedRealtime();
         long elapsed = Math.max(0L, Math.min(1_500L, now - lastTick));
         lastTick = now;
+        if (observedNavigationGeneration != navigationGeneration) {
+            observedNavigationGeneration = navigationGeneration;
+            foregroundPackage = null;
+            return;
+        }
         if (!AccessStore.isAllowed(this) || !LockStore.isEnabled(this)
                 || !RemoteConfigStore.appBlockingEnabled(this)) return;
         String target = foregroundPackage;
@@ -99,8 +112,9 @@ public final class FocusAccessibilityService extends AccessibilityService {
     private void block(String target, String own) {
         long now = SystemClock.elapsedRealtime();
         if (now - lastBlock < BLOCK_COOLDOWN_MS) return;
-        if (own.equals(target) && BlockActivity.isVisible()) return;
+        if (BlockActivity.isVisible()) return;
         lastBlock = now;
+        final long requestGeneration = navigationGeneration;
         Intent block = new Intent(this, BlockActivity.class)
                 .putExtra("blocked_package", target)
                 .putExtra("smooth_entry", own.equals(target))
@@ -116,13 +130,15 @@ public final class FocusAccessibilityService extends AccessibilityService {
             // On normal phones the regular, branded lock screen is now visible.
             // Use the simpler overlay only if Android actually rejects that launch.
             handler.postDelayed(() -> {
-                if (LockStore.isLocked(FocusAccessibilityService.this, target)
+                if (requestGeneration == navigationGeneration
+                        && LockStore.isLocked(FocusAccessibilityService.this, target)
                         && target.equals(foregroundPackage) && !BlockActivity.isVisible()) {
                     try { startActivity(block); } catch (RuntimeException ignored) { }
                 }
             }, 450L);
             handler.postDelayed(() -> {
-                if (LockStore.isLocked(FocusAccessibilityService.this, target)
+                if (requestGeneration == navigationGeneration
+                        && LockStore.isLocked(FocusAccessibilityService.this, target)
                         && target.equals(foregroundPackage) && !BlockActivity.isVisible()) {
                     GardenLockOverlay.show(FocusAccessibilityService.this, target);
                 }

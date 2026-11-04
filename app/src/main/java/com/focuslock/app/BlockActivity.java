@@ -29,7 +29,7 @@ public class BlockActivity extends Activity {
     }
     public static boolean isVisible(){return visible;}
     @Override protected void onResume(){super.onResume();visible=true;GardenLockOverlay.hide();}
-    @Override protected void onPause(){visible=false;super.onPause();}
+    @Override protected void onPause(){visible=false;FocusAccessibilityService.onLockScreenPaused();super.onPause();}
 
     private WebView createCard(){
         card=new WebView(this);WebSettings settings=card.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(false);settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);
