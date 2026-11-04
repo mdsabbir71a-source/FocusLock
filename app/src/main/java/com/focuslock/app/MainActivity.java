@@ -1255,7 +1255,7 @@ public class MainActivity extends Activity {
 
         panel.addView(text("FOCUSLOCK", 10, VIOLET, true), topMargin(16));
         panel.addView(accountRow("This device", "Your focus plan is stored locally", v -> showAccountDetailsDialog()), topMargin(7));
-        panel.addView(accountRow("Manage subscription", "FocusLock is currently free", v -> showSubscriptionDialog()), topMargin(7));
+        panel.addView(accountRow("Preview subscription design", "FocusLock is currently free", v -> showSubscriptionDialog()), topMargin(7));
 
         panel.addView(text("HELP & PRIVACY", 10, VIOLET, true), topMargin(16));
         panel.addView(accountRow("FocusLock FAQ", "Answers about blocking and timers", v -> showFaqDialog()), topMargin(7));
@@ -1311,13 +1311,87 @@ public class MainActivity extends Activity {
     }
 
     private void showSubscriptionDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("Subscription")
-                .setMessage("Current plan: " + friendlyPlanName()
-                        + "\n\nFocusLock is currently free to use. When paid plans are enabled, subscription management will appear in this section.")
-                .setPositiveButton("Open website", (dialog, which) -> openWebsitePath("/"))
-                .setNegativeButton("Close", null)
-                .show();
+        Dialog dialog = new Dialog(this);
+        FrameLayout frame = new FrameLayout(this);
+        frame.setBackgroundColor(BACKGROUND);
+        frame.addView(new NatureLineArtView(this, 0), new FrameLayout.LayoutParams(-1, -1));
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        LinearLayout panel = column();
+        panel.setPadding(dp(22), dp(22), dp(22), dp(24));
+
+        TextView close = text("Close  ×", 14, MUTED, true);
+        close.setGravity(Gravity.END);
+        close.setOnClickListener(v -> dialog.dismiss());
+        panel.addView(close, new LinearLayout.LayoutParams(-1, dp(44)));
+        panel.addView(text("FOCUSLOCK  ·  DESIGN PREVIEW", 10, GREEN, true), topMargin(8));
+        panel.addView(text("Less scrolling.\nMore living.", 30, INK, true), topMargin(12));
+        panel.addView(text("Make room for the moments that matter.", 14, MUTED, false), topMargin(8));
+
+        TextView feature = text("Pause distracting apps", 16, INK, true);
+        feature.setGravity(Gravity.CENTER);
+        feature.setPadding(dp(14), dp(18), dp(14), dp(18));
+        feature.setBackground(shape(Color.WHITE, BORDER, 18));
+        panel.addView(feature, new LinearLayout.LayoutParams(-1, dp(88)));
+        TextView featureLabel = text("FOCUSLOCK FEATURES  ·  1 / 3", 10, MUTED, true);
+        featureLabel.setGravity(Gravity.CENTER);
+        panel.addView(featureLabel, topMargin(8));
+        final String[] messages = {"Pause distracting apps", "Set limits that work for you", "See your progress over time"};
+        Handler carousel = new Handler();
+        Runnable rotate = new Runnable() {
+            int index = 0;
+            @Override public void run() {
+                if (!dialog.isShowing()) return;
+                index = (index + 1) % messages.length;
+                feature.setText(messages[index]);
+                featureLabel.setText("FOCUSLOCK FEATURES  ·  " + (index + 1) + " / 3");
+                carousel.postDelayed(this, 4000);
+            }
+        };
+        dialog.setOnDismissListener(d -> carousel.removeCallbacks(rotate));
+
+        TextView yearly = text("◉   Yearly  ·  7-day free trial\n       $39 / year after trial", 15, INK, true);
+        TextView monthly = text("○   Monthly\n       $5.99 / month", 15, INK, true);
+        yearly.setPadding(dp(16), dp(15), dp(16), dp(15));
+        monthly.setPadding(dp(16), dp(15), dp(16), dp(15));
+        panel.addView(yearly, topMargin(20));
+        panel.addView(monthly, topMargin(9));
+        TextView action = text("Start 7-day free trial", 15, Color.WHITE, true);
+        action.setGravity(Gravity.CENTER);
+        action.setBackground(shape(GREEN, GREEN, 16));
+        panel.addView(action, new LinearLayout.LayoutParams(-1, dp(56)));
+        TextView terms = text("7 days free, then $39/year. Renews automatically until canceled. Manage or cancel in Google Play.", 11, MUTED, false);
+        terms.setGravity(Gravity.CENTER);
+        panel.addView(terms, topMargin(10));
+        TextView notice = text("Preview only · No payments are enabled", 11, GREEN, true);
+        notice.setGravity(Gravity.CENTER);
+        panel.addView(notice, topMargin(14));
+        Runnable selectYear = () -> {
+            yearly.setBackground(shape(SOFT_VIOLET, GREEN, 16));
+            monthly.setBackground(shape(Color.WHITE, BORDER, 16));
+            yearly.setText("◉   Yearly  ·  7-day free trial\n       $39 / year after trial");
+            monthly.setText("○   Monthly\n       $5.99 / month");
+            action.setText("Start 7-day free trial");
+            terms.setText("7 days free, then $39/year. Renews automatically until canceled. Manage or cancel in Google Play.");
+        };
+        yearly.setOnClickListener(v -> selectYear.run());
+        monthly.setOnClickListener(v -> {
+            yearly.setBackground(shape(Color.WHITE, BORDER, 16));
+            monthly.setBackground(shape(SOFT_VIOLET, GREEN, 16));
+            yearly.setText("○   Yearly  ·  7-day free trial\n       $39 / year after trial");
+            monthly.setText("◉   Monthly\n       $5.99 / month");
+            action.setText("Continue with monthly");
+            terms.setText("$5.99/month, charged immediately. Renews automatically until canceled. Manage or cancel in Google Play.");
+        });
+        action.setOnClickListener(v -> Toast.makeText(this, "Design preview only — no payment will be taken", Toast.LENGTH_SHORT).show());
+        selectYear.run();
+        scroll.addView(panel);
+        frame.addView(scroll);
+        dialog.setContentView(frame);
+        if (dialog.getWindow() != null) dialog.getWindow().setLayout(-1, -1);
+        dialog.show();
+        if (dialog.getWindow() != null) dialog.getWindow().setLayout(-1, -1);
+        carousel.postDelayed(rotate, 4000);
     }
 
     private void showFaqDialog() {
