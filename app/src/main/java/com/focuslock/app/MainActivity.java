@@ -1320,134 +1320,39 @@ public class MainActivity extends Activity {
 
     private void showSubscriptionDialog(Runnable onClosed) {
         Dialog dialog = new Dialog(this, android.R.style.Theme_Material_Light_NoActionBar);
-        FrameLayout frame = new FrameLayout(this);
-        frame.setBackgroundColor(BACKGROUND);
-        frame.addView(new NatureLineArtView(this, 0), new FrameLayout.LayoutParams(-1, -1));
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        LinearLayout panel = column();
-        panel.setPadding(dp(22), dp(22), dp(22), dp(24));
-
-        TextView close = text("Close  ×", 14, MUTED, true);
-        close.setGravity(Gravity.END);
-        close.setOnClickListener(v -> dialog.dismiss());
-        panel.addView(close, new LinearLayout.LayoutParams(-1, dp(44)));
-        TextView previewHeading = text("FOCUSLOCK  ·  DESIGN PREVIEW", 10, GREEN, true);
-        previewHeading.setGravity(Gravity.CENTER);
-        panel.addView(previewHeading, topMargin(4));
-        TextView headline = text("Less scrolling.\nMore living.", 30, INK, true);
-        headline.setGravity(Gravity.CENTER);
-        headline.setTypeface(android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD));
-        panel.addView(headline, topMargin(10));
-        TextView subtitle = text("Make room for the moments that matter.", 14, MUTED, false);
-        subtitle.setGravity(Gravity.CENTER);
-        panel.addView(subtitle, topMargin(8));
-
-        TextView sampleLabel = text("EXAMPLE REVIEWS  ·  NOT REAL CUSTOMER REVIEWS", 9, MUTED, true);
-        sampleLabel.setGravity(Gravity.CENTER);
-        panel.addView(sampleLabel, topMargin(24));
-        LinearLayout reviewCard = column();
-        reviewCard.setGravity(Gravity.CENTER_VERTICAL);
-        reviewCard.setPadding(dp(22), dp(18), dp(22), dp(18));
-        reviewCard.setBackground(shape(Color.WHITE, BORDER, 20));
-        reviewCard.addView(text("SAMPLE REVIEW", 10, GREEN, true));
-        TextView feature = text("“The little pauses help me be more intentional with my time.”", 16, INK, true);
-        reviewCard.addView(feature, topMargin(10));
-        panel.addView(reviewCard, new LinearLayout.LayoutParams(-1, dp(138)));
-        TextView featureLabel = text("1 / 3", 10, MUTED, true);
-        featureLabel.setGravity(Gravity.CENTER);
-        panel.addView(featureLabel, topMargin(8));
-        final String[] messages = {
-                "“The little pauses help me be more intentional with my time.”",
-                "“I like being able to set limits for each app.”",
-                "“Seeing my progress reminds me to keep going.”"};
-        Handler carousel = new Handler();
-        Runnable rotate = new Runnable() {
-            int index = 0;
-            @Override public void run() {
-                if (!dialog.isShowing()) return;
-                index = (index + 1) % messages.length;
-                final int nextIndex = index;
-                reviewCard.animate().cancel();
-                reviewCard.animate().alpha(0f).translationX(-dp(14)).setDuration(180L)
-                        .withEndAction(() -> {
-                            if (!dialog.isShowing()) return;
-                            feature.setText(messages[nextIndex]);
-                            featureLabel.setText((nextIndex + 1) + " / 3");
-                            reviewCard.setTranslationX(dp(14));
-                            reviewCard.animate().alpha(1f).translationX(0f).setDuration(220L).start();
-                        }).start();
-                carousel.postDelayed(this, 4000);
+        android.webkit.WebView page = new android.webkit.WebView(this);
+        page.setBackgroundColor(Color.rgb(246, 244, 236));
+        android.webkit.WebSettings settings = page.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(false);
+        settings.setBlockNetworkLoads(true);
+        page.setWebViewClient(new android.webkit.WebViewClient() {
+            @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
+                if ("focuslock://close".equals(url)) dialog.dismiss();
+                return true;
             }
-        };
+            @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, android.webkit.WebResourceRequest request) {
+                if ("focuslock://close".equals(request.getUrl().toString())) dialog.dismiss();
+                return true;
+            }
+        });
         dialog.setOnDismissListener(d -> {
-            carousel.removeCallbacks(rotate);
-            reviewCard.animate().cancel();
+            page.stopLoading();
+            page.destroy();
             if (onClosed != null && !isFinishing() && !isDestroyed()) onClosed.run();
         });
-
-        LinearLayout featureCard = column();
-        featureCard.setPadding(dp(18), dp(16), dp(18), dp(16));
-        featureCard.setBackground(shape(Color.rgb(31, 77, 58), Color.rgb(31, 77, 58), 20));
-        featureCard.addView(text("INCLUDED WITH FOCUSLOCK", 10, Color.rgb(169, 211, 179), true));
-        String[][] benefits = {
-                {"Multiple apps", "Per-app timers"},
-                {"Shared timers", "Mindful lock screens"},
-                {"Gentle reminders", "Progress insights"}
-        };
-        for (String[] pair : benefits) {
-            LinearLayout benefitRow = row();
-            for (String benefit : pair) {
-                TextView benefitText = text("✓  " + benefit, 12, Color.WHITE, true);
-                benefitText.setPadding(0, dp(5), dp(4), dp(5));
-                benefitRow.addView(benefitText, new LinearLayout.LayoutParams(0, -2, 1f));
-            }
-            featureCard.addView(benefitRow);
-        }
-        panel.addView(featureCard, topMargin(16));
-
-        TextView yearly = text("◉   Yearly  ·  7-day free trial\n       $39 / year after trial", 15, INK, true);
-        TextView monthly = text("○   Monthly\n       $5.99 / month", 15, INK, true);
-        yearly.setPadding(dp(16), dp(15), dp(16), dp(15));
-        monthly.setPadding(dp(16), dp(15), dp(16), dp(15));
-        panel.addView(yearly, topMargin(20));
-        panel.addView(monthly, topMargin(9));
-        TextView action = text("Start 7-day free trial", 15, Color.WHITE, true);
-        action.setGravity(Gravity.CENTER);
-        action.setBackground(shape(GREEN, GREEN, 16));
-        panel.addView(action, new LinearLayout.LayoutParams(-1, dp(56)));
-        TextView terms = text("7 days free, then $39/year. Renews automatically until canceled. Manage or cancel in Google Play.", 11, MUTED, false);
-        terms.setGravity(Gravity.CENTER);
-        panel.addView(terms, topMargin(10));
-        TextView notice = text("Preview only · No payments are enabled", 11, GREEN, true);
-        notice.setGravity(Gravity.CENTER);
-        panel.addView(notice, topMargin(14));
-        Runnable selectYear = () -> {
-            yearly.setBackground(shape(SOFT_VIOLET, GREEN, 16));
-            monthly.setBackground(shape(Color.WHITE, BORDER, 16));
-            yearly.setText("◉   Yearly  ·  7-day free trial  ·  Save 46%\n       $39 / year after trial  ·  $3.25/mo equivalent");
-            monthly.setText("○   Monthly\n       $5.99 / month");
-            action.setText("Start 7-day free trial");
-            terms.setText("7 days free, then $39/year. Renews automatically until canceled. Manage or cancel in Google Play.");
-        };
-        yearly.setOnClickListener(v -> selectYear.run());
-        monthly.setOnClickListener(v -> {
-            yearly.setBackground(shape(Color.WHITE, BORDER, 16));
-            monthly.setBackground(shape(SOFT_VIOLET, GREEN, 16));
-            yearly.setText("○   Yearly  ·  7-day free trial  ·  Save 46%\n       $39 / year after trial  ·  $3.25/mo equivalent");
-            monthly.setText("◉   Monthly\n       $5.99 / month");
-            action.setText("Continue with monthly");
-            terms.setText("$5.99/month, charged immediately. Renews automatically until canceled. Manage or cancel in Google Play.");
-        });
-        action.setOnClickListener(v -> Toast.makeText(this, "Design preview only — no payment will be taken", Toast.LENGTH_SHORT).show());
-        selectYear.run();
-        scroll.addView(panel);
-        frame.addView(scroll);
-        dialog.setContentView(frame);
-        if (dialog.getWindow() != null) dialog.getWindow().setLayout(-1, -1);
+        dialog.setContentView(page);
         dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setLayout(-1, -1);
-        carousel.postDelayed(rotate, 4000);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(-1, -1);
+            dialog.getWindow().setStatusBarColor(Color.rgb(246, 244, 236));
+            dialog.getWindow().setNavigationBarColor(Color.rgb(246, 244, 236));
+            int flags = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            if (Build.VERSION.SDK_INT >= 26) flags |= android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            dialog.getWindow().getDecorView().setSystemUiVisibility(flags);
+        }
+        page.loadUrl("file:///android_asset/paywall-preview.html");
     }
 
     private void showFaqDialog() {
