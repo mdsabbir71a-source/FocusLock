@@ -1331,10 +1331,12 @@ public class MainActivity extends Activity {
         page.setWebViewClient(new android.webkit.WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
                 if ("focuslock://close".equals(url)) dialog.dismiss();
+                else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
                 return true;
             }
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, android.webkit.WebResourceRequest request) {
                 if ("focuslock://close".equals(request.getUrl().toString())) dialog.dismiss();
+                else if ("focuslock://terms".equals(request.getUrl().toString())) openWebsitePath("/terms");
                 return true;
             }
         });
