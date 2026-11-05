@@ -1040,6 +1040,11 @@ public class MainActivity extends Activity {
                 .putBoolean("distraction_onboarding_v119_seen", true).apply();
         Dialog departingPermissions = permissionOnboardingDialog;
         newGuideIntro = !getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false);
+        showSubscriptionDialog(() -> finishPermissionHandoff(departingPermissions));
+    }
+
+    private void finishPermissionHandoff(Dialog departingPermissions) {
+        if (isFinishing() || isDestroyed() || !departingPermissions.isShowing()) return;
         showHomeContent();
         View departingSurface = permissionOnboardingSurface;
         screenRoot.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
@@ -1083,11 +1088,7 @@ public class MainActivity extends Activity {
                         departingPermissions.dismiss();
                         incomingHome.setImageDrawable(null);
                         homeFrame.recycle();
-                        guideHandler.postDelayed(() -> {
-                            if (isFinishing() || isDestroyed()) return;
-                            showSubscriptionDialog(() -> guideHandler.postDelayed(
-                                    () -> updateGuideStep(2, appSectionAnchor), 150L));
-                        }, 150L);
+                        guideHandler.postDelayed(() -> updateGuideStep(2, appSectionAnchor), 150L);
                     }
                 });
                 handoff.start();
