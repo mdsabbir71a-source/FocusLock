@@ -183,8 +183,10 @@ public class MainActivity extends Activity {
         boolean designSeen = onboarding.getBoolean("distraction_onboarding_v119_seen", false);
         if (!permissionsFinished && designSeen && permissionsReady()) {
             permissionsFinished = true;
-            onboarding.edit().putBoolean("permission_onboarding_done", true).apply();
+            onboarding.edit().putBoolean("permission_onboarding_done", true)
+                    .putBoolean("paywall_preview_pending", true).apply();
         }
+        final boolean paywallPending = onboarding.getBoolean("paywall_preview_pending", false);
         final boolean shouldShowOnboarding = !welcomed || !designSeen || !permissionsFinished;
         if (shouldShowOnboarding) prepareAppListInBackground();
         getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
@@ -199,7 +201,12 @@ public class MainActivity extends Activity {
         setContentView(buildLaunchPlaceholder(shouldShowOnboarding));
         new Handler().post(() -> {
             if (isFinishing()) return;
-            if (shouldShowOnboarding) {
+            if (paywallPending) {
+                showSubscriptionDialog(() -> {
+                    showHomeContent();
+                    guideHandler.postDelayed(() -> updateGuideStep(2, appSectionAnchor), 150L);
+                });
+            } else if (shouldShowOnboarding) {
                 if (welcomed) showPermissionsOnboarding(); else showWelcomeCards();
             } else {
                 showHomeContent();
@@ -1037,7 +1044,8 @@ public class MainActivity extends Activity {
         if (permissionOnboardingDialog == null || !permissionOnboardingDialog.isShowing()) return;
         getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit()
                 .putBoolean("welcome_seen", true).putBoolean("permission_onboarding_done", true)
-                .putBoolean("distraction_onboarding_v119_seen", true).apply();
+                .putBoolean("distraction_onboarding_v119_seen", true)
+                .putBoolean("paywall_preview_pending", true).apply();
         Dialog departingPermissions = permissionOnboardingDialog;
         newGuideIntro = !getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false);
         showSubscriptionDialog(() -> finishPermissionHandoff(departingPermissions));
@@ -1321,6 +1329,7 @@ public class MainActivity extends Activity {
 
     private void showSubscriptionDialog(Runnable onClosed) {
         Dialog dialog = new Dialog(this, android.R.style.Theme_Material_Light_NoActionBar);
+        if (onClosed != null) dialog.setCancelable(false);
         android.webkit.WebView page = new android.webkit.WebView(this);
         page.setBackgroundColor(Color.rgb(246, 244, 236));
         android.webkit.WebSettings settings = page.getSettings();
@@ -1330,12 +1339,20 @@ public class MainActivity extends Activity {
         settings.setBlockNetworkLoads(true);
         page.setWebViewClient(new android.webkit.WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
-                if ("focuslock://close".equals(url)) dialog.dismiss();
+                if ("focuslock://close".equals(url)) {
+                    if (onClosed != null) getSharedPreferences("focuslock_onboarding", MODE_PRIVATE)
+                            .edit().putBoolean("paywall_preview_pending", false).apply();
+                    dialog.dismiss();
+                }
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
                 return true;
             }
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, android.webkit.WebResourceRequest request) {
-                if ("focuslock://close".equals(request.getUrl().toString())) dialog.dismiss();
+                if ("focuslock://close".equals(request.getUrl().toString())) {
+                    if (onClosed != null) getSharedPreferences("focuslock_onboarding", MODE_PRIVATE)
+                            .edit().putBoolean("paywall_preview_pending", false).apply();
+                    dialog.dismiss();
+                }
                 else if ("focuslock://terms".equals(request.getUrl().toString())) openWebsitePath("/terms");
                 return true;
             }
