@@ -204,7 +204,7 @@ public class MainActivity extends Activity {
             if (paywallPending) {
                 showSubscriptionDialog(() -> {
                     showHomeContent();
-                    guideHandler.postDelayed(() -> updateGuideStep(2, appSectionAnchor), 150L);
+                    schedulePostPaywallGuide();
                 });
             } else if (shouldShowOnboarding) {
                 if (welcomed) showPermissionsOnboarding(); else showWelcomeCards();
@@ -1096,12 +1096,25 @@ public class MainActivity extends Activity {
                         departingPermissions.dismiss();
                         incomingHome.setImageDrawable(null);
                         homeFrame.recycle();
-                        guideHandler.postDelayed(() -> updateGuideStep(2, appSectionAnchor), 150L);
+                        finishingPermissionOnboarding = false;
+                        schedulePostPaywallGuide();
                     }
                 });
                 handoff.start();
                 return true;
             }
+        });
+    }
+
+    /** Resume the setup guide after Home has actually been laid out. */
+    private void schedulePostPaywallGuide() {
+        if (screenRoot == null) return;
+        screenRoot.post(() -> {
+            if (isFinishing() || isDestroyed() || screenRoot == null) return;
+            guideHandler.postDelayed(() -> {
+                if (!isFinishing() && !isDestroyed() && visible) resumeGuide();
+                else guideWasInterrupted = true;
+            }, 250L);
         });
     }
 
@@ -1332,12 +1345,20 @@ public class MainActivity extends Activity {
         if (onClosed != null) dialog.setCancelable(false);
         android.webkit.WebView page = new android.webkit.WebView(this);
         page.setBackgroundColor(Color.rgb(246, 244, 236));
+        page.setAlpha(0f);
+        page.setTranslationY(dp(8));
         android.webkit.WebSettings settings = page.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(false);
         settings.setBlockNetworkLoads(true);
         page.setWebViewClient(new android.webkit.WebViewClient() {
+            @Override public void onPageFinished(android.webkit.WebView view, String url) {
+                if (dialog.isShowing() && !isFinishing()) {
+                    view.animate().alpha(1f).translationY(0f).setDuration(260L)
+                            .setInterpolator(new DecelerateInterpolator()).start();
+                }
+            }
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
                 if ("focuslock://close".equals(url)) {
                     if (onClosed != null) getSharedPreferences("focuslock_onboarding", MODE_PRIVATE)
