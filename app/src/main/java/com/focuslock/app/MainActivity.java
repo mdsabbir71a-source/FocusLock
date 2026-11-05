@@ -1339,27 +1339,61 @@ public class MainActivity extends Activity {
         preparedPaywallPage = null;
         final Dialog departingPermissions = finishingPermissionOnboarding ? permissionOnboardingDialog : null;
         final boolean[] revealed = {false};
-        // Keep the page opaque: fading it over setup exposes the setup logo.
-        page.setAlpha(1f);
-        page.setTranslationY(0f);
+        final boolean[] closing = {false};
+        // The opaque matching backdrop prevents the old setup logo showing through.
+        FrameLayout paywallSurface = new FrameLayout(this);
+        paywallSurface.setBackgroundColor(Color.rgb(246, 244, 236));
+        paywallSurface.addView(page, new FrameLayout.LayoutParams(-1, -1));
+        page.setAlpha(.85f);
+        page.setTranslationY(dp(4));
         Runnable revealPaywall = () -> {
             if (revealed[0] || !dialog.isShowing() || isFinishing() || isDestroyed()) return;
             revealed[0] = true;
             if (departingPermissions != null && departingPermissions.isShowing()) {
                 departingPermissions.dismiss();
             }
+            page.animate().alpha(1f).translationY(0f).setDuration(160L)
+                    .setInterpolator(new DecelerateInterpolator()).start();
         };
         Runnable closePaywall = () -> {
-            if (!dialog.isShowing()) return;
+            if (!dialog.isShowing() || closing[0]) return;
+            closing[0] = true;
+            final boolean[] fading = {false};
+            Runnable fadeOut = () -> {
+                if (!dialog.isShowing() || fading[0]) return;
+                fading[0] = true;
+                if (onClosed != null && screenRoot != null) {
+                    screenRoot.animate().cancel();
+                    screenRoot.setAlpha(1f);
+                }
+                paywallSurface.animate().alpha(0f).setDuration(200L)
+                        .setInterpolator(new DecelerateInterpolator())
+                        .withEndAction(dialog::dismiss).start();
+            };
             if (onClosed != null) {
                 getSharedPreferences("focuslock_onboarding", MODE_PRIVATE)
                         .edit().putBoolean("paywall_preview_pending", false).apply();
                 finishingPermissionOnboarding = false;
                 showHomeContent();
+                // Fade away the paywall only after Home has a fully rendered frame.
+                View home = getWindow().getDecorView();
+                home.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+                    @Override public boolean onPreDraw() {
+                        if (home.getViewTreeObserver().isAlive()) home.getViewTreeObserver().removeOnPreDrawListener(this);
+                        if (screenRoot != null) {
+                            screenRoot.animate().cancel();
+                            screenRoot.setAlpha(1f);
+                        }
+                        home.post(fadeOut);
+                        return true;
+                    }
+                });
+                home.invalidate();
+                // Some devices do not draw an obscured activity until the dialog leaves.
+                new Handler().postDelayed(fadeOut, 500L);
+            } else {
+                fadeOut.run();
             }
-            page.animate().cancel();
-            page.animate().alpha(0f).setDuration(180L)
-                    .withEndAction(dialog::dismiss).start();
         };
         Runnable showReadyPaywall = () -> {
             if (dialog.isShowing() || isFinishing() || isDestroyed()) return;
@@ -1394,7 +1428,7 @@ public class MainActivity extends Activity {
             page.destroy();
             if (onClosed != null && !isFinishing() && !isDestroyed()) onClosed.run();
         });
-        dialog.setContentView(page);
+        dialog.setContentView(paywallSurface);
         if (dialog.getWindow() != null) {
             dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
             dialog.getWindow().setFormat(android.graphics.PixelFormat.TRANSLUCENT);
