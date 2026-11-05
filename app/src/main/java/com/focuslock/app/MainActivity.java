@@ -264,6 +264,13 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         visible = true;
+        // Complete the last permission handoff before doing nonessential resume work.
+        if (waitingForSpecialPermission != 0 && permissionOnboardingDialog != null
+                && permissionOnboardingDialog.isShowing() && permissionsReady()) {
+            waitingForSpecialPermission = 0;
+            stopWatchingOnboardingPermission();
+            refreshPermissionOnboarding();
+        }
         boolean removedApps = LockStore.pruneUninstalled(this);
         if (removedApps) removeUninstalledTiles();
         if (!LockStore.isEnabled(this)) {
@@ -1060,13 +1067,11 @@ public class MainActivity extends Activity {
                 .putBoolean("welcome_seen", true).putBoolean("permission_onboarding_done", true)
                 .putBoolean("distraction_onboarding_v119_seen", true)
                 .putBoolean("paywall_preview_pending", true).apply();
-        Dialog departingPermissions = permissionOnboardingDialog;
         newGuideIntro = !getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false);
         showSubscriptionDialog(() -> {
             finishingPermissionOnboarding = false;
             schedulePostPaywallGuide();
         });
-        if (departingPermissions.isShowing()) departingPermissions.dismiss();
     }
 
 
@@ -1325,6 +1330,7 @@ public class MainActivity extends Activity {
         final android.webkit.WebView page = preparedPaywallPage;
         if (page == null) return;
         preparedPaywallPage = null;
+        final Dialog departingPermissions = finishingPermissionOnboarding ? permissionOnboardingDialog : null;
         final boolean[] revealed = {false};
         page.setAlpha(0f);
         page.setTranslationY(dp(5));
@@ -1333,7 +1339,12 @@ public class MainActivity extends Activity {
             revealed[0] = true;
             page.animate().cancel();
             page.animate().alpha(1f).translationY(0f).setDuration(180L)
-                    .setInterpolator(new DecelerateInterpolator()).start();
+                    .setInterpolator(new DecelerateInterpolator())
+                    .withEndAction(() -> {
+                        if (departingPermissions != null && departingPermissions.isShowing()) {
+                            departingPermissions.dismiss();
+                        }
+                    }).start();
         };
         Runnable closePaywall = () -> {
             if (!dialog.isShowing()) return;
@@ -1368,6 +1379,12 @@ public class MainActivity extends Activity {
             if (onClosed != null && !isFinishing() && !isDestroyed()) onClosed.run();
         });
         dialog.setContentView(page);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setFormat(android.graphics.PixelFormat.TRANSLUCENT);
+            dialog.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            dialog.getWindow().setWindowAnimations(0);
+        }
         dialog.show();
         if (dialog.getWindow() != null) {
             dialog.getWindow().setLayout(-1, -1);
