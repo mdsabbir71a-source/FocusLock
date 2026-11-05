@@ -132,6 +132,7 @@ public class MainActivity extends Activity {
     private SuccessBurstView successBurst;
     private Dialog permissionOnboardingDialog;
     private AlertDialog activeFocusPrompt;
+    private android.webkit.WebView preparedPaywallPage;
     private LinearLayout permissionOnboardingRows;
     private View permissionOnboardingSurface;
     private TextView permissionOnboardingStatus;
@@ -342,6 +343,11 @@ public class MainActivity extends Activity {
 
     @Override protected void onDestroy() {
         stopWatchingOnboardingPermission();
+        if (preparedPaywallPage != null) {
+            preparedPaywallPage.stopLoading();
+            preparedPaywallPage.destroy();
+            preparedPaywallPage = null;
+        }
         super.onDestroy();
     }
 
@@ -878,6 +884,7 @@ public class MainActivity extends Activity {
                 dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
             }
             page.setAlpha(1f); page.setTranslationY(0f);
+            root.post(this::preparePaywallPage);
             root.animate().alpha(1f).setDuration(360L).setInterpolator(new AccelerateDecelerateInterpolator()).start();
             refreshPermissionOnboarding();
         });
@@ -1297,18 +1304,37 @@ public class MainActivity extends Activity {
         showSubscriptionDialog(null);
     }
 
-    private void showSubscriptionDialog(Runnable onClosed) {
-        Dialog dialog = new Dialog(this, android.R.style.Theme_Material_Light_NoActionBar);
-        if (onClosed != null) dialog.setCancelable(false);
+    private void preparePaywallPage() {
+        if (preparedPaywallPage != null || isFinishing() || isDestroyed()) return;
         android.webkit.WebView page = new android.webkit.WebView(this);
         page.setBackgroundColor(Color.rgb(246, 244, 236));
-        page.setAlpha(0f);
-        page.setTranslationY(dp(8));
         android.webkit.WebSettings settings = page.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(false);
         settings.setBlockNetworkLoads(true);
+        page.setWebViewClient(new android.webkit.WebViewClient());
+        preparedPaywallPage = page;
+        page.loadUrl("file:///android_asset/paywall-preview.html");
+    }
+
+    private void showSubscriptionDialog(Runnable onClosed) {
+        Dialog dialog = new Dialog(this, android.R.style.Theme_Material_Light_NoActionBar);
+        if (onClosed != null) dialog.setCancelable(false);
+        if (preparedPaywallPage == null) preparePaywallPage();
+        final android.webkit.WebView page = preparedPaywallPage;
+        if (page == null) return;
+        preparedPaywallPage = null;
+        final boolean[] revealed = {false};
+        page.setAlpha(0f);
+        page.setTranslationY(dp(5));
+        Runnable revealPaywall = () -> {
+            if (revealed[0] || !dialog.isShowing() || isFinishing() || isDestroyed()) return;
+            revealed[0] = true;
+            page.animate().cancel();
+            page.animate().alpha(1f).translationY(0f).setDuration(180L)
+                    .setInterpolator(new DecelerateInterpolator()).start();
+        };
         Runnable closePaywall = () -> {
             if (!dialog.isShowing()) return;
             if (onClosed != null) {
@@ -1323,10 +1349,7 @@ public class MainActivity extends Activity {
         };
         page.setWebViewClient(new android.webkit.WebViewClient() {
             @Override public void onPageFinished(android.webkit.WebView view, String url) {
-                if (dialog.isShowing() && !isFinishing()) {
-                    view.animate().alpha(1f).translationY(0f).setDuration(260L)
-                            .setInterpolator(new DecelerateInterpolator()).start();
-                }
+                revealPaywall.run();
             }
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
                 if ("focuslock://close".equals(url)) closePaywall.run();
@@ -1354,7 +1377,7 @@ public class MainActivity extends Activity {
             if (Build.VERSION.SDK_INT >= 26) flags |= android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
             dialog.getWindow().getDecorView().setSystemUiVisibility(flags);
         }
-        page.loadUrl("file:///android_asset/paywall-preview.html");
+        if (page.getProgress() >= 100) page.post(revealPaywall);
     }
 
     private void showFaqDialog() {

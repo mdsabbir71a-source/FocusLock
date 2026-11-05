@@ -16,10 +16,10 @@
 @keyframes shine{0%,55%{transform:translateX(0) skewX(-20deg)}80%,100%{transform:translateX(430%) skewX(-20deg)}}
 @media(prefers-reduced-motion:reduce){.action::after{animation:none}}
 .terms a{color:inherit;text-decoration:underline}
-.plan{transition:background-color .2s ease,border-color .2s ease,transform .16s ease,box-shadow .2s ease;-webkit-tap-highlight-color:transparent}
+.plan{transition:background-color .10s ease,border-color .10s ease,transform .12s ease;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .plan:active{transform:scale(.985)}
 .plan[aria-pressed=true]{box-shadow:0 3px 10px rgba(31,107,71,.12)}
-.action{box-shadow:0 6px 16px rgba(31,77,58,.24);transition:transform .16s ease,box-shadow .16s ease;-webkit-tap-highlight-color:transparent}
+.action{box-shadow:0 6px 16px rgba(31,77,58,.24);transition:transform .16s ease,box-shadow .16s ease;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .action:active{transform:scale(.98);box-shadow:0 3px 8px rgba(31,77,58,.18)}
 .close{-webkit-tap-highlight-color:transparent;transition:transform .16s ease}
 .close:active{transform:scale(.9)}
