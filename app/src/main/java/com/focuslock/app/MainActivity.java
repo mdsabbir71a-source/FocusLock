@@ -131,6 +131,7 @@ public class MainActivity extends Activity {
     private int coachGeneration;
     private SuccessBurstView successBurst;
     private Dialog permissionOnboardingDialog;
+    private AlertDialog activeFocusPrompt;
     private LinearLayout permissionOnboardingRows;
     private View permissionOnboardingSurface;
     private TextView permissionOnboardingStatus;
@@ -210,6 +211,8 @@ public class MainActivity extends Activity {
                 if (welcomed) showPermissionsOnboarding(); else showWelcomeCards();
             } else {
                 showHomeContent();
+                if (!onboarding.getBoolean("guide_complete", false)
+                        && onboarding.getBoolean("welcome_seen", false)) schedulePostPaywallGuide();
             }
         });
     }
@@ -318,6 +321,10 @@ public class MainActivity extends Activity {
         guideWasInterrupted = currentGuideStep > 0 && !getSharedPreferences(
                 "focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false);
         dismissCoachOverlay();
+        if (activeFocusPrompt != null && activeFocusPrompt.isShowing()) {
+            activeFocusPrompt.dismiss();
+            activeFocusPrompt = null;
+        }
         guideHandler.removeCallbacksAndMessages(null);
         super.onPause();
         if (permissionOnboardingDialog != null && permissionOnboardingDialog.isShowing()
@@ -1048,63 +1055,13 @@ public class MainActivity extends Activity {
                 .putBoolean("paywall_preview_pending", true).apply();
         Dialog departingPermissions = permissionOnboardingDialog;
         newGuideIntro = !getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false);
-        showSubscriptionDialog(() -> finishPermissionHandoff(departingPermissions));
+        showSubscriptionDialog(() -> {
+            finishingPermissionOnboarding = false;
+            schedulePostPaywallGuide();
+        });
+        if (departingPermissions.isShowing()) departingPermissions.dismiss();
     }
 
-    private void finishPermissionHandoff(Dialog departingPermissions) {
-        if (isFinishing() || isDestroyed() || !departingPermissions.isShowing()) return;
-        showHomeContent();
-        View departingSurface = permissionOnboardingSurface;
-        screenRoot.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
-            @Override public boolean onPreDraw() {
-                screenRoot.getViewTreeObserver().removeOnPreDrawListener(this);
-                // Slide both pages together in one window, like an automatic right swipe.
-                screenRoot.setAlpha(1f);
-                FrameLayout transitionRoot = (FrameLayout) departingSurface;
-                if (departingPermissions.getWindow() != null) {
-                    departingPermissions.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-                    departingPermissions.getWindow().setWindowAnimations(0);
-                }
-                android.graphics.Bitmap homeFrame = android.graphics.Bitmap.createBitmap(
-                        screenRoot.getWidth(), screenRoot.getHeight(), android.graphics.Bitmap.Config.ARGB_8888);
-                screenRoot.draw(new android.graphics.Canvas(homeFrame));
-                ImageView incomingHome = new ImageView(MainActivity.this);
-                incomingHome.setImageBitmap(homeFrame);
-                incomingHome.setScaleType(ImageView.ScaleType.FIT_XY);
-                incomingHome.setAlpha(1f);
-                float slideWidth = transitionRoot.getWidth();
-                incomingHome.setTranslationX(-slideWidth);
-                transitionRoot.animate().cancel();
-                transitionRoot.setAlpha(1f);
-                transitionRoot.addView(incomingHome, new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                ValueAnimator handoff = ValueAnimator.ofFloat(0f, 1f);
-                handoff.setDuration(380L);
-                handoff.setInterpolator(new AccelerateDecelerateInterpolator());
-                handoff.addUpdateListener(animation -> {
-                    float progress = (Float) animation.getAnimatedValue();
-                    for (int i = 0; i < transitionRoot.getChildCount() - 1; i++) {
-                        View outgoing = transitionRoot.getChildAt(i);
-                        outgoing.setAlpha(1f);
-                        outgoing.setTranslationX(slideWidth * progress);
-                    }
-                    incomingHome.setTranslationX(-slideWidth * (1f - progress));
-                });
-                handoff.addListener(new android.animation.AnimatorListenerAdapter() {
-                    @Override public void onAnimationEnd(android.animation.Animator animation) {
-                        screenRoot.setAlpha(1f);
-                        departingPermissions.dismiss();
-                        incomingHome.setImageDrawable(null);
-                        homeFrame.recycle();
-                        finishingPermissionOnboarding = false;
-                        schedulePostPaywallGuide();
-                    }
-                });
-                handoff.start();
-                return true;
-            }
-        });
-    }
 
     /** Resume the setup guide after Home has actually been laid out. */
     private void schedulePostPaywallGuide() {
@@ -1352,6 +1309,18 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(false);
         settings.setBlockNetworkLoads(true);
+        Runnable closePaywall = () -> {
+            if (!dialog.isShowing()) return;
+            if (onClosed != null) {
+                getSharedPreferences("focuslock_onboarding", MODE_PRIVATE)
+                        .edit().putBoolean("paywall_preview_pending", false).apply();
+                finishingPermissionOnboarding = false;
+                showHomeContent();
+            }
+            page.animate().cancel();
+            page.animate().alpha(0f).setDuration(180L)
+                    .withEndAction(dialog::dismiss).start();
+        };
         page.setWebViewClient(new android.webkit.WebViewClient() {
             @Override public void onPageFinished(android.webkit.WebView view, String url) {
                 if (dialog.isShowing() && !isFinishing()) {
@@ -1360,20 +1329,12 @@ public class MainActivity extends Activity {
                 }
             }
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
-                if ("focuslock://close".equals(url)) {
-                    if (onClosed != null) getSharedPreferences("focuslock_onboarding", MODE_PRIVATE)
-                            .edit().putBoolean("paywall_preview_pending", false).apply();
-                    dialog.dismiss();
-                }
+                if ("focuslock://close".equals(url)) closePaywall.run();
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
                 return true;
             }
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, android.webkit.WebResourceRequest request) {
-                if ("focuslock://close".equals(request.getUrl().toString())) {
-                    if (onClosed != null) getSharedPreferences("focuslock_onboarding", MODE_PRIVATE)
-                            .edit().putBoolean("paywall_preview_pending", false).apply();
-                    dialog.dismiss();
-                }
+                if ("focuslock://close".equals(request.getUrl().toString())) closePaywall.run();
                 else if ("focuslock://terms".equals(request.getUrl().toString())) openWebsitePath("/terms");
                 return true;
             }
@@ -2309,6 +2270,14 @@ public class MainActivity extends Activity {
         }
         boolean permissionsReady = usageAccessEnabled() && Settings.canDrawOverlays(this)
                 && batteryReliabilityEnabled() && CompatibilityAccess.isEnabled(this);
+        if (permissionsReady && currentGuideStep >= 2 && currentGuideStep <= 5) {
+            if (selectedAppCount() == 0) updateGuideStep(2, appSectionAnchor);
+            else if (currentGuideStep == 2) updateGuideStep(3, settingsAnchor);
+            else if (currentGuideStep == 3) updateGuideStep(3, settingsAnchor);
+            else if (currentGuideStep == 4) updateGuideStep(4, guideLockTimerTarget);
+            else updateGuideStep(5, saveButton);
+            return;
+        }
         if (!permissionsReady) updateGuideStep(1, firstMissingPermissionCard());
         else if (newGuideIntro || selectedAppCount() == 0) {
             newGuideIntro = false;
@@ -2802,6 +2771,10 @@ public class MainActivity extends Activity {
 
     private AlertDialog showFocusPrompt(LinearLayout panel) {
         AlertDialog dialog = new AlertDialog.Builder(this).setView(panel).create();
+        activeFocusPrompt = dialog;
+        dialog.setOnDismissListener(ignored -> {
+            if (activeFocusPrompt == dialog) activeFocusPrompt = null;
+        });
         dialog.setCanceledOnTouchOutside(false);
         android.view.Window window = dialog.getWindow();
         if (window != null) {
