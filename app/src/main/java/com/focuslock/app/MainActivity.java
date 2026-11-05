@@ -200,7 +200,14 @@ public class MainActivity extends Activity {
         }
         // Use the new onboarding surface from the first frame. The old home
         // placeholder was visible for a moment before the dialog opened.
-        setContentView(buildLaunchPlaceholder(shouldShowOnboarding));
+        if (paywallPending) {
+            // Never insert the branded launch screen between setup and the paywall.
+            FrameLayout paywallBackground = new FrameLayout(this);
+            paywallBackground.setBackgroundColor(Color.rgb(246, 244, 236));
+            setContentView(paywallBackground);
+        } else {
+            setContentView(buildLaunchPlaceholder(shouldShowOnboarding));
+        }
         new Handler().post(() -> {
             if (isFinishing()) return;
             if (paywallPending) {
@@ -1332,19 +1339,15 @@ public class MainActivity extends Activity {
         preparedPaywallPage = null;
         final Dialog departingPermissions = finishingPermissionOnboarding ? permissionOnboardingDialog : null;
         final boolean[] revealed = {false};
-        page.setAlpha(0f);
-        page.setTranslationY(dp(5));
+        // Keep the page opaque: fading it over setup exposes the setup logo.
+        page.setAlpha(1f);
+        page.setTranslationY(0f);
         Runnable revealPaywall = () -> {
             if (revealed[0] || !dialog.isShowing() || isFinishing() || isDestroyed()) return;
             revealed[0] = true;
-            page.animate().cancel();
-            page.animate().alpha(1f).translationY(0f).setDuration(180L)
-                    .setInterpolator(new DecelerateInterpolator())
-                    .withEndAction(() -> {
-                        if (departingPermissions != null && departingPermissions.isShowing()) {
-                            departingPermissions.dismiss();
-                        }
-                    }).start();
+            if (departingPermissions != null && departingPermissions.isShowing()) {
+                departingPermissions.dismiss();
+            }
         };
         Runnable closePaywall = () -> {
             if (!dialog.isShowing()) return;
@@ -1358,9 +1361,22 @@ public class MainActivity extends Activity {
             page.animate().alpha(0f).setDuration(180L)
                     .withEndAction(dialog::dismiss).start();
         };
+        Runnable showReadyPaywall = () -> {
+            if (dialog.isShowing() || isFinishing() || isDestroyed()) return;
+            dialog.show();
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setLayout(-1, -1);
+                dialog.getWindow().setStatusBarColor(Color.rgb(246, 244, 236));
+                dialog.getWindow().setNavigationBarColor(Color.rgb(246, 244, 236));
+                int flags = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                if (Build.VERSION.SDK_INT >= 26) flags |= android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                dialog.getWindow().getDecorView().setSystemUiVisibility(flags);
+            }
+            revealPaywall.run();
+        };
         page.setWebViewClient(new android.webkit.WebViewClient() {
             @Override public void onPageFinished(android.webkit.WebView view, String url) {
-                revealPaywall.run();
+                showReadyPaywall.run();
             }
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
                 if ("focuslock://close".equals(url)) closePaywall.run();
@@ -1385,16 +1401,7 @@ public class MainActivity extends Activity {
             dialog.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
             dialog.getWindow().setWindowAnimations(0);
         }
-        dialog.show();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setLayout(-1, -1);
-            dialog.getWindow().setStatusBarColor(Color.rgb(246, 244, 236));
-            dialog.getWindow().setNavigationBarColor(Color.rgb(246, 244, 236));
-            int flags = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-            if (Build.VERSION.SDK_INT >= 26) flags |= android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-            dialog.getWindow().getDecorView().setSystemUiVisibility(flags);
-        }
-        if (page.getProgress() >= 100) page.post(revealPaywall);
+        if (page.getProgress() >= 100) new Handler().post(showReadyPaywall);
     }
 
     private void showFaqDialog() {
