@@ -264,6 +264,20 @@ public final class SupabaseApi {
         });
     }
 
+    public static void refreshPublicAnnouncement(Context context, Callback<Boolean> callback) {
+        Context appContext = context.getApplicationContext();
+        IO.execute(() -> {
+            try {
+                Response response = request("GET", "/functions/v1/public-announcement", null, null, null);
+                if (!response.ok()) throw new ApiException("Announcement unavailable");
+                RemoteConfigStore.saveAnnouncement(appContext, new JSONObject(response.body));
+                deliver(callback, true, null);
+            } catch (Exception error) {
+                deliver(callback, false, null);
+            }
+        });
+    }
+
     public static void refreshRemoteConfig(Context context, Callback<Boolean> callback) {
         IO.execute(() -> {
             try {

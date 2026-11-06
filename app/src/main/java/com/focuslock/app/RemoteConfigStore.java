@@ -19,6 +19,16 @@ public final class RemoteConfigStore {
 
     private RemoteConfigStore() {}
 
+    /** Public announcement fields only; no changes to protection settings. */
+    public static void saveAnnouncement(Context context, JSONObject row) {
+        prefs(context).edit()
+                .putBoolean("announcement_enabled", row.optBoolean("announcement_enabled", false))
+                .putString("announcement_title", row.optString("announcement_title", "A note from FocusLock"))
+                .putString("announcement_body", row.optString("announcement_body", ""))
+                .putString("updated_at", row.optString("updated_at", ""))
+                .apply();
+    }
+
     public static void save(Context context, JSONObject row) {
         JSONArray reminders = row.optJSONArray("reminder_messages");
         int defaultLockSeconds = row.optInt("default_lock_seconds", DEFAULT_LOCK_SECONDS);

@@ -238,6 +238,7 @@ public class MainActivity extends Activity {
         refreshStatus();
         home.setAlpha(0f);
         setContentView(home);
+        refreshPublicAnnouncement();
         if (wasPrepared) startLogoAnimation();
         home.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
             @Override public boolean onPreDraw() {
@@ -289,6 +290,7 @@ public class MainActivity extends Activity {
             startSavedMonitoring();
         }
         if (homeContentBuilt) {
+            refreshPublicAnnouncement();
             refreshStatus();
             refreshPermissionCards();
             refreshMasterButton();
@@ -1214,8 +1216,18 @@ public class MainActivity extends Activity {
         return false;
     }
 
+    private void refreshPublicAnnouncement() {
+        if (refreshingRemoteConfig) return;
+        refreshingRemoteConfig = true;
+        SupabaseApi.refreshPublicAnnouncement(this, (updated, error) -> {
+            refreshingRemoteConfig = false;
+            if (Boolean.TRUE.equals(updated) && visible && homeContentBuilt && !commitmentInProgress
+                    && !finishingPermissionOnboarding && currentGuideStep == 0) showAnnouncementIfNeeded();
+        });
+    }
+
     private void showAnnouncementIfNeeded() {
-        if (!RemoteConfigStore.shouldShowAnnouncement(this) || isFinishing()) return;
+        if (!visible || !homeContentBuilt || !RemoteConfigStore.shouldShowAnnouncement(this) || isFinishing()) return;
         new AlertDialog.Builder(this)
                 .setTitle(RemoteConfigStore.announcementTitle(this))
                 .setMessage(RemoteConfigStore.announcementBody(this))
