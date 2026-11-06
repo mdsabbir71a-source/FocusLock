@@ -1247,12 +1247,58 @@ public class MainActivity extends Activity {
 
     private void showAnnouncementIfNeeded() {
         if (!visible || !homeContentBuilt || !RemoteConfigStore.shouldShowAnnouncement(this) || isFinishing()) return;
-        new AlertDialog.Builder(this)
-                .setTitle(RemoteConfigStore.announcementTitle(this))
-                .setMessage(RemoteConfigStore.announcementBody(this))
-                .setPositiveButton("Got it", (dialog, which) -> RemoteConfigStore.markAnnouncementSeen(this))
-                .setOnCancelListener(dialog -> RemoteConfigStore.markAnnouncementSeen(this))
-                .show();
+        final Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        LinearLayout card = column();
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setPadding(dp(25), dp(20), dp(25), dp(20));
+        card.setBackground(shape(Color.rgb(250, 247, 237), Color.rgb(230, 232, 219), 26));
+        TextView close = text("×", 28, MUTED, false);
+        close.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        close.setContentDescription("Close announcement");
+        card.addView(close, matchWrap());
+        TextView badge = text("✦", 29, GREEN, true);
+        badge.setGravity(Gravity.CENTER);
+        badge.setBackground(shape(Color.rgb(224, 235, 216), Color.rgb(224, 235, 216), 18));
+        card.addView(badge, new LinearLayout.LayoutParams(dp(64), dp(64)));
+        TextView title = text(RemoteConfigStore.announcementTitle(this), 23, INK, true);
+        title.setGravity(Gravity.CENTER);
+        card.addView(title, topMargin(16));
+        TextView body = text(RemoteConfigStore.announcementBody(this), 15, MUTED, false);
+        body.setGravity(Gravity.CENTER);
+        body.setLineSpacing(dp(4), 1f);
+        card.addView(body, topMargin(12));
+        String label = RemoteConfigStore.announcementButtonLabel(this).trim();
+        String link = RemoteConfigStore.announcementButtonUrl(this).trim();
+        Uri destination = Uri.parse(link);
+        if (!label.isEmpty() && "https".equalsIgnoreCase(destination.getScheme())
+                && destination.getHost() != null && destination.getUserInfo() == null) {
+            Button action = button(label, GREEN, Color.WHITE);
+            action.setBackground(shape(GREEN, GREEN, 24));
+            action.setOnClickListener(v -> {
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, destination).addCategory(Intent.CATEGORY_BROWSABLE));
+                    RemoteConfigStore.markAnnouncementSeen(this);
+                    dialog.dismiss();
+                } catch (Exception error) { toast("Could not open this link."); }
+            });
+            card.addView(action, topMargin(20));
+        }
+        TextView later = text("Maybe later", 13, GREEN, true);
+        later.setGravity(Gravity.CENTER);
+        card.addView(later, topMargin(15));
+        close.setOnClickListener(v -> dialog.cancel());
+        later.setOnClickListener(v -> dialog.cancel());
+        dialog.setOnCancelListener(ignored -> RemoteConfigStore.markAnnouncementSeen(this));
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(false);
+        scroll.addView(card);
+        dialog.setContentView(scroll);
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(getResources().getDisplayMetrics().widthPixels - dp(40), ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
     }
 
     private void stopProtectionForAccess() {

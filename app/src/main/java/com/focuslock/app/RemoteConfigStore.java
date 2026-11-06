@@ -25,6 +25,8 @@ public final class RemoteConfigStore {
                 .putBoolean("announcement_enabled", row.optBoolean("announcement_enabled", false))
                 .putString("announcement_title", row.optString("announcement_title", "A note from FocusLock"))
                 .putString("announcement_body", row.optString("announcement_body", ""))
+                .putString("announcement_button_label", row.optString("announcement_button_label", ""))
+                .putString("announcement_button_url", row.optString("announcement_button_url", ""))
                 .putString("updated_at", row.optString("updated_at", ""))
                 .putInt("latest_version_code", Math.max(0, row.optInt("latest_version_code", 0)))
                 .putString("latest_version_name", row.optString("latest_version_name", ""))
@@ -88,6 +90,8 @@ public final class RemoteConfigStore {
 
     public static String announcementTitle(Context context) { return prefs(context).getString("announcement_title", "A note from FocusLock"); }
     public static String announcementBody(Context context) { return prefs(context).getString("announcement_body", ""); }
+    public static String announcementButtonLabel(Context context) { return prefs(context).getString("announcement_button_label", ""); }
+    public static String announcementButtonUrl(Context context) { return prefs(context).getString("announcement_button_url", ""); }
     public static void markAnnouncementSeen(Context context) { prefs(context).edit().putString("announcement_seen_at", prefs(context).getString("updated_at", "")).apply(); }
 
     public static boolean shouldPromptForUpdate(Context context) {

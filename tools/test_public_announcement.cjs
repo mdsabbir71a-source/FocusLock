@@ -13,7 +13,7 @@ async function run(fetchResult, method = "GET") {
 (async () => {
   let r = await run(new Response(JSON.stringify([{announcement_enabled:true,announcement_title:"Hello",announcement_body:"Update",updated_at:"today",secret:"not-public"}])));
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), {announcement_enabled:true,announcement_title:"Hello",announcement_body:"Update",updated_at:"today",latest_version_code:0,latest_version_name:""});
+  assert.deepEqual(await r.json(), {announcement_enabled:true,announcement_title:"Hello",announcement_body:"Update",announcement_button_label:"",announcement_button_url:"",updated_at:"today",latest_version_code:0,latest_version_name:""});
   r = await run(new Response(JSON.stringify([{latest_version_code:231,latest_version_name:"1.1.31"}])));
   const config = await r.json(); assert.equal(config.latest_version_code, 231); assert.equal(config.latest_version_name, "1.1.31");
   r = await run(new Response(JSON.stringify([{latest_version_code:"invalid"}])));
