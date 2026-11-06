@@ -156,9 +156,24 @@ public final class SectionActivity extends Activity {
     }
 
     private void showAccountDetails() {
+        final String supportId;
+        try {
+            supportId = InstallationId.get(this);
+        } catch (IllegalStateException error) {
+            toast("Could not load your FocusLock ID. Please try again.");
+            return;
+        }
         new AlertDialog.Builder(this).setTitle("This device")
-                .setMessage("FocusLock runs without an account. Your settings stay on this device.\n\nApp version\n" + BuildConfig.VERSION_NAME)
-                .setPositiveButton("Done", null).show();
+                .setMessage("FocusLock runs without an account. Your settings stay on this device.\n\nFocusLock ID\n" + supportId
+                        + "\n\nThis ID can change if you uninstall the app or change phones.\n\nApp version\n" + BuildConfig.VERSION_NAME)
+                .setPositiveButton("Done", null)
+                .setNeutralButton("Copy ID", (dialog, which) -> {
+                    android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                    if (clipboard != null) {
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("FocusLock ID", supportId));
+                        toast("FocusLock ID copied.");
+                    }
+                }).show();
     }
 
     private void openNotificationSettings() {

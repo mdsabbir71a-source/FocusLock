@@ -16,6 +16,7 @@
 @keyframes shine{0%,55%{transform:translateX(0) skewX(-20deg)}80%,100%{transform:translateX(430%) skewX(-20deg)}}
 @media(prefers-reduced-motion:reduce){.action::after{animation:none}}
 .terms a{color:inherit;text-decoration:underline}
+.restore{display:block;margin:10px auto 0;padding:5px 10px;border:0;background:transparent;color:#1f6b47;font:600 13px system-ui,sans-serif;text-decoration:underline}
 .plan{transition:background-color .10s ease,border-color .10s ease,transform .12s ease;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .plan:active{transform:scale(.985)}
 .plan[aria-pressed=true]{box-shadow:0 3px 10px rgba(31,107,71,.12)}
@@ -58,11 +59,13 @@
 </section>
 <div class="spacer"></div>
 <footer class="footer"><button class="action" id="action" onclick="previewAction()">Start 7-day free trial</button>
+<button class="restore" type="button" onclick="showRestorePreview()">Restore purchase</button><p class="notice" id="restore-status" role="status" aria-live="polite" hidden></p>
 <p class="terms">Renews automatically. Cancel anytime. <a href="focuslock://terms">Terms &amp; conditions</a></p></footer>
 </main>
 <script>
 function selectPlan(yearly){window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('month').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?'Start 7-day free trial':'Continue with monthly'}
 function previewAction(){var b=document.getElementById('action');b.textContent='Preview only — no payment';setTimeout(function(){b.textContent=window.selectedYearly===false?'Continue with monthly':'Start 7-day free trial'},2200)}
+function showRestorePreview(){var message=document.getElementById('restore-status');message.hidden=false;message.textContent='Purchase restoration will be available when subscriptions are connected.'}
 </script>
 </body>
 </html>
