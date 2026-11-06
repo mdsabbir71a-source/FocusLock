@@ -9,7 +9,7 @@ Deno.serve(async (request: Request) => {
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) return new Response(null, { status: 503 });
   try {
-    const result = await fetch(`${url}/rest/v1/app_remote_config?id=eq.global&select=announcement_enabled,announcement_title,announcement_body,updated_at`, {
+    const result = await fetch(`${url}/rest/v1/app_remote_config?id=eq.global&select=announcement_enabled,announcement_title,announcement_body,updated_at,latest_version_code,latest_version_name`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
     });
     if (!result.ok) return new Response(null, { status: 503 });
@@ -21,6 +21,8 @@ Deno.serve(async (request: Request) => {
       announcement_title: String(row.announcement_title || "").slice(0, 80),
       announcement_body: String(row.announcement_body || "").slice(0, 500),
       updated_at: String(row.updated_at || ""),
+      latest_version_code: Number.isSafeInteger(row.latest_version_code) && row.latest_version_code > 0 ? row.latest_version_code : 0,
+      latest_version_name: String(row.latest_version_name || "").slice(0, 80),
     }), { headers });
   } catch {
     return new Response(null, { status: 503 });

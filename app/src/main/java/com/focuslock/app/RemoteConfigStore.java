@@ -26,6 +26,8 @@ public final class RemoteConfigStore {
                 .putString("announcement_title", row.optString("announcement_title", "A note from FocusLock"))
                 .putString("announcement_body", row.optString("announcement_body", ""))
                 .putString("updated_at", row.optString("updated_at", ""))
+                .putInt("latest_version_code", Math.max(0, row.optInt("latest_version_code", 0)))
+                .putString("latest_version_name", row.optString("latest_version_name", ""))
                 .apply();
     }
 
@@ -95,6 +97,13 @@ public final class RemoteConfigStore {
         SharedPreferences p = prefs(context);
         return p.getInt("prompted_version", 0) != latest
                 || System.currentTimeMillis() - p.getLong("prompted_at", 0) >= UPDATE_REMINDER_INTERVAL_MS;
+    }
+
+    public static boolean shouldPromptForPlayUpdate(Context context) {
+        int latest = latestVersionCode(context);
+        SharedPreferences p = prefs(context);
+        return latest > BuildConfig.VERSION_CODE && (p.getInt("prompted_version", 0) != latest
+                || System.currentTimeMillis() - p.getLong("prompted_at", 0) >= UPDATE_REMINDER_INTERVAL_MS);
     }
 
     public static boolean updateRequired(Context context) { return BuildConfig.VERSION_CODE < minimumVersionCode(context); }

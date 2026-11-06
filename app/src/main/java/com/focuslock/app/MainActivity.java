@@ -1222,8 +1222,27 @@ public class MainActivity extends Activity {
         SupabaseApi.refreshPublicAnnouncement(this, (updated, error) -> {
             refreshingRemoteConfig = false;
             if (Boolean.TRUE.equals(updated) && visible && homeContentBuilt && !commitmentInProgress
-                    && !finishingPermissionOnboarding && currentGuideStep == 0) showAnnouncementIfNeeded();
+                    && !finishingPermissionOnboarding && currentGuideStep == 0) {
+                if (!showPlayUpdatePrompt()) showAnnouncementIfNeeded();
+            }
         });
+    }
+
+    private boolean showPlayUpdatePrompt() {
+        if (!RemoteConfigStore.shouldPromptForPlayUpdate(this) || isFinishing()) return false;
+        new AlertDialog.Builder(this)
+                .setTitle("FocusLock update available")
+                .setMessage("A newer version of FocusLock may be available on Google Play.")
+                .setPositiveButton("Open Google Play", (dialog, which) -> {
+                    RemoteConfigStore.markUpdatePrompted(this);
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + getPackageName())));
+                    } catch (Exception error) { toast("Could not open Google Play."); }
+                })
+                .setNegativeButton("Later", (dialog, which) -> RemoteConfigStore.markUpdatePrompted(this))
+                .setOnCancelListener(dialog -> RemoteConfigStore.markUpdatePrompted(this))
+                .show();
+        return true;
     }
 
     private void showAnnouncementIfNeeded() {
