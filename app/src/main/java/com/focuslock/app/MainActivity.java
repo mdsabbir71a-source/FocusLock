@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 41927)
-Total output lines: 3296
-
 package com.focuslock.app;
 
 import android.Manifest;
@@ -1548,7 +1545,154 @@ public class MainActivity extends Activity {
                 new Handler().postDelayed(fadeOut, 500L);
             } else {
                 fadeOut.run();
-      …1927 tokens truncated….setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            }
+        };
+        Runnable showReadyPaywall = () -> {
+            if (dialog.isShowing() || isFinishing() || isDestroyed()) return;
+            dialog.show();
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setLayout(-1, -1);
+                dialog.getWindow().setStatusBarColor(Color.rgb(246, 244, 236));
+                dialog.getWindow().setNavigationBarColor(Color.rgb(246, 244, 236));
+                int flags = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                if (Build.VERSION.SDK_INT >= 26) flags |= android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                dialog.getWindow().getDecorView().setSystemUiVisibility(flags);
+            }
+            revealPaywall.run();
+        };
+        page.setWebViewClient(new android.webkit.WebViewClient() {
+            @Override public void onPageFinished(android.webkit.WebView view, String url) {
+                showReadyPaywall.run();
+            }
+            @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
+                if ("focuslock://close".equals(url)) closePaywall.run();
+                else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
+                return true;
+            }
+            @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, android.webkit.WebResourceRequest request) {
+                if ("focuslock://close".equals(request.getUrl().toString())) closePaywall.run();
+                else if ("focuslock://terms".equals(request.getUrl().toString())) openWebsitePath("/terms");
+                return true;
+            }
+        });
+        dialog.setOnDismissListener(d -> {
+            page.stopLoading();
+            page.destroy();
+            if (onClosed != null && !isFinishing() && !isDestroyed()) onClosed.run();
+        });
+        dialog.setContentView(paywallSurface);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setFormat(android.graphics.PixelFormat.TRANSLUCENT);
+            dialog.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            dialog.getWindow().setWindowAnimations(0);
+        }
+        if (page.getProgress() >= 100) new Handler().post(showReadyPaywall);
+    }
+
+    private void showFaqDialog() {
+        TextView faq = text(
+                "How does FocusLock work?\n"
+                        + "Choose apps, set a use limit, and choose how long they stay locked.\n\n"
+                        + "What counts toward my limit?\n"
+                        + "Only time spent in the selected app counts.\n\n"
+                        + "What if protection stops?\n"
+                        + "Open the main screen and use the permission repair prompts.\n\n"
+                        + "Can I change my timers?\n"
+                        + "Yes. Tap either timer and scroll the hours, minutes, or seconds wheel.\n\n"
+                        + "Does FocusLock use a VPN?\n"
+                        + "No. FocusLock does not use a VPN or filter web content.",
+                12, INK, false);
+        faq.setLineSpacing(0, 1.2f);
+        faq.setPadding(dp(20), dp(6), dp(20), dp(8));
+        ScrollView scroll = new ScrollView(this);
+        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        scroll.addView(faq, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        new AlertDialog.Builder(this)
+                .setTitle("FocusLock FAQ")
+                .setView(scroll)
+                .setPositiveButton("Done", null)
+                .show();
+    }
+
+    private void showChangePasswordDialog() {
+        EditText field = numberlessSecretInput("New password (8+ characters)");
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Change password")
+                .setView(field)
+                .setPositiveButton("Save", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String value = field.getText().toString();
+            if (value.length() < 8) { field.setError("Use at least 8 characters"); return; }
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+            SupabaseApi.updatePassword(this, value, (saved, error) -> {
+                if (!Boolean.TRUE.equals(saved)) {
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                    field.setError(error);
+                } else {
+                    dialog.dismiss();
+                    toast("Password updated.");
+                }
+            });
+        }));
+        dialog.show();
+    }
+
+    private void showChangeEmailDialog() {
+        EditText field = numberlessEmailInput("New email address");
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Change email")
+                .setMessage("You may be asked to confirm both your current and new email addresses.")
+                .setView(field)
+                .setPositiveButton("Send confirmation", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String value = field.getText().toString().trim();
+            if (!value.contains("@")) { field.setError("Enter a valid email"); return; }
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+            SupabaseApi.updateEmail(this, value, (saved, error) -> {
+                if (!Boolean.TRUE.equals(saved)) {
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                    field.setError(error);
+                } else {
+                    dialog.dismiss();
+                    toast("Check your email to confirm the change.");
+                }
+            });
+        }));
+        dialog.show();
+    }
+
+    private void showDiagnosticsDialog() {
+        boolean enabled = DiagnosticStore.enabled(this);
+        new AlertDialog.Builder(this)
+                .setTitle("Anonymous diagnostics")
+                .setMessage("When enabled, FocusLock may send a crash type, app version, Android version and device model. It never includes selected apps, browsing activity, passwords or screen content.")
+                .setPositiveButton(enabled ? "Turn off" : "Turn on", (dialog, which) -> {
+                    DiagnosticStore.setEnabled(this, !enabled);
+                    toast("Anonymous diagnostics " + (!enabled ? "enabled." : "disabled."));
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showDeleteAccountDialog() {
+        EditText confirmation = new EditText(this);
+        confirmation.setHint("Type DELETE");
+        confirmation.setSingleLine(true);
+        confirmation.setPadding(dp(20), dp(12), dp(20), dp(12));
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Permanently delete account?")
+                .setMessage("This deletes your FocusLock account, synced progress, device records and access history. It cannot be undone. Type DELETE to confirm.")
+                .setView(confirmation)
+                .setPositiveButton("Delete permanently", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             if (!"DELETE".equals(confirmation.getText().toString().trim())) {
                 confirmation.setError("Type DELETE exactly");
                 return;
