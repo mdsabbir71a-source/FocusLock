@@ -1,4 +1,7 @@
-plugins { id 'com.android.application' }
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
 
 android {
     namespace 'com.focuslock.app'
@@ -56,4 +59,10 @@ android {
         checkReleaseBuilds false
         abortOnError true
     }
+}
+
+// Firebase dependencies are aligned by the bill of materials.
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:34.19.0')
+    implementation 'com.google.firebase:firebase-analytics'
 }
