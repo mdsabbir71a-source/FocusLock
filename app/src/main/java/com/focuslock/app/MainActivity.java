@@ -1251,20 +1251,16 @@ public class MainActivity extends Activity {
         dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
         LinearLayout card = column();
         card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setPadding(dp(25), dp(20), dp(25), dp(20));
-        card.setBackground(shape(Color.rgb(250, 247, 237), Color.rgb(230, 232, 219), 26));
+        card.setPadding(dp(28), dp(16), dp(28), dp(28));
+        card.setBackground(new AnnouncementCardBackground());
         TextView close = text("×", 28, MUTED, false);
         close.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
         close.setContentDescription("Close announcement");
         card.addView(close, matchWrap());
-        TextView badge = text("✦", 29, GREEN, true);
-        badge.setGravity(Gravity.CENTER);
-        badge.setBackground(shape(Color.rgb(224, 235, 216), Color.rgb(224, 235, 216), 18));
-        card.addView(badge, new LinearLayout.LayoutParams(dp(64), dp(64)));
-        TextView title = text(RemoteConfigStore.announcementTitle(this), 23, INK, true);
+        TextView title = text(RemoteConfigStore.announcementTitle(this), 24, Color.rgb(29, 66, 42), true);
         title.setGravity(Gravity.CENTER);
-        card.addView(title, topMargin(16));
-        TextView body = text(RemoteConfigStore.announcementBody(this), 15, MUTED, false);
+        card.addView(title, topMargin(30));
+        TextView body = text(RemoteConfigStore.announcementBody(this), 16, Color.rgb(56, 70, 61), false);
         body.setGravity(Gravity.CENTER);
         body.setLineSpacing(dp(4), 1f);
         card.addView(body, topMargin(12));
@@ -1273,8 +1269,10 @@ public class MainActivity extends Activity {
         Uri destination = Uri.parse(link);
         if (!label.isEmpty() && "https".equalsIgnoreCase(destination.getScheme())
                 && destination.getHost() != null && destination.getUserInfo() == null) {
-            Button action = button(label, GREEN, Color.WHITE);
-            action.setBackground(shape(GREEN, GREEN, 24));
+            int deepGreen = Color.rgb(30, 68, 43);
+            Button action = button(label, deepGreen, Color.WHITE);
+            action.setAllCaps(false);
+            action.setBackground(shape(deepGreen, deepGreen, 28));
             action.setOnClickListener(v -> {
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, destination).addCategory(Intent.CATEGORY_BROWSABLE));
@@ -1282,11 +1280,11 @@ public class MainActivity extends Activity {
                     dialog.dismiss();
                 } catch (Exception error) { toast("Could not open this link."); }
             });
-            card.addView(action, topMargin(20));
+            card.addView(action, topMargin(26));
         }
         TextView later = text("Maybe later", 13, GREEN, true);
         later.setGravity(Gravity.CENTER);
-        card.addView(later, topMargin(15));
+        card.addView(later, topMargin(18));
         close.setOnClickListener(v -> dialog.cancel());
         later.setOnClickListener(v -> dialog.cancel());
         dialog.setOnCancelListener(ignored -> RemoteConfigStore.markAnnouncementSeen(this));
@@ -1299,6 +1297,56 @@ public class MainActivity extends Activity {
             dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
             dialog.getWindow().setLayout(getResources().getDisplayMetrics().widthPixels - dp(40), ViewGroup.LayoutParams.WRAP_CONTENT);
         }
+    }
+
+    /** Quiet botanical corners, drawn locally so the artwork never delays the message. */
+    private class AnnouncementCardBackground extends android.graphics.drawable.Drawable {
+        private final android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        @Override public void draw(android.graphics.Canvas canvas) {
+            android.graphics.Rect bounds = getBounds();
+            float w = bounds.width(), h = bounds.height();
+            paint.setStyle(android.graphics.Paint.Style.FILL);
+            paint.setColor(Color.rgb(250, 246, 237));
+            canvas.drawRoundRect(0, 0, w, h, dp(27), dp(27), paint);
+            canvas.save();
+            android.graphics.Path clip = new android.graphics.Path();
+            clip.addRoundRect(0, 0, w, h, dp(27), dp(27), android.graphics.Path.Direction.CW);
+            canvas.clipPath(clip);
+            paint.setColor(Color.rgb(177, 195, 161));
+            paint.setStrokeWidth(dp(1));
+            paint.setStyle(android.graphics.Paint.Style.STROKE);
+            drawSprig(canvas, dp(0), dp(95), 1f);
+            canvas.save();
+            canvas.translate(w, h);
+            canvas.rotate(180);
+            drawSprig(canvas, dp(0), dp(95), 1f);
+            canvas.restore();
+            canvas.restore();
+        }
+        private void drawSprig(android.graphics.Canvas canvas, float x, float y, float scale) {
+            canvas.save();
+            canvas.translate(x, y);
+            canvas.scale(scale, scale);
+            android.graphics.Path stem = new android.graphics.Path();
+            stem.moveTo(0, 0);
+            stem.cubicTo(dp(12), -dp(24), dp(29), -dp(47), dp(70), -dp(65));
+            canvas.drawPath(stem, paint);
+            drawLeaf(canvas, dp(16), -dp(29), dp(14), -dp(56), dp(27), -dp(43));
+            drawLeaf(canvas, dp(30), -dp(45), dp(35), -dp(72), dp(44), -dp(53));
+            drawLeaf(canvas, dp(40), -dp(51), dp(62), -dp(61), dp(60), -dp(47));
+            canvas.restore();
+        }
+        private void drawLeaf(android.graphics.Canvas canvas, float x, float y, float tipX, float tipY, float endX, float endY) {
+            android.graphics.Path leaf = new android.graphics.Path();
+            leaf.moveTo(x, y);
+            leaf.quadTo((x + tipX) / 2 - dp(6), (y + tipY) / 2, tipX, tipY);
+            leaf.quadTo((endX + tipX) / 2 + dp(6), (endY + tipY) / 2, endX, endY);
+            leaf.close();
+            canvas.drawPath(leaf, paint);
+        }
+        @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); }
+        @Override public void setColorFilter(android.graphics.ColorFilter filter) { paint.setColorFilter(filter); }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
     }
 
     private void stopProtectionForAccess() {
