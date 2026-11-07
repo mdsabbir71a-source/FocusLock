@@ -6,6 +6,7 @@ import android.app.Application;
 public class FocusLockApplication extends Application {
     @Override public void onCreate() {
         super.onCreate();
+        FocusAnalytics.restoreChoice(this);
         Thread.UncaughtExceptionHandler previous = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler((thread, error) -> {
             DiagnosticStore.recordCrash(this, error);

@@ -210,6 +210,8 @@ public class MainActivity extends Activity {
         }
         new Handler().post(() -> {
             if (isFinishing()) return;
+            FocusAnalytics.log(this, "focus_app_open");
+            if (shouldShowOnboarding) FocusAnalytics.log(this, "setup_started");
             if (paywallPending) {
                 showSubscriptionDialog(() -> {
                     showHomeContent();
@@ -223,6 +225,16 @@ public class MainActivity extends Activity {
                         && onboarding.getBoolean("welcome_seen", false)) schedulePostPaywallGuide();
             }
         });
+    }
+
+    private void showAnalyticsSettings() {
+        boolean enabled = FocusAnalytics.enabled(this);
+        new AlertDialog.Builder(this)
+                .setTitle("App analytics")
+                .setMessage(enabled ? "Analytics and crash reports are on. Crash reports are sent after the app restarts. Turn this off to stop analytics and delete unsent crash reports." : "Analytics and crash reports are off. Turn them on to help improve FocusLock.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton(enabled ? "Turn off" : "Turn on", (d, w) -> FocusAnalytics.setEnabled(this, !enabled))
+                .show();
     }
 
     /** Builds the expensive app-picker only once the setup surface has handed off. */
@@ -837,6 +849,7 @@ public class MainActivity extends Activity {
     private void showPermissionsOnboarding() {
         if (isFinishing()) return;
         if (permissionOnboardingDialog != null && permissionOnboardingDialog.isShowing()) return;
+        FocusAnalytics.log(this, "setup_permissions_viewed");
         setOnboardingSystemBars(false);
         finishingPermissionOnboarding = false;
         Dialog dialog = new Dialog(this);
@@ -952,6 +965,10 @@ public class MainActivity extends Activity {
                 }
             }
             if (approvedRow != null) {
+                String[] events = {"setup_usage_ready", "setup_overlay_ready", "setup_battery_ready", "setup_accessibility_ready"};
+                Object tag = approvedRow.getTag();
+                if (tag instanceof Integer && (Integer) tag >= 0 && (Integer) tag < events.length)
+                    FocusAnalytics.log(this, events[(Integer) tag]);
                 animateApprovedPermissionAway(approvedRow, next < 0);
                 return;
             }
@@ -1072,6 +1089,7 @@ public class MainActivity extends Activity {
 
     private void enterAppAfterPermissions() {
         if (permissionOnboardingDialog == null || !permissionOnboardingDialog.isShowing()) return;
+        FocusAnalytics.log(this, "setup_completed");
         getSharedPreferences("focuslock_onboarding", MODE_PRIVATE).edit()
                 .putBoolean("welcome_seen", true).putBoolean("permission_onboarding_done", true)
                 .putBoolean("distraction_onboarding_v119_seen", true)
@@ -1097,6 +1115,8 @@ public class MainActivity extends Activity {
     }
 
     private void openOnboardingPermission(int step) {
+        String[] events = {"setup_usage_requested", "setup_overlay_requested", "setup_battery_requested", "setup_accessibility_requested"};
+        if (step >= 1 && step <= events.length) FocusAnalytics.log(this, events[step - 1]);
         if (step == 1) {
             waitingForSpecialPermission = 1;
             showPermissionPrimer("Allow Usage Access", "Find FocusLock and turn it on.",
@@ -1399,6 +1419,7 @@ public class MainActivity extends Activity {
 
         panel.addView(text("HELP & PRIVACY", 10, VIOLET, true), topMargin(16));
         panel.addView(accountRow("FocusLock FAQ", "Answers about blocking and timers", v -> showFaqDialog()), topMargin(7));
+        panel.addView(accountRow("App analytics", "Manage optional analytics", v -> showAnalyticsSettings()), topMargin(7));
         panel.addView(accountRow("Privacy policy", "How FocusLock handles your data", v -> openWebsitePath("/privacy")), topMargin(7));
         panel.addView(accountRow("Terms of service", "The rules for using FocusLock", v -> openWebsitePath("/terms")), topMargin(7));
         panel.addView(accountRow("Contact us", "Get help from the FocusLock team", v -> sendSupportEmail()), topMargin(7));
@@ -1487,6 +1508,7 @@ public class MainActivity extends Activity {
         Runnable revealPaywall = () -> {
             if (revealed[0] || !dialog.isShowing() || isFinishing() || isDestroyed()) return;
             revealed[0] = true;
+            FocusAnalytics.log(this, "paywall_preview_viewed");
             if (departingPermissions != null && departingPermissions.isShowing()) {
                 departingPermissions.dismiss();
             }
@@ -1553,15 +1575,19 @@ public class MainActivity extends Activity {
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
                 if ("focuslock://close".equals(url)) closePaywall.run();
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
+                else recordPaywallAction(url);
                 return true;
             }
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, android.webkit.WebResourceRequest request) {
-                if ("focuslock://close".equals(request.getUrl().toString())) closePaywall.run();
-                else if ("focuslock://terms".equals(request.getUrl().toString())) openWebsitePath("/terms");
+                String url = request.getUrl().toString();
+                if ("focuslock://close".equals(url)) closePaywall.run();
+                else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
+                else recordPaywallAction(url);
                 return true;
             }
         });
         dialog.setOnDismissListener(d -> {
+            if (revealed[0]) FocusAnalytics.log(this, "paywall_preview_dismissed");
             page.stopLoading();
             page.destroy();
             if (onClosed != null && !isFinishing() && !isDestroyed()) onClosed.run();
@@ -1574,6 +1600,13 @@ public class MainActivity extends Activity {
             dialog.getWindow().setWindowAnimations(0);
         }
         if (page.getProgress() >= 100) new Handler().post(showReadyPaywall);
+    }
+
+    private void recordPaywallAction(String url) {
+        if ("focuslock://paywall/yearly".equals(url)) FocusAnalytics.log(this, "paywall_yearly_selected");
+        else if ("focuslock://paywall/monthly".equals(url)) FocusAnalytics.log(this, "paywall_monthly_selected");
+        else if ("focuslock://paywall/preview_action".equals(url)) FocusAnalytics.log(this, "paywall_preview_action");
+        else if ("focuslock://paywall/restore".equals(url)) FocusAnalytics.log(this, "paywall_restore_selected");
     }
 
     private void showFaqDialog() {
@@ -2168,6 +2201,7 @@ public class MainActivity extends Activity {
         LockStore.setLockFocusLock(this, lockFocusLockCheck != null && lockFocusLockCheck.isChecked());
         for (String packageName : selected) AppSelectionStore.record(this, packageName);
         LockStore.setEnabled(this, true);
+        FocusAnalytics.log(this, "protection_started");
         // Notification permission is handled by setup, not while saving a plan.
         startSavedMonitoring();
         playSuccessCelebration();

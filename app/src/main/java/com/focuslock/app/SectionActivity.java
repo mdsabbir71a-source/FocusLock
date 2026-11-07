@@ -147,12 +147,26 @@ public final class SectionActivity extends Activity {
         if (!account || action == null) return;
         if ("details".equals(action)) showAccountDetails();
         else if ("notifications".equals(action)) openNotificationSettings();
+        else if ("app_analytics".equals(action)) showAppAnalyticsSettings();
         else if ("faq".equals(action)) showFaq();
         else if ("privacy".equals(action)) openWebsitePath("/privacy.html");
         else if ("terms".equals(action)) openWebsitePath("/terms.html");
         else if ("support".equals(action)) showSupport();
         else if ("password".equals(action) || "signout".equals(action) || "delete".equals(action))
             toast("FocusLock does not require an account.");
+    }
+
+    private void showAppAnalyticsSettings() {
+        boolean enabled = FocusAnalytics.enabled(this);
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle("App analytics")
+                .setMessage(enabled ? "FocusLock uses Google Firebase Analytics to understand app use and improve the app. Firebase may collect app and device information and crash reports. We do not include selected app names in our custom events. Crash reports are sent after the app restarts. Turn this off to stop analytics and delete unsent crash reports." : "App analytics and crash reports are off. Turn them on to help improve FocusLock using Google Firebase.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton(enabled ? "Turn off" : "Turn on", (d, w) -> FocusAnalytics.setEnabled(this, !enabled));
+        if (enabled) dialog.setNeutralButton("Send test event", (d, w) -> {
+            boolean queued = FocusAnalytics.log(this, "analytics_check");
+            toast(queued ? "Test event queued. It may take time to appear in Firebase." : "Could not queue test event.");
+        });
+        dialog.show();
     }
 
     private void showAccountDetails() {

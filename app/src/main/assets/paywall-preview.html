@@ -63,9 +63,9 @@
 <p class="terms">Renews automatically. Cancel anytime. <a href="focuslock://terms">Terms &amp; conditions</a></p></footer>
 </main>
 <script>
-function selectPlan(yearly){window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('month').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?'Start 7-day free trial':'Continue with monthly'}
-function previewAction(){var b=document.getElementById('action');b.textContent='Preview only — no payment';setTimeout(function(){b.textContent=window.selectedYearly===false?'Continue with monthly':'Start 7-day free trial'},2200)}
-function showRestorePreview(){var message=document.getElementById('restore-status');message.hidden=false;message.textContent='Purchase restoration will be available when subscriptions are connected.'}
+function selectPlan(yearly){location.href=yearly?'focuslock://paywall/yearly':'focuslock://paywall/monthly';window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('month').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?'Start 7-day free trial':'Continue with monthly'}
+function previewAction(){location.href='focuslock://paywall/preview_action';var b=document.getElementById('action');b.textContent='Preview only — no payment';setTimeout(function(){b.textContent=window.selectedYearly===false?'Continue with monthly':'Start 7-day free trial'},2200)}
+function showRestorePreview(){location.href='focuslock://paywall/restore';var message=document.getElementById('restore-status');message.hidden=false;message.textContent='Purchase restoration will be available when subscriptions are connected.'}
 </script>
 </body>
 </html>

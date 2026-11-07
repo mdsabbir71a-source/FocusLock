@@ -1,4 +1,8 @@
-plugins { id 'com.android.application' }
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
+}
 
 android {
     namespace 'com.focuslock.app'
@@ -17,8 +21,8 @@ android {
         // Play Console permanently reserves uploaded version codes. Keep this
         // release functionally identical while allowing it to replace the
         // already-uploaded code 200 bundle.
-        versionCode 231
-        versionName '1.1.31'
+        versionCode 232
+        versionName '1.1.32'
         buildConfigField 'String', 'SUPABASE_URL', '"https://sfrwqrjwyzhabmquythi.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_Y3Xl3f_pmMX3bZblCvjXmw_c2l1iPM7"'
         buildConfigField 'String', 'PUBLIC_SITE_URL', '"https://focuslock.io"'
@@ -56,4 +60,11 @@ android {
         checkReleaseBuilds false
         abortOnError true
     }
+}
+
+// Firebase dependencies are aligned by the bill of materials.
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:34.19.0')
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-crashlytics'
 }
