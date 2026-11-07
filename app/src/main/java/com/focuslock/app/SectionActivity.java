@@ -159,7 +159,7 @@ public final class SectionActivity extends Activity {
     private void showAppAnalyticsSettings() {
         boolean enabled = FocusAnalytics.enabled(this);
         AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle("App analytics")
-                .setMessage(enabled ? "Optional analytics is on. Turn it off to stop collection on this device." : "Optional analytics is off. Turn it on to help improve FocusLock.")
+                .setMessage(enabled ? "FocusLock uses Google Firebase Analytics to understand app use and improve the app. Firebase may collect app and device information. We do not include selected app names in our custom events. Turn this off to stop analytics collection on this device." : "Optional app analytics is off. Turn it on to help improve FocusLock using Google Firebase Analytics.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton(enabled ? "Turn off" : "Turn on", (d, w) -> FocusAnalytics.setEnabled(this, !enabled));
         if (enabled) dialog.setNeutralButton("Send test event", (d, w) -> {

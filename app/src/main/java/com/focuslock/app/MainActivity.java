@@ -208,7 +208,7 @@ public class MainActivity extends Activity {
         } else {
             setContentView(buildLaunchPlaceholder(shouldShowOnboarding));
         }
-        new Handler().post(() -> requestAnalyticsChoice(() -> {
+        new Handler().post(() -> {
             if (isFinishing()) return;
             FocusAnalytics.log(this, "focus_app_open");
             if (shouldShowOnboarding) FocusAnalytics.log(this, "setup_started");
@@ -224,19 +224,7 @@ public class MainActivity extends Activity {
                 if (!onboarding.getBoolean("guide_complete", false)
                         && onboarding.getBoolean("welcome_seen", false)) schedulePostPaywallGuide();
             }
-        }));
-    }
-
-    private void requestAnalyticsChoice(Runnable continueStartup) {
-        if (isFinishing() || isDestroyed()) return;
-        if (FocusAnalytics.hasChoice(this)) { continueStartup.run(); return; }
-        new AlertDialog.Builder(this)
-                .setTitle("Help improve FocusLock")
-                .setMessage("Allow optional app analytics to help us understand setup, app use, and errors? Analytics is provided by Google Firebase. We do not send the names of the apps you select. You can change your choice later in Account.\n\nYour focus protection works either way.")
-                .setCancelable(false)
-                .setNegativeButton("Not now", (d, w) -> { FocusAnalytics.setEnabled(this, false); continueStartup.run(); })
-                .setPositiveButton("Allow analytics", (d, w) -> { FocusAnalytics.setEnabled(this, true); continueStartup.run(); })
-                .show();
+        });
     }
 
     private void showAnalyticsSettings() {

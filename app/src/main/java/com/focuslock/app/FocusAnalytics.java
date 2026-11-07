@@ -6,7 +6,7 @@ import android.os.Bundle;
 import android.util.Log;
 import com.google.firebase.analytics.FirebaseAnalytics;
 
-/** Optional app analytics. Never send selected app names or device identifiers. */
+/** Optional app analytics. Custom events do not include selected app names. */
 final class FocusAnalytics {
     private static final String PREFS = "focuslock_analytics_choice";
     private static final String CHOSEN = "chosen";
@@ -18,7 +18,7 @@ final class FocusAnalytics {
     static boolean hasChoice(Context c) { return prefs(c).getBoolean(CHOSEN, false); }
     static boolean enabled(Context c) { return prefs(c).getBoolean(ENABLED, false); }
     static void restoreChoice(Context c) {
-        if (!hasChoice(c)) return;
+        if (!hasChoice(c)) { setEnabled(c, true); return; }
         try { FirebaseAnalytics.getInstance(c.getApplicationContext()).setAnalyticsCollectionEnabled(enabled(c)); }
         catch (RuntimeException error) { Log.w("FocusAnalytics", "Could not restore analytics choice", error); }
     }
