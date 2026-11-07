@@ -1251,28 +1251,43 @@ public class MainActivity extends Activity {
         dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
         LinearLayout card = column();
         card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setPadding(dp(28), dp(16), dp(28), dp(28));
-        card.setBackground(new AnnouncementCardBackground());
-        TextView close = text("×", 28, MUTED, false);
-        close.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        close.setContentDescription("Close announcement");
-        card.addView(close, matchWrap());
-        TextView title = text(RemoteConfigStore.announcementTitle(this), 24, Color.rgb(29, 66, 42), true);
+        card.setPadding(dp(18), dp(20), dp(18), dp(18));
+        int deepGreen = Color.rgb(30, 68, 43);
+        card.setBackground(shape(Color.rgb(250, 246, 237), deepGreen, 14));
+
+        TextView icon = text("↑", 21, deepGreen, true);
+        icon.setGravity(Gravity.CENTER);
+        icon.setContentDescription("Announcement");
+        icon.setBackground(shape(Color.rgb(223, 236, 218), Color.rgb(223, 236, 218), 30));
+        card.addView(icon, new LinearLayout.LayoutParams(dp(42), dp(42)));
+
+        TextView title = text(RemoteConfigStore.announcementTitle(this), 20, Color.rgb(29, 66, 42), true);
         title.setGravity(Gravity.CENTER);
-        card.addView(title, topMargin(30));
-        TextView body = text(RemoteConfigStore.announcementBody(this), 16, Color.rgb(56, 70, 61), false);
+        card.addView(title, topMargin(14));
+        TextView body = text(RemoteConfigStore.announcementBody(this), 15, Color.rgb(83, 96, 85), false);
         body.setGravity(Gravity.CENTER);
-        body.setLineSpacing(dp(4), 1f);
-        card.addView(body, topMargin(12));
+        body.setLineSpacing(dp(3), 1f);
+        card.addView(body, topMargin(8));
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setGravity(Gravity.CENTER_VERTICAL);
+        Button later = button("Later", Color.rgb(231, 234, 224), deepGreen);
+        later.setAllCaps(false);
+        later.setContentDescription("Dismiss announcement");
+        later.setBackground(shape(Color.rgb(231, 234, 224), Color.rgb(231, 234, 224), 10));
+        later.setOnClickListener(v -> dialog.cancel());
+        LinearLayout.LayoutParams laterParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
+        actions.addView(later, laterParams);
+
         String label = RemoteConfigStore.announcementButtonLabel(this).trim();
         String link = RemoteConfigStore.announcementButtonUrl(this).trim();
         Uri destination = Uri.parse(link);
         if (!label.isEmpty() && "https".equalsIgnoreCase(destination.getScheme())
                 && destination.getHost() != null && destination.getUserInfo() == null) {
-            int deepGreen = Color.rgb(30, 68, 43);
             Button action = button(label, deepGreen, Color.WHITE);
             action.setAllCaps(false);
-            action.setBackground(shape(deepGreen, deepGreen, 28));
+            action.setBackground(shape(deepGreen, deepGreen, 10));
             action.setOnClickListener(v -> {
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, destination).addCategory(Intent.CATEGORY_BROWSABLE));
@@ -1280,13 +1295,11 @@ public class MainActivity extends Activity {
                     dialog.dismiss();
                 } catch (Exception error) { toast("Could not open this link."); }
             });
-            card.addView(action, topMargin(26));
+            LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(0, dp(48), 1f);
+            actionParams.leftMargin = dp(10);
+            actions.addView(action, actionParams);
         }
-        TextView later = text("Maybe later", 13, GREEN, true);
-        later.setGravity(Gravity.CENTER);
-        card.addView(later, topMargin(18));
-        close.setOnClickListener(v -> dialog.cancel());
-        later.setOnClickListener(v -> dialog.cancel());
+        card.addView(actions, topMargin(20));
         dialog.setOnCancelListener(ignored -> RemoteConfigStore.markAnnouncementSeen(this));
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(false);
