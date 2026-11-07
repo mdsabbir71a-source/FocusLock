@@ -1,0 +1,32 @@
+name: Validate Firebase analytics
+on:
+  push:
+    branches: [firebase-analytics-integration]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Download Gradle
+        run: |
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -o gradle.zip
+          unzip -q gradle.zip
+      # Placeholder is only for compiling, never for delivery or real event collection.
+      - name: Supply non-production Firebase configuration
+        run: |
+          cat > app/google-services.json <<'JSON'
+          {"project_info":{"project_number":"123456789012","project_id":"focuslock-build-validation","storage_bucket":"focuslock-build-validation.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:123456789012:android:1111111111111111","android_client_info":{"package_name":"io.focuslock.app"}},"api_key":[{"current_key":"AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}]}],"configuration_version":"1"}
+          JSON
+      - name: Compile debug APK
+        run: ./gradle-8.10.2/bin/gradle --no-daemon :app:assembleDebug

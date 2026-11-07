@@ -162,6 +162,7 @@ public final class LockStore {
             long duration = lockDuration(context, pkg);
             prefs(context).edit().putLong(usageKey(pkg), 0).putLong(lockedKey(pkg), System.currentTimeMillis() + duration).putInt(cardKey(pkg), cardIndex).putInt(LAST_CARD_INDEX, cardIndex).apply();
             FocusInsights.recordPause(context, pkg, duration);
+            FocusAnalytics.log(context, "focus_pause_started");
             return true;
         }
         prefs(context).edit().putLong(usageKey(pkg), total).apply();

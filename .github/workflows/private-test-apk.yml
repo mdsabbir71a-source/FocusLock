@@ -13,6 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Restore Firebase configuration
+        env:
+          FIREBASE_ANDROID_CONFIG: ${{ secrets.FOCUSLOCK_FIREBASE_ANDROID_CONFIG }}
+        run: |
+          test -n "$FIREBASE_ANDROID_CONFIG"
+          printf '%s' "$FIREBASE_ANDROID_CONFIG" > app/google-services.json
+          python3 -c 'import json; d=json.load(open("app/google-services.json")); assert any(c["client_info"]["android_client_info"]["package_name"] == "io.focuslock.app" for c in d["client"])'
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
