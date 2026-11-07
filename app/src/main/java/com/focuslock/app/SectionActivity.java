@@ -147,12 +147,26 @@ public final class SectionActivity extends Activity {
         if (!account || action == null) return;
         if ("details".equals(action)) showAccountDetails();
         else if ("notifications".equals(action)) openNotificationSettings();
+        else if ("app_analytics".equals(action)) showAppAnalyticsSettings();
         else if ("faq".equals(action)) showFaq();
         else if ("privacy".equals(action)) openWebsitePath("/privacy.html");
         else if ("terms".equals(action)) openWebsitePath("/terms.html");
         else if ("support".equals(action)) showSupport();
         else if ("password".equals(action) || "signout".equals(action) || "delete".equals(action))
             toast("FocusLock does not require an account.");
+    }
+
+    private void showAppAnalyticsSettings() {
+        boolean enabled = FocusAnalytics.enabled(this);
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this).setTitle("App analytics")
+                .setMessage(enabled ? "Optional analytics is on. Turn it off to stop collection on this device." : "Optional analytics is off. Turn it on to help improve FocusLock.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton(enabled ? "Turn off" : "Turn on", (d, w) -> FocusAnalytics.setEnabled(this, !enabled));
+        if (enabled) dialog.setNeutralButton("Send test event", (d, w) -> {
+            boolean queued = FocusAnalytics.log(this, "analytics_check");
+            toast(queued ? "Test event queued. It may take time to appear in Firebase." : "Could not queue test event.");
+        });
+        dialog.show();
     }
 
     private void showAccountDetails() {

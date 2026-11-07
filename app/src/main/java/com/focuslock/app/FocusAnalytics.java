@@ -3,6 +3,7 @@ package com.focuslock.app;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import com.google.firebase.analytics.FirebaseAnalytics;
 
 /** Optional app analytics. Never send selected app names or device identifiers. */
@@ -16,17 +17,22 @@ final class FocusAnalytics {
     }
     static boolean hasChoice(Context c) { return prefs(c).getBoolean(CHOSEN, false); }
     static boolean enabled(Context c) { return prefs(c).getBoolean(ENABLED, false); }
+    static void restoreChoice(Context c) {
+        if (!hasChoice(c)) return;
+        try { FirebaseAnalytics.getInstance(c.getApplicationContext()).setAnalyticsCollectionEnabled(enabled(c)); }
+        catch (RuntimeException error) { Log.w("FocusAnalytics", "Could not restore analytics choice", error); }
+    }
     static void setEnabled(Context c, boolean enabled) {
         prefs(c).edit().putBoolean(CHOSEN, true).putBoolean(ENABLED, enabled).apply();
         try {
             FirebaseAnalytics analytics = FirebaseAnalytics.getInstance(c.getApplicationContext());
             analytics.setAnalyticsCollectionEnabled(enabled);
             if (!enabled) analytics.resetAnalyticsData();
-        } catch (RuntimeException ignored) { /* Analytics must never block protection. */ }
+        } catch (RuntimeException error) { Log.w("FocusAnalytics", "Could not update analytics collection", error); }
     }
-    static void log(Context c, String event) {
-        if (!enabled(c)) return;
-        try { FirebaseAnalytics.getInstance(c.getApplicationContext()).logEvent(event, new Bundle()); }
-        catch (RuntimeException ignored) { /* App functionality takes priority. */ }
+    static boolean log(Context c, String event) {
+        if (!enabled(c)) return false;
+        try { FirebaseAnalytics.getInstance(c.getApplicationContext()).logEvent(event, new Bundle()); return true; }
+        catch (RuntimeException error) { Log.w("FocusAnalytics", "Could not queue an analytics event", error); return false; }
     }
 }
