@@ -1,7 +1,7 @@
 name: Build Firebase analytics device test
 on:
   push:
-    branches: [firebase-analytics-device-test]
+    branches: [firebase-analytics-device-test, restore-analytics-notification]
   workflow_dispatch:
 permissions:
   contents: read
