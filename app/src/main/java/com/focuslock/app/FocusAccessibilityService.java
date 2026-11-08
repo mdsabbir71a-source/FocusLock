@@ -22,13 +22,15 @@ public final class FocusAccessibilityService extends AccessibilityService {
     private static final long OVERLAY_FALLBACK_DELAY_MS = 3_000L;
     private static volatile long navigationGeneration;
     private static volatile long lastResponsiveTick;
+    // A running timer is not proof that we know which app is in front.
+    private static volatile boolean hasReliableForeground;
     private static final long RESPONSIVE_WINDOW_MS = 2_000L;
 
     /** Settings can say enabled while Android has disconnected the service. */
     static boolean isResponsive() {
         long last = lastResponsiveTick;
         long age = SystemClock.elapsedRealtime() - last;
-        return last != 0L && age >= 0L && age <= RESPONSIVE_WINDOW_MS;
+        return hasReliableForeground && last != 0L && age >= 0L && age <= RESPONSIVE_WINDOW_MS;
     }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -40,6 +42,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
     /** The previous foreground signal is no longer reliable after the lock UI loses focus. */
     public static void onLockScreenPaused() {
         navigationGeneration++;
+        hasReliableForeground = false;
     }
 
     private final Runnable ticker = new Runnable() {
@@ -64,6 +67,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
         info.flags = 0;
         setServiceInfo(info);
         lastTick = SystemClock.elapsedRealtime();
+        hasReliableForeground = false;
         lastResponsiveTick = lastTick;
         handler.removeCallbacks(ticker);
         handler.post(ticker);
@@ -78,6 +82,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
         if (packageName == null || packageName.length() == 0) return;
         observedNavigationGeneration = navigationGeneration;
         updateForegroundPackage(packageName.toString());
+        hasReliableForeground = true;
         handler.removeCallbacks(ticker);
         handler.post(ticker);
     }
@@ -86,6 +91,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
 
     @Override public boolean onUnbind(Intent intent) {
         lastResponsiveTick = 0L;
+        hasReliableForeground = false;
         handler.removeCallbacks(ticker);
         foregroundPackage = null;
         return super.onUnbind(intent);
@@ -98,6 +104,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
         if (observedNavigationGeneration != navigationGeneration) {
             observedNavigationGeneration = navigationGeneration;
             foregroundPackage = null;
+            hasReliableForeground = false;
             return;
         }
         if (!AccessStore.isAllowed(this) || !LockStore.isEnabled(this)
