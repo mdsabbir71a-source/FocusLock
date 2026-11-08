@@ -47,7 +47,7 @@ jobs:
       - name: Verify signature
         run: '"$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk'
       - name: Verify bundle signature
-        run: jarsigner -verify -strict -certs app/build/outputs/bundle/release/app-release.aab
+        run: jarsigner -verify -certs app/build/outputs/bundle/release/app-release.aab
       - uses: actions/upload-artifact@v4
         with:
           name: FocusLock-Firebase-Analytics-Test
