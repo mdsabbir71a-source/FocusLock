@@ -1,7 +1,7 @@
 name: Build Firebase analytics device test
 on:
   push:
-    branches: [firebase-analytics-device-test, restore-analytics-notification, fix-intermittent-lock-recovery]
+    branches: [firebase-analytics-device-test, restore-analytics-notification, fix-intermittent-lock-recovery, fix/block-pause-continuity]
   workflow_dispatch:
 permissions:
   contents: read
