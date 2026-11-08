@@ -21,6 +21,15 @@ public final class FocusAccessibilityService extends AccessibilityService {
     private static final long BLOCK_COOLDOWN_MS = 1_200L;
     private static final long OVERLAY_FALLBACK_DELAY_MS = 3_000L;
     private static volatile long navigationGeneration;
+    private static volatile long lastResponsiveTick;
+    private static final long RESPONSIVE_WINDOW_MS = 2_000L;
+
+    /** Settings can say enabled while Android has disconnected the service. */
+    static boolean isResponsive() {
+        long last = lastResponsiveTick;
+        long age = SystemClock.elapsedRealtime() - last;
+        return last != 0L && age >= 0L && age <= RESPONSIVE_WINDOW_MS;
+    }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String foregroundPackage;
@@ -41,6 +50,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
                 DiagnosticStore.record(FocusAccessibilityService.this,
                         "compatibility_monitor_recovered", error.getClass().getSimpleName());
             } finally {
+                lastResponsiveTick = SystemClock.elapsedRealtime();
                 handler.postDelayed(this, TICK_MS);
             }
         }
@@ -54,6 +64,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
         info.flags = 0;
         setServiceInfo(info);
         lastTick = SystemClock.elapsedRealtime();
+        lastResponsiveTick = lastTick;
         handler.removeCallbacks(ticker);
         handler.post(ticker);
         SupabaseApi.syncDeviceState(this);
@@ -74,6 +85,7 @@ public final class FocusAccessibilityService extends AccessibilityService {
     @Override public void onInterrupt() { }
 
     @Override public boolean onUnbind(Intent intent) {
+        lastResponsiveTick = 0L;
         handler.removeCallbacks(ticker);
         foregroundPackage = null;
         return super.onUnbind(intent);
