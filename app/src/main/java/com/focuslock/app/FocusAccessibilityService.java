@@ -46,11 +46,11 @@ public final class FocusAccessibilityService extends AccessibilityService {
         @Override public void run() {
             try {
                 monitorForeground();
+                lastResponsiveTick = SystemClock.elapsedRealtime();
             } catch (Throwable error) {
                 DiagnosticStore.record(FocusAccessibilityService.this,
                         "compatibility_monitor_recovered", error.getClass().getSimpleName());
             } finally {
-                lastResponsiveTick = SystemClock.elapsedRealtime();
                 handler.postDelayed(this, TICK_MS);
             }
         }
