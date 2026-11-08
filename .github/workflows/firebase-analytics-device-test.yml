@@ -3,7 +3,7 @@ on:
   push:
     branches: [firebase-analytics-device-test, restore-analytics-notification, fix-intermittent-lock-recovery, fix/block-pause-continuity]
   pull_request:
-    branches: [fix-intermittent-lock-recovery]
+    branches: [fix-intermittent-lock-recovery, main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -43,11 +43,15 @@ jobs:
           FOCUSLOCK_KEYSTORE_PASSWORD: ${{ secrets.FOCUSLOCK_KEYSTORE_PASSWORD }}
           FOCUSLOCK_KEY_ALIAS: ${{ secrets.FOCUSLOCK_KEY_ALIAS }}
           FOCUSLOCK_KEY_PASSWORD: ${{ secrets.FOCUSLOCK_KEY_PASSWORD }}
-        run: ./gradle-8.10.2/bin/gradle --no-daemon :app:assembleRelease
+        run: ./gradle-8.10.2/bin/gradle --no-daemon :app:assembleRelease :app:bundleRelease
       - name: Verify signature
         run: '"$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk'
+      - name: Verify bundle signature
+        run: jarsigner -verify -strict -certs app/build/outputs/bundle/release/app-release.aab
       - uses: actions/upload-artifact@v4
         with:
           name: FocusLock-Firebase-Analytics-Test
-          path: app/build/outputs/apk/release/app-release.apk
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
