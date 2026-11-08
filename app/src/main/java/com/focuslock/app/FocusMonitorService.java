@@ -128,9 +128,11 @@ public class FocusMonitorService extends Service {
             SupabaseApi.syncDeviceState(this);
         }
 
-        // Compatibility Mode supplies a direct, user-approved foreground signal.
-        // Do not count in both monitors or a limit would expire twice as fast.
-        if (CompatibilityAccess.isEnabled(this)) {
+        // An enabled setting does not mean Android is still running the service.
+        // Defer to Compatibility Mode only while its monitor is responsive;
+        // otherwise Usage Access continues counting and enforcing active locks.
+        // Only one monitor counts while compatibility is healthy.
+        if (CompatibilityAccess.isEnabled(this) && FocusAccessibilityService.isResponsive()) {
             if (GardenLockOverlay.isShowing()
                     && (currentPackage == null || !LockStore.isLocked(this, currentPackage))) {
                 GardenLockOverlay.hide();
