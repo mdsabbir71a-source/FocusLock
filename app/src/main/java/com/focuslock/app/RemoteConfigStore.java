@@ -86,11 +86,11 @@ public final class RemoteConfigStore {
     public static boolean shouldShowAnnouncement(Context context) {
         SharedPreferences p = prefs(context);
         String updatedAt = p.getString("updated_at", "");
-        return p.getBoolean("announcement_enabled", false)
-                && (!p.getString("announcement_title", "").trim().isEmpty()
-                    || !p.getString("announcement_body", "").trim().isEmpty())
-                && !updatedAt.isEmpty()
-                && !updatedAt.equals(p.getString("announcement_seen_at", ""));
+        boolean hasText = !p.getString("announcement_title", "").trim().isEmpty()
+                || !p.getString("announcement_body", "").trim().isEmpty();
+        return AnnouncementPolicy.shouldShow(p.getBoolean("announcement_enabled", false), hasText,
+                repeatAnnouncementUntilLink(context) && hasValidAnnouncementLink(context), updatedAt,
+                p.getString("announcement_seen_at", ""), p.getString("announcement_link_clicked_at", ""));
     }
 
     public static String announcementTitle(Context context) { return prefs(context).getString("announcement_title", "A note from FocusLock"); }
@@ -98,7 +98,16 @@ public final class RemoteConfigStore {
     public static String announcementButtonLabel(Context context) { return prefs(context).getString("announcement_button_label", ""); }
     public static String announcementButtonUrl(Context context) { return prefs(context).getString("announcement_button_url", ""); }
     public static boolean repeatAnnouncementUntilLink(Context context) { return prefs(context).getBoolean("announcement_repeat_until_link", false); }
+    public static boolean hasValidAnnouncementLink(Context context) {
+        android.net.Uri uri = android.net.Uri.parse(announcementButtonUrl(context).trim());
+        return !announcementButtonLabel(context).trim().isEmpty() && "https".equalsIgnoreCase(uri.getScheme())
+                && uri.getHost() != null && uri.getUserInfo() == null;
+    }
     public static void markAnnouncementSeen(Context context) { prefs(context).edit().putString("announcement_seen_at", prefs(context).getString("updated_at", "")).apply(); }
+    public static void markAnnouncementLinkClicked(Context context) {
+        String version = prefs(context).getString("updated_at", "");
+        prefs(context).edit().putString("announcement_seen_at", version).putString("announcement_link_clicked_at", version).apply();
+    }
 
     public static boolean shouldPromptForUpdate(Context context) {
         int latest = latestVersionCode(context);
