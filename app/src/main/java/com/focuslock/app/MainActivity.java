@@ -1309,8 +1309,10 @@ public class MainActivity extends Activity {
         String label = RemoteConfigStore.announcementButtonLabel(this).trim();
         String link = RemoteConfigStore.announcementButtonUrl(this).trim();
         Uri destination = Uri.parse(link);
-        if (!label.isEmpty() && "https".equalsIgnoreCase(destination.getScheme())
-                && destination.getHost() != null && destination.getUserInfo() == null) {
+        boolean hasValidLink = !label.isEmpty() && "https".equalsIgnoreCase(destination.getScheme())
+                && destination.getHost() != null && destination.getUserInfo() == null;
+        boolean repeatUntilLink = RemoteConfigStore.repeatAnnouncementUntilLink(this) && hasValidLink;
+        if (hasValidLink) {
             Button action = button(label, deepGreen, Color.WHITE);
             action.setAllCaps(false);
             action.setBackground(shape(deepGreen, deepGreen, 10));
@@ -1326,7 +1328,9 @@ public class MainActivity extends Activity {
             actions.addView(action, actionParams);
         }
         card.addView(actions, topMargin(20));
-        dialog.setOnCancelListener(ignored -> RemoteConfigStore.markAnnouncementSeen(this));
+        dialog.setOnCancelListener(ignored -> {
+            if (!repeatUntilLink) RemoteConfigStore.markAnnouncementSeen(this);
+        });
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(false);
         scroll.addView(card);
