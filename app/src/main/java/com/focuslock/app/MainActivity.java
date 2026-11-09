@@ -1273,7 +1273,7 @@ public class MainActivity extends Activity {
         card.setGravity(Gravity.CENTER_HORIZONTAL);
         card.setPadding(dp(18), dp(20), dp(18), dp(18));
         int deepGreen = Color.rgb(30, 68, 43);
-        card.setBackground(shape(Color.rgb(250, 246, 237), deepGreen, 14));
+        card.setBackground(new AnnouncementCardBackground());
 
         TextView icon = text("↑", 21, deepGreen, true);
         icon.setGravity(Gravity.CENTER);
@@ -1355,6 +1355,11 @@ public class MainActivity extends Activity {
             drawSprig(canvas, dp(0), dp(95), 1f);
             canvas.restore();
             canvas.restore();
+            paint.setColor(Color.rgb(30, 68, 43));
+            paint.setStrokeWidth(dp(1));
+            paint.setStyle(android.graphics.Paint.Style.STROKE);
+            float inset = dp(1) / 2f;
+            canvas.drawRoundRect(inset, inset, w - inset, h - inset, dp(27), dp(27), paint);
         }
         private void drawSprig(android.graphics.Canvas canvas, float x, float y, float scale) {
             canvas.save();
@@ -2880,6 +2885,9 @@ public class MainActivity extends Activity {
                 .setPositiveButton("Apply time", null)
                 .create();
         dialog.setOnShowListener(ignored -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(shape(Color.WHITE, Color.WHITE, 24));
+            }
             bandPulse.start();
             panel.setAlpha(0f);
             panel.setTranslationY(dp(18));
