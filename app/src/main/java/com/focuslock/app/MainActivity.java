@@ -1281,13 +1281,19 @@ public class MainActivity extends Activity {
         icon.setBackground(shape(Color.rgb(223, 236, 218), Color.rgb(223, 236, 218), 30));
         card.addView(icon, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
-        TextView title = text(RemoteConfigStore.announcementTitle(this), 20, Color.rgb(29, 66, 42), true);
-        title.setGravity(Gravity.CENTER);
-        card.addView(title, topMargin(14));
-        TextView body = text(RemoteConfigStore.announcementBody(this), 15, Color.rgb(83, 96, 85), false);
-        body.setGravity(Gravity.CENTER);
-        body.setLineSpacing(dp(3), 1f);
-        card.addView(body, topMargin(8));
+        String announcementTitle = RemoteConfigStore.announcementTitle(this).trim();
+        String announcementBody = RemoteConfigStore.announcementBody(this).trim();
+        if (!announcementTitle.isEmpty()) {
+            TextView title = text(announcementTitle, 20, Color.rgb(29, 66, 42), true);
+            title.setGravity(Gravity.CENTER);
+            card.addView(title, topMargin(14));
+        }
+        if (!announcementBody.isEmpty()) {
+            TextView body = text(announcementBody, 15, Color.rgb(83, 96, 85), false);
+            body.setGravity(Gravity.CENTER);
+            body.setLineSpacing(dp(3), 1f);
+            card.addView(body, topMargin(announcementTitle.isEmpty() ? 14 : 8));
+        }
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
