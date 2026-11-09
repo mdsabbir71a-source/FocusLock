@@ -21,10 +21,13 @@ public final class RemoteConfigStore {
 
     /** Public announcement fields only; no changes to protection settings. */
     public static void saveAnnouncement(Context context, JSONObject row) {
+        boolean titleOnly = row.optBoolean("announcement_title_only", false);
+        String title = titleOnly ? row.optString("announcement_body", "") : row.optString("announcement_title", "");
+        String body = titleOnly ? "" : row.optString("announcement_body", "");
         prefs(context).edit()
                 .putBoolean("announcement_enabled", row.optBoolean("announcement_enabled", false))
-                .putString("announcement_title", row.optString("announcement_title", "A note from FocusLock"))
-                .putString("announcement_body", row.optString("announcement_body", ""))
+                .putString("announcement_title", title)
+                .putString("announcement_body", body)
                 .putString("announcement_button_label", row.optString("announcement_button_label", ""))
                 .putString("announcement_button_url", row.optString("announcement_button_url", ""))
                 .putString("updated_at", row.optString("updated_at", ""))
@@ -83,7 +86,8 @@ public final class RemoteConfigStore {
         SharedPreferences p = prefs(context);
         String updatedAt = p.getString("updated_at", "");
         return p.getBoolean("announcement_enabled", false)
-                && !p.getString("announcement_body", "").trim().isEmpty()
+                && (!p.getString("announcement_title", "").trim().isEmpty()
+                    || !p.getString("announcement_body", "").trim().isEmpty())
                 && !updatedAt.isEmpty()
                 && !updatedAt.equals(p.getString("announcement_seen_at", ""));
     }
