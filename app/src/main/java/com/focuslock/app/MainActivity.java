@@ -118,6 +118,20 @@ public class MainActivity extends Activity {
     private TextView guideBody;
     private TextView guideHint;
     private final Handler guideHandler = new Handler();
+    private final Handler announcementHandler = new Handler();
+    private Dialog activeAnnouncementDialog;
+    private final Runnable repeatAnnouncement = new Runnable() {
+        @Override public void run() {
+            if (!visible || isFinishing() || !RemoteConfigStore.repeatAnnouncementUntilLink(MainActivity.this)
+                    || !RemoteConfigStore.shouldShowAnnouncement(MainActivity.this)) return;
+            if (!homeContentBuilt || commitmentInProgress || finishingPermissionOnboarding || currentGuideStep != 0
+                    || (activeFocusPrompt != null && activeFocusPrompt.isShowing())) {
+                announcementHandler.postDelayed(this, 5_000L);
+                return;
+            }
+            showAnnouncementIfNeeded();
+        }
+    };
     private int currentGuideStep;
     private boolean guidedSetup;
     private boolean skipNotificationPrompt;
@@ -347,6 +361,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onPause() {
         visible = false;
+        announcementHandler.removeCallbacks(repeatAnnouncement);
         guideWasInterrupted = currentGuideStep > 0 && !getSharedPreferences(
                 "focuslock_onboarding", MODE_PRIVATE).getBoolean("guide_complete", false);
         dismissCoachOverlay();
@@ -1266,8 +1281,10 @@ public class MainActivity extends Activity {
     }
 
     private void showAnnouncementIfNeeded() {
-        if (!visible || !homeContentBuilt || !RemoteConfigStore.shouldShowAnnouncement(this) || isFinishing()) return;
+        if (!visible || !homeContentBuilt || !RemoteConfigStore.shouldShowAnnouncement(this) || isFinishing()
+                || (activeAnnouncementDialog != null && activeAnnouncementDialog.isShowing())) return;
         final Dialog dialog = new Dialog(this);
+        activeAnnouncementDialog = dialog;
         dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
         LinearLayout card = column();
         card.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -1319,7 +1336,8 @@ public class MainActivity extends Activity {
             action.setOnClickListener(v -> {
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, destination).addCategory(Intent.CATEGORY_BROWSABLE));
-                    RemoteConfigStore.markAnnouncementSeen(this);
+                    RemoteConfigStore.markAnnouncementLinkClicked(this);
+                    announcementHandler.removeCallbacks(repeatAnnouncement);
                     dialog.dismiss();
                 } catch (Exception error) { toast("Could not open this link."); }
             });
@@ -1330,6 +1348,13 @@ public class MainActivity extends Activity {
         card.addView(actions, topMargin(20));
         dialog.setOnCancelListener(ignored -> {
             if (!repeatUntilLink) RemoteConfigStore.markAnnouncementSeen(this);
+            else {
+                announcementHandler.removeCallbacks(repeatAnnouncement);
+                announcementHandler.postDelayed(repeatAnnouncement, 30_000L);
+            }
+        });
+        dialog.setOnDismissListener(ignored -> {
+            if (activeAnnouncementDialog == dialog) activeAnnouncementDialog = null;
         });
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(false);
