@@ -30,6 +30,7 @@ public final class RemoteConfigStore {
                 .putString("announcement_body", body)
                 .putString("announcement_button_label", row.optString("announcement_button_label", ""))
                 .putString("announcement_button_url", row.optString("announcement_button_url", ""))
+                .putBoolean("announcement_repeat_until_link", row.optBoolean("announcement_repeat_until_link", false))
                 .putString("updated_at", row.optString("updated_at", ""))
                 .putInt("latest_version_code", Math.max(0, row.optInt("latest_version_code", 0)))
                 .putString("latest_version_name", row.optString("latest_version_name", ""))
@@ -96,6 +97,7 @@ public final class RemoteConfigStore {
     public static String announcementBody(Context context) { return prefs(context).getString("announcement_body", ""); }
     public static String announcementButtonLabel(Context context) { return prefs(context).getString("announcement_button_label", ""); }
     public static String announcementButtonUrl(Context context) { return prefs(context).getString("announcement_button_url", ""); }
+    public static boolean repeatAnnouncementUntilLink(Context context) { return prefs(context).getBoolean("announcement_repeat_until_link", false); }
     public static void markAnnouncementSeen(Context context) { prefs(context).edit().putString("announcement_seen_at", prefs(context).getString("updated_at", "")).apply(); }
 
     public static boolean shouldPromptForUpdate(Context context) {
