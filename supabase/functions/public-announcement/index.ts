@@ -16,10 +16,16 @@ Deno.serve(async (request: Request) => {
     const rows = await result.json();
     const row = Array.isArray(rows) ? rows[0] : null;
     if (!row) return new Response(null, { status: 503 });
+    const title = String(row.announcement_title || "").slice(0, 80);
+    const body = String(row.announcement_body || "").slice(0, 500);
+    // Earlier app versions require a non-empty body. Keep title-only messages
+    // compatible, while telling newer versions to render the text as a title.
+    const titleOnly = title.trim().length > 0 && body.trim().length === 0;
     return new Response(JSON.stringify({
       announcement_enabled: row.announcement_enabled === true,
-      announcement_title: String(row.announcement_title || "").slice(0, 80),
-      announcement_body: String(row.announcement_body || "").slice(0, 500),
+      announcement_title: titleOnly ? "" : title,
+      announcement_body: titleOnly ? title : body,
+      announcement_title_only: titleOnly,
       announcement_button_label: String(row.announcement_button_label || "").slice(0, 40),
       announcement_button_url: String(row.announcement_button_url || "").slice(0, 2048),
       updated_at: String(row.updated_at || ""),
