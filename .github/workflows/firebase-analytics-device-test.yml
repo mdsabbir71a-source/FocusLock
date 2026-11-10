@@ -53,6 +53,13 @@ jobs:
         run: '"$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk'
       - name: Verify billing permission
         run: '"$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions app/build/outputs/apk/release/app-release.apk | grep -F com.android.vending.BILLING'
+      - name: Verify advertising ID permissions are absent
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions app/build/outputs/apk/release/app-release.apk > "$RUNNER_TEMP/permissions.txt"
+          if grep -E 'com\.google\.android\.gms\.permission\.AD_ID|android\.permission\.ACCESS_ADSERVICES_AD_ID' "$RUNNER_TEMP/permissions.txt"; then
+            echo "Unexpected advertising ID permission"
+            exit 1
+          fi
       - name: Verify bundle signature
         run: jarsigner -verify -certs app/build/outputs/bundle/release/app-release.aab
       - uses: actions/upload-artifact@v4
