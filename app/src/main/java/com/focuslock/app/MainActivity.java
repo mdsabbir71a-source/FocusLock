@@ -1611,6 +1611,7 @@ public class MainActivity extends Activity {
         page.setWebViewClient(new android.webkit.WebViewClient() {
             @Override public void onPageFinished(android.webkit.WebView view, String url) {
                 showReadyPaywall.run();
+                SubscriptionCatalog.load(MainActivity.this, view);
             }
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
                 if ("focuslock://close".equals(url)) closePaywall.run();
