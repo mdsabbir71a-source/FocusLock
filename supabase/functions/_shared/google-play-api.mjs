@@ -36,7 +36,11 @@ export async function getPlaySubscription(credentials, purchaseToken, fetchFn = 
     error.name = "InvalidPlayPurchase";
     throw error;
   }
-  if (!result.ok) throw new Error("Google Play subscription verification failed " + result.status);
+  if (!result.ok) {
+    let reason = "unknown";
+    try { const data = await result.json(); const candidate = data?.error?.errors?.[0]?.reason; if (typeof candidate === "string" && /^[A-Za-z]{1,80}$/.test(candidate)) reason = candidate; } catch { /* Never log response bodies or purchase tokens. */ }
+    throw new Error("Google Play subscription verification failed " + result.status + " " + reason);
+  }
   return await result.json();
 }
 
