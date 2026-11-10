@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     if (error instanceof Error && error.name === "InvalidPlayPurchase") return json(200, { entitled: false, expiresAt: null });
     const message = error instanceof Error ? error.message : "";
-    const allowed = /^(Google authorization failed [0-9]{3}|Google Play subscription verification failed [0-9]{3}|Missing Google service account credentials|Google did not return an access token)$/;
+    const allowed = /^(Google authorization failed [0-9]{3}|Google Play subscription verification failed [0-9]{3} [A-Za-z]{1,80}|Missing Google service account credentials|Google did not return an access token)$/;
     console.error("play-verification-failure", allowed.test(message) ? message : "credentials or configuration error");
     return json(503, { error: "Verification unavailable" });
   }
