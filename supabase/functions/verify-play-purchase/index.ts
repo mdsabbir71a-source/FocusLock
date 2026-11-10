@@ -31,5 +31,8 @@ Deno.serve(async (req: Request) => {
     const credentials = JSON.parse(secret);
     const result = await verifyPlaySubscription(credentials, token);
     return json(200, result);
-  } catch { return json(503, { error: "Verification unavailable" }); }
+  } catch (error) {
+    if (error instanceof Error && error.name === "InvalidPlayPurchase") return json(200, { entitled: false, expiresAt: null });
+    return json(503, { error: "Verification unavailable" });
+  }
 });
