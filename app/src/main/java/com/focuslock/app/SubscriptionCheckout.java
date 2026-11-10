@@ -21,11 +21,50 @@ final class SubscriptionCheckout {
         return false;
     }
 
+    private static void message(Activity activity, String text) {
+        activity.runOnUiThread(() -> {
+            if (!activity.isFinishing() && !activity.isDestroyed())
+                new AlertDialog.Builder(activity).setTitle("FocusLock Premium")
+                        .setMessage(text).setPositiveButton("OK", null).show();
+        });
+    }
+
     private static void openPlayCheckout(Activity activity, String planId) {
+        final BillingClient[] holder = new BillingClient[1];
         BillingClient client = BillingClient.newBuilder(activity)
-                .setListener((result, purchases) -> { /* Verification and acknowledgement required. */ })
+                .setListener((result, purchases) -> {
+                    if (result.getResponseCode() == BillingClient.BillingResponseCode.USER_CANCELED) return;
+                    if (result.getResponseCode() != BillingClient.BillingResponseCode.OK || purchases == null) {
+                        message(activity, "Google Play could not complete the purchase. Please try again.");
+                        return;
+                    }
+                    for (Purchase purchase : purchases) {
+                        if (!purchase.getProducts().contains("focuslock_premium")) continue;
+                        if (purchase.getPurchaseState() == Purchase.PurchaseState.PENDING) {
+                            message(activity, "Your payment is pending. Premium will be available once verified.");
+                            continue;
+                        }
+                        if (purchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) continue;
+                        PlayPurchaseVerifier.verify(activity, purchase.getPurchaseToken(), (verified, expires, error) -> {
+                            if (!verified) { message(activity, error == null ? "Could not verify your subscription." : error); return; }
+                            PremiumEntitlementStore.recordVerified(activity, expires);
+                            if (purchase.isAcknowledged()) { message(activity, "Premium access is active."); return; }
+                            AcknowledgePurchaseParams params = AcknowledgePurchaseParams.newBuilder()
+                                    .setPurchaseToken(purchase.getPurchaseToken()).build();
+                            holder[0].acknowledgePurchase(params, ack -> {
+                                if (ack.getResponseCode() == BillingClient.BillingResponseCode.OK)
+                                    message(activity, "Premium access is active.");
+                                else {
+                                    PremiumEntitlementStore.clear(activity);
+                                    message(activity, "Could not confirm your purchase. Please try Restore purchases.");
+                                }
+                            });
+                        });
+                    }
+                })
                 .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
                 .build();
+        holder[0] = client;
         client.startConnection(new BillingClientStateListener() {
             @Override public void onBillingSetupFinished(BillingResult setup) {
                 if (setup.getResponseCode() != BillingClient.BillingResponseCode.OK) { client.endConnection(); return; }
