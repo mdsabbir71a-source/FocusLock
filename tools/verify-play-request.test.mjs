@@ -1,0 +1,11 @@
+import { strict as assert } from "node:assert";
+import { verifyRequest } from "../supabase/functions/_shared/verify-play-request.mjs";
+const post = (body) => new Request("https://test.invalid", { method: "POST", body: JSON.stringify(body) });
+assert.equal((await verifyRequest(post({purchaseToken:"abc"}), {})).status, 503);
+assert.equal((await verifyRequest(post({purchaseToken:""}), {credentials:{}})).status, 400);
+assert.equal((await verifyRequest(new Request("https://test.invalid"), {credentials:{}})).status, 405);
+const ok = await verifyRequest(post({purchaseToken:"abc"}), {credentials:{}, verify:async()=>({entitled:true,expiresAt:"2027-01-01T00:00:00.000Z"})});
+assert.equal(ok.status, 200); assert.equal((await ok.json()).entitled, true);
+const error = await verifyRequest(post({purchaseToken:"abc"}), {credentials:{}, verify:async()=>{throw new Error("private token");}});
+assert.equal(error.status, 503); assert.ok(!(await error.text()).includes("private token"));
+console.log("Verification request tests passed.");
