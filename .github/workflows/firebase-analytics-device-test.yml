@@ -55,6 +55,8 @@ jobs:
         run: '"$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions app/build/outputs/apk/release/app-release.apk | grep -F com.android.vending.BILLING'
       - name: Verify bundle signature
         run: jarsigner -verify -certs app/build/outputs/bundle/release/app-release.aab
+      - name: Inspect native symbols in bundle
+        run: unzip -l app/build/outputs/bundle/release/app-release.aab | grep -E 'BUNDLE-METADATA/com.android.tools.build.debugsymbols|\.so$' || true
       - uses: actions/upload-artifact@v4
         with:
           name: FocusLock-Firebase-Analytics-Test
