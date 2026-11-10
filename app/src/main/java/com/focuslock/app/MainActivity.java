@@ -1617,6 +1617,8 @@ public class MainActivity extends Activity {
                 if ("focuslock://close".equals(url)) closePaywall.run();
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
                 else if ("focuslock://paywall/restore".equals(url)) { FocusAnalytics.log(MainActivity.this, "paywall_restore_selected"); SubscriptionRestore.start(MainActivity.this); }
+                else if ("focuslock://paywall/buy-yearly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "yearly");
+                else if ("focuslock://paywall/buy-four-weeks".equals(url)) SubscriptionCheckout.start(MainActivity.this, "every-4-weeks");
                 else recordPaywallAction(url);
                 return true;
             }
@@ -1625,6 +1627,8 @@ public class MainActivity extends Activity {
                 if ("focuslock://close".equals(url)) closePaywall.run();
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
                 else if ("focuslock://paywall/restore".equals(url)) { FocusAnalytics.log(MainActivity.this, "paywall_restore_selected"); SubscriptionRestore.start(MainActivity.this); }
+                else if ("focuslock://paywall/buy-yearly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "yearly");
+                else if ("focuslock://paywall/buy-four-weeks".equals(url)) SubscriptionCheckout.start(MainActivity.this, "every-4-weeks");
                 else recordPaywallAction(url);
                 return true;
             }
