@@ -55,7 +55,7 @@
 </div></section>
 <section class="plans" aria-label="Choose a subscription plan">
 <button class="plan" id="year" aria-pressed="true" onclick="selectPlan(true)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Yearly</span><span class="plan-detail">Checking Google Play…</span></span></button>
-<button class="plan" id="week" aria-pressed="false" onclick="selectPlan(false)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Every 4 weeks</span><span class="plan-detail">Checking Google Play…</span></span></button>
+<button class="plan" id="week" aria-pressed="false" onclick="selectPlan(false)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Monthly</span><span class="plan-detail">Checking Google Play…</span></span></button>
 </section>
 <div class="spacer"></div>
 <footer class="footer"><button class="action" id="action" onclick="previewAction()">Continue with yearly</button>
@@ -63,9 +63,9 @@
 <p class="terms">Renews automatically. Cancel anytime. <a href="focuslock://terms">Terms &amp; conditions</a></p></footer>
 </main>
 <script>
-function updatePlayPrices(yearly,fourWeeks,status){document.querySelector("#year .plan-detail").textContent=yearly;document.querySelector("#week .plan-detail").textContent=fourWeeks;var n=document.getElementById("restore-status");n.hidden=false;n.textContent=status;}
-function selectPlan(yearly){location.href=yearly?'focuslock://paywall/yearly':'focuslock://paywall/weekly';window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('week').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?'Continue with yearly':'$5.99/week'}
-function previewAction(){location.href=window.selectedYearly===false?'focuslock://paywall/buy-four-weeks':'focuslock://paywall/buy-yearly'}
+function updatePlayPrices(yearly,monthly,status){document.querySelector("#year .plan-detail").textContent=yearly;document.querySelector("#week .plan-detail").textContent=monthly;var n=document.getElementById("restore-status");n.hidden=false;n.textContent=status;}
+function selectPlan(yearly){location.href=yearly?'focuslock://paywall/yearly':'focuslock://paywall/monthly';window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('week').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?'Continue with yearly':'$9.99/month'}
+function previewAction(){location.href=window.selectedYearly===false?'focuslock://paywall/buy-monthly':'focuslock://paywall/buy-yearly'}
 function showRestorePreview(){location.href='focuslock://paywall/restore';}
 </script>
 </body>
