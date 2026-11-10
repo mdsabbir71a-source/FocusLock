@@ -31,6 +31,11 @@ export async function getPlaySubscription(credentials, purchaseToken, fetchFn = 
   const url = "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/" + PACKAGE +
     "/purchases/subscriptionsv2/tokens/" + encodeURIComponent(purchaseToken);
   const result = await fetchFn(url, { headers: { authorization: "Bearer " + token } });
+  if (result.status === 400 || result.status === 404 || result.status === 410) {
+    const error = new Error("Invalid or expired Google Play purchase");
+    error.name = "InvalidPlayPurchase";
+    throw error;
+  }
   if (!result.ok) throw new Error("Google Play subscription verification failed");
   return await result.json();
 }
