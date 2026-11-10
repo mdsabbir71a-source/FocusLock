@@ -21,8 +21,8 @@ android {
         // Play Console permanently reserves uploaded version codes. Keep this
         // release functionally identical while allowing it to replace the
         // already-uploaded code 200 bundle.
-        versionCode 239
-        versionName '1.1.39'
+        versionCode 240
+        versionName '1.1.40'
         buildConfigField 'String', 'SUPABASE_URL', '"https://sfrwqrjwyzhabmquythi.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_Y3Xl3f_pmMX3bZblCvjXmw_c2l1iPM7"'
         buildConfigField 'String', 'PUBLIC_SITE_URL', '"https://focuslock.io"'
@@ -64,6 +64,9 @@ android {
 
 // Firebase dependencies are aligned by the bill of materials.
 dependencies {
+    // Enables Play Console billing setup; purchases remain disabled until the
+    // purchase and verification flows have been implemented and tested.
+    implementation 'com.android.billingclient:billing:9.1.0'
     implementation platform('com.google.firebase:firebase-bom:34.19.0')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-crashlytics'
