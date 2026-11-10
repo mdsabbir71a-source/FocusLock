@@ -1644,7 +1644,7 @@ public class MainActivity extends Activity {
 
     private void recordPaywallAction(String url) {
         if ("focuslock://paywall/yearly".equals(url)) FocusAnalytics.log(this, "paywall_yearly_selected");
-        else if ("focuslock://paywall/monthly".equals(url)) FocusAnalytics.log(this, "paywall_monthly_selected");
+        else if ("focuslock://paywall/weekly".equals(url)) FocusAnalytics.log(this, "paywall_weekly_selected");
         else if ("focuslock://paywall/preview_action".equals(url)) FocusAnalytics.log(this, "paywall_preview_action");
         else if ("focuslock://paywall/restore".equals(url)) FocusAnalytics.log(this, "paywall_restore_selected");
     }
