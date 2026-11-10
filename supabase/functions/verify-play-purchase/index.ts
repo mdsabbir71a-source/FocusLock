@@ -29,6 +29,10 @@ Deno.serve(async (req: Request) => {
   if (!secret) return json(503, { error: "Verification unavailable" });
   try {
     const credentials = JSON.parse(secret);
+    if (credentials.client_email !== "focuslock-play-billing@focuslock-5a784.iam.gserviceaccount.com") {
+      console.error("play-verification-failure service-account-mismatch");
+      return json(503, { error: "Verification unavailable" });
+    }
     const result = await verifyPlaySubscription(credentials, token);
     return json(200, result);
   } catch (error) {
