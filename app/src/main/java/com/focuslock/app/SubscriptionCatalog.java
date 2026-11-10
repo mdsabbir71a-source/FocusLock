@@ -29,7 +29,7 @@ final class SubscriptionCatalog {
                 QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
                         .setProductList(Collections.singletonList(product)).build();
                 client.queryProductDetailsAsync(params, (status, details) -> {
-                    String yearly = null, fourWeeks = null;
+                    String yearly = null, monthly = null;
                     if (status.getResponseCode() == BillingClient.BillingResponseCode.OK) {
                         for (ProductDetails item : details.getProductDetailsList()) {
                             if (item.getSubscriptionOfferDetails() == null) continue;
@@ -37,22 +37,22 @@ final class SubscriptionCatalog {
                                 if (offer.getOfferId() != null) continue;
                                 for (ProductDetails.PricingPhase phase : offer.getPricingPhases().getPricingPhaseList()) {
                                     if ("yearly".equals(offer.getBasePlanId())) yearly = phase.getFormattedPrice() + " / year";
-                                    if ("every-4-weeks".equals(offer.getBasePlanId())) fourWeeks = phase.getFormattedPrice() + " / 4 weeks";
+                                    if ("monthly".equals(offer.getBasePlanId())) monthly = phase.getFormattedPrice() + " / month";
                                 }
                             }
                         }
                     }
-                    show(yearly == null && fourWeeks == null
-                            ? "Subscription plans are not available yet." : "Prices provided by Google Play.", yearly, fourWeeks);
+                    show(yearly == null && monthly == null
+                            ? "Subscription plans are not available yet." : "Prices provided by Google Play.", yearly, monthly);
                 });
             }
             @Override public void onBillingServiceDisconnected() { show("Google Play is unavailable.", null, null); }
-            private void show(String status, String yearly, String fourWeeks) {
+            private void show(String status, String yearly, String monthly) {
                 client.endConnection();
                 activity.runOnUiThread(() -> {
                     if (activity.isFinishing() || activity.isDestroyed()) return;
                     page.evaluateJavascript("window.updatePlayPrices(" + JSONObject.quote(yearly == null ? "Unavailable" : yearly)
-                            + "," + JSONObject.quote(fourWeeks == null ? "Unavailable" : fourWeeks)
+                            + "," + JSONObject.quote(monthly == null ? "Unavailable" : monthly)
                             + "," + JSONObject.quote(status) + ")", null);
                 });
             }
