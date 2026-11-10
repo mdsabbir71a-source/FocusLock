@@ -34,3 +34,13 @@ export async function getPlaySubscription(credentials, purchaseToken, fetchFn = 
   if (!result.ok) throw new Error("Google Play subscription verification failed");
   return await result.json();
 }
+
+/** Acknowledge only after a completed purchase was verified and entitlement granted. */
+export async function acknowledgePlaySubscription(credentials, purchaseToken, fetchFn = fetch) {
+  if (typeof purchaseToken !== "string" || !purchaseToken || purchaseToken.length > 4096) throw new Error("Invalid purchase token");
+  const token = await accessToken(credentials, fetchFn);
+  const url = "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/" + PACKAGE +
+    "/purchases/subscriptions/focuslock_premium/tokens/" + encodeURIComponent(purchaseToken) + ":acknowledge";
+  const result = await fetchFn(url, { method: "POST", headers: { authorization: "Bearer " + token, "content-type": "application/json" }, body: "{}" });
+  if (!result.ok) throw new Error("Google Play acknowledgement failed");
+}
