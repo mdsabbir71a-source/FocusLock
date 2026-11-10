@@ -1618,7 +1618,7 @@ public class MainActivity extends Activity {
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
                 else if ("focuslock://paywall/restore".equals(url)) { FocusAnalytics.log(MainActivity.this, "paywall_restore_selected"); SubscriptionRestore.start(MainActivity.this); }
                 else if ("focuslock://paywall/buy-yearly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "yearly");
-                else if ("focuslock://paywall/buy-four-weeks".equals(url)) SubscriptionCheckout.start(MainActivity.this, "every-4-weeks");
+                else if ("focuslock://paywall/buy-monthly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "monthly");
                 else recordPaywallAction(url);
                 return true;
             }
@@ -1628,7 +1628,7 @@ public class MainActivity extends Activity {
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
                 else if ("focuslock://paywall/restore".equals(url)) { FocusAnalytics.log(MainActivity.this, "paywall_restore_selected"); SubscriptionRestore.start(MainActivity.this); }
                 else if ("focuslock://paywall/buy-yearly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "yearly");
-                else if ("focuslock://paywall/buy-four-weeks".equals(url)) SubscriptionCheckout.start(MainActivity.this, "every-4-weeks");
+                else if ("focuslock://paywall/buy-monthly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "monthly");
                 else recordPaywallAction(url);
                 return true;
             }
@@ -1651,7 +1651,7 @@ public class MainActivity extends Activity {
 
     private void recordPaywallAction(String url) {
         if ("focuslock://paywall/yearly".equals(url)) FocusAnalytics.log(this, "paywall_yearly_selected");
-        else if ("focuslock://paywall/weekly".equals(url)) FocusAnalytics.log(this, "paywall_weekly_selected");
+        else if ("focuslock://paywall/monthly".equals(url)) FocusAnalytics.log(this, "paywall_monthly_selected");
         else if ("focuslock://paywall/preview_action".equals(url)) FocusAnalytics.log(this, "paywall_preview_action");
         else if ("focuslock://paywall/restore".equals(url)) FocusAnalytics.log(this, "paywall_restore_selected");
     }
