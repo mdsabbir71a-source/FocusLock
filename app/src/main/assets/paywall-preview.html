@@ -64,7 +64,7 @@
 </main>
 <script>
 function updatePlayPrices(yearly,fourWeeks,status){document.querySelector("#year .plan-detail").textContent=yearly;document.querySelector("#week .plan-detail").textContent=fourWeeks;var n=document.getElementById("restore-status");n.hidden=false;n.textContent=status;}
-function selectPlan(yearly){location.href=yearly?'focuslock://paywall/yearly':'focuslock://paywall/weekly';window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('week').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?'Continue with yearly':'Continue with 4 weeks'}
+function selectPlan(yearly){location.href=yearly?'focuslock://paywall/yearly':'focuslock://paywall/weekly';window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('week').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?'Continue with yearly':'$5.99/week'}
 function previewAction(){location.href=window.selectedYearly===false?'focuslock://paywall/buy-four-weeks':'focuslock://paywall/buy-yearly'}
 function showRestorePreview(){location.href='focuslock://paywall/restore';}
 </script>
