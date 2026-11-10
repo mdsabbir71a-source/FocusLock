@@ -20,7 +20,7 @@ async function accessToken(credentials, fetchFn = fetch) {
   const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(signingInput));
   const body = new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: signingInput + "." + base64url(new Uint8Array(signature)) });
   const response = await fetchFn(TOKEN_ENDPOINT, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body });
-  if (!response.ok) throw new Error("Google authorization failed");
+  if (!response.ok) throw new Error("Google authorization failed " + response.status);
   const json = await response.json();
   if (typeof json.access_token !== "string" || !json.access_token) throw new Error("Google did not return an access token");
   return json.access_token;
@@ -36,7 +36,7 @@ export async function getPlaySubscription(credentials, purchaseToken, fetchFn = 
     error.name = "InvalidPlayPurchase";
     throw error;
   }
-  if (!result.ok) throw new Error("Google Play subscription verification failed");
+  if (!result.ok) throw new Error("Google Play subscription verification failed " + result.status);
   return await result.json();
 }
 
