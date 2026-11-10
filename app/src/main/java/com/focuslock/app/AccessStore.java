@@ -35,7 +35,7 @@ public final class AccessStore {
     }
 
     public static String level(Context context) {
-        return "free";
+        return PremiumEntitlementStore.hasVerifiedAccess(context) ? "premium" : "free";
     }
 
     public static void clear(Context context) { prefs(context).edit().clear().apply(); }
