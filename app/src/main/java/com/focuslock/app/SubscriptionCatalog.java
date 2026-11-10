@@ -21,7 +21,7 @@ final class SubscriptionCatalog {
         client.startConnection(new BillingClientStateListener() {
             @Override public void onBillingSetupFinished(BillingResult result) {
                 if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) {
-                    show("Subscription prices are unavailable. Please try again later.", null, null); return;
+                    show("Subscription prices are unavailable. Please try again later.", null, null, false); return;
                 }
                 QueryProductDetailsParams.Product product = QueryProductDetailsParams.Product.newBuilder()
                         .setProductId("focuslock_premium")
@@ -30,10 +30,16 @@ final class SubscriptionCatalog {
                         .setProductList(Collections.singletonList(product)).build();
                 client.queryProductDetailsAsync(params, (status, details) -> {
                     String yearly = null, monthly = null;
+                    boolean trial = false;
                     if (status.getResponseCode() == BillingClient.BillingResponseCode.OK) {
                         for (ProductDetails item : details.getProductDetailsList()) {
                             if (item.getSubscriptionOfferDetails() == null) continue;
                             for (ProductDetails.SubscriptionOfferDetails offer : item.getSubscriptionOfferDetails()) {
+                                if ("yearly".equals(offer.getBasePlanId()) && "yearly-7-day-trial".equals(offer.getOfferId())) {
+                                    for (ProductDetails.PricingPhase phase : offer.getPricingPhases().getPricingPhaseList()) {
+                                        if (phase.getPriceAmountMicros() == 0 && ("P7D".equals(phase.getBillingPeriod()) || "P1W".equals(phase.getBillingPeriod()))) trial = true;
+                                    }
+                                }
                                 if (offer.getOfferId() != null) continue;
                                 for (ProductDetails.PricingPhase phase : offer.getPricingPhases().getPricingPhaseList()) {
                                     if ("yearly".equals(offer.getBasePlanId())) yearly = phase.getFormattedPrice() + " / year";
@@ -43,17 +49,17 @@ final class SubscriptionCatalog {
                         }
                     }
                     show(yearly == null && monthly == null
-                            ? "Subscription plans are not available yet." : "Prices provided by Google Play.", yearly, monthly);
+                            ? "Subscription plans are not available yet." : "Prices provided by Google Play.", yearly, monthly, trial);
                 });
             }
-            @Override public void onBillingServiceDisconnected() { show("Google Play is unavailable.", null, null); }
-            private void show(String status, String yearly, String monthly) {
+            @Override public void onBillingServiceDisconnected() { show("Google Play is unavailable.", null, null, false); }
+            private void show(String status, String yearly, String monthly, boolean trial) {
                 client.endConnection();
                 activity.runOnUiThread(() -> {
                     if (activity.isFinishing() || activity.isDestroyed()) return;
                     page.evaluateJavascript("window.updatePlayPrices(" + JSONObject.quote(yearly == null ? "Unavailable" : yearly)
                             + "," + JSONObject.quote(monthly == null ? "Unavailable" : monthly)
-                            + "," + JSONObject.quote(status) + ")", null);
+                            + "," + JSONObject.quote(status) + "," + trial + ")", null);
                 });
             }
         });
