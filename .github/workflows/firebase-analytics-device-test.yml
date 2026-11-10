@@ -42,6 +42,12 @@ jobs:
         run: |
           test -n "$FOCUSLOCK_KEYSTORE_BASE64"
           printf '%s' "$FOCUSLOCK_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/focuslock-release.jks"
+      - name: Verify live Play service rejects invalid purchase
+        run: |
+          curl -fsS --max-time 30 -H 'Content-Type: application/json' \
+            --data '{"purchaseToken":"focuslock-invalid-test-token-000000000000"}' \
+            'https://sfrwqrjwyzhabmquythi.supabase.co/functions/v1/verify-play-purchase' > "$RUNNER_TEMP/play-check.json"
+          python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); assert data.get("entitled") is False' "$RUNNER_TEMP/play-check.json"
       - name: Build signed test APK
         env:
           FOCUSLOCK_KEYSTORE_PATH: ${{ runner.temp }}/focuslock-release.jks
