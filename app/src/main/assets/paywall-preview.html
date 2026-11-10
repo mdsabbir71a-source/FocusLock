@@ -54,17 +54,18 @@
 <div class="item"><span class="check">✓</span>All calming designs &amp; reminders</div><div class="item"><span class="check">✓</span>Longer lock durations</div>
 </div></section>
 <section class="plans" aria-label="Choose a subscription plan">
-<button class="plan" id="year" aria-pressed="true" onclick="selectPlan(true)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Yearly</span><span class="plan-detail">7-day free trial, then $39/year</span></span><span class="badge">SAVE 87%</span></button>
-<button class="plan" id="week" aria-pressed="false" onclick="selectPlan(false)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Weekly</span><span class="plan-detail">$5.99/week</span></span></button>
+<button class="plan" id="year" aria-pressed="true" onclick="selectPlan(true)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Yearly</span><span class="plan-detail">Checking Google Play…</span></span></button>
+<button class="plan" id="week" aria-pressed="false" onclick="selectPlan(false)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Every 4 weeks</span><span class="plan-detail">Checking Google Play…</span></span></button>
 </section>
 <div class="spacer"></div>
-<footer class="footer"><button class="action" id="action" onclick="previewAction()">Start 7-day free trial</button>
+<footer class="footer"><button class="action" id="action" onclick="previewAction()">Continue with yearly</button>
 <button class="restore" type="button" onclick="showRestorePreview()">Restore purchase</button><p class="notice" id="restore-status" role="status" aria-live="polite" hidden></p>
 <p class="terms">Renews automatically. Cancel anytime. <a href="focuslock://terms">Terms &amp; conditions</a></p></footer>
 </main>
 <script>
-function selectPlan(yearly){location.href=yearly?'focuslock://paywall/yearly':'focuslock://paywall/weekly';window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('week').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?'Start 7-day free trial':'Continue with weekly'}
-function previewAction(){location.href='focuslock://paywall/preview_action';var b=document.getElementById('action');b.textContent='Preview only — no payment';setTimeout(function(){b.textContent=window.selectedYearly===false?'Continue with weekly':'Start 7-day free trial'},2200)}
+function updatePlayPrices(yearly,fourWeeks,status){document.querySelector("#year .plan-detail").textContent=yearly;document.querySelector("#week .plan-detail").textContent=fourWeeks;var n=document.getElementById("restore-status");n.hidden=false;n.textContent=status;}
+function selectPlan(yearly){location.href=yearly?'focuslock://paywall/yearly':'focuslock://paywall/weekly';window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('week').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?'Continue with yearly':'Continue with 4 weeks'}
+function previewAction(){location.href='focuslock://paywall/preview_action';var b=document.getElementById('action');b.textContent='Preview only — no payment';setTimeout(function(){b.textContent=window.selectedYearly===false?'Continue with 4 weeks':'Continue with yearly'},2200)}
 function showRestorePreview(){location.href='focuslock://paywall/restore';}
 </script>
 </body>
