@@ -1615,6 +1615,7 @@ public class MainActivity extends Activity {
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
                 if ("focuslock://close".equals(url)) closePaywall.run();
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
+                else if ("focuslock://paywall/restore".equals(url)) { FocusAnalytics.log(MainActivity.this, "paywall_restore_selected"); SubscriptionRestore.start(MainActivity.this); }
                 else recordPaywallAction(url);
                 return true;
             }
@@ -1622,6 +1623,7 @@ public class MainActivity extends Activity {
                 String url = request.getUrl().toString();
                 if ("focuslock://close".equals(url)) closePaywall.run();
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
+                else if ("focuslock://paywall/restore".equals(url)) { FocusAnalytics.log(MainActivity.this, "paywall_restore_selected"); SubscriptionRestore.start(MainActivity.this); }
                 else recordPaywallAction(url);
                 return true;
             }
