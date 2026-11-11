@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
 import android.os.Handler;
 import android.os.Looper;
 
-/** Draft client for a future authenticated and rate-limited verification service. */
+/** Calls the protected purchase verification service using a refreshed user session. */
 final class PlayPurchaseVerifier {
     interface Callback { void onResult(boolean verified, long expiryMillis, String error); }
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
@@ -29,8 +29,9 @@ final class PlayPurchaseVerifier {
             long expires = 0;
             String error = null;
             try {
-                // No endpoint is deployed yet. Keep checkout disabled until this
-                // route has authentication, abuse protection and ownership checks.
+                // Checkout remains disabled until no-login sessions, abuse protection,
+                // ownership checks and a real Play purchase have been tested.
+                String accessToken = SupabaseApi.verificationAccessToken(context);
                 URL url = new URL(BuildConfig.SUPABASE_URL + "/functions/v1/verify-play-purchase");
                 connection = (HttpURLConnection) url.openConnection();
                 connection.setConnectTimeout(12000);
@@ -39,6 +40,7 @@ final class PlayPurchaseVerifier {
                 connection.setDoOutput(true);
                 connection.setRequestProperty("Content-Type", "application/json");
                 connection.setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY);
+                connection.setRequestProperty("Authorization", "Bearer " + accessToken);
                 byte[] body = new JSONObject().put("purchaseToken", purchaseToken).toString().getBytes(StandardCharsets.UTF_8);
                 try (OutputStream output = connection.getOutputStream()) { output.write(body); }
                 if (connection.getResponseCode() != 200) throw new IllegalStateException();
