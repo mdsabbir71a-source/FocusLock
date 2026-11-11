@@ -67,19 +67,20 @@ final class SubscriptionCheckout {
         holder[0] = client;
         client.startConnection(new BillingClientStateListener() {
             @Override public void onBillingSetupFinished(BillingResult setup) {
-                if (setup.getResponseCode() != BillingClient.BillingResponseCode.OK) { client.endConnection(); return; }
+                if (setup.getResponseCode() != BillingClient.BillingResponseCode.OK) { client.endConnection(); message(activity, "Google Play is unavailable. Please try again."); return; }
                 QueryProductDetailsParams.Product product = QueryProductDetailsParams.Product.newBuilder()
                         .setProductId("focuslock_premium").setProductType(BillingClient.ProductType.SUBS).build();
                 QueryProductDetailsParams query = QueryProductDetailsParams.newBuilder()
                         .setProductList(Collections.singletonList(product)).build();
                 client.queryProductDetailsAsync(query, (result, response) -> {
-                    if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) { client.endConnection(); return; }
+                    if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) { client.endConnection(); message(activity, "Could not load subscription plans. Please try again."); return; }
                     for (ProductDetails details : response.getProductDetailsList()) {
                         if (details.getSubscriptionOfferDetails() == null) continue;
                         ProductDetails.SubscriptionOfferDetails chosen = null;
+                        int bestScore = 0;
                         for (ProductDetails.SubscriptionOfferDetails offer : details.getSubscriptionOfferDetails()) {
-                            if (!planId.equals(offer.getBasePlanId())) continue;
-                            if (chosen == null || ("yearly-7-day-trial".equals(offer.getOfferId()))) chosen = offer;
+                            int score = SubscriptionOfferPolicy.score(planId, offer.getBasePlanId(), offer.getOfferId());
+                            if (score > bestScore) { bestScore = score; chosen = offer; }
                         }
                         if (chosen == null) continue;
                         BillingFlowParams.ProductDetailsParams item = BillingFlowParams.ProductDetailsParams.newBuilder()
@@ -90,6 +91,7 @@ final class SubscriptionCheckout {
                         return;
                     }
                     client.endConnection();
+                    message(activity, "This subscription plan is not available on your Google Play account.");
                 });
             }
             @Override public void onBillingServiceDisconnected() { client.endConnection(); }
