@@ -10,6 +10,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
   // Supabase's JWT gateway must remain enabled. A public legacy anon key is
   // itself a valid JWT, so require an actual authenticated user session too.
+  let userId: string;
   try {
     const authorization = req.headers.get("authorization") || "";
     if (!authorization.startsWith("Bearer ")) return json(401, { error: "Authentication required" });
@@ -20,6 +21,7 @@ Deno.serve(async (req: Request) => {
     if (claims.role !== "authenticated" || typeof claims.sub !== "string" || !claims.sub) {
       return json(401, { error: "Authentication required" });
     }
+    userId = claims.sub;
   } catch { return json(401, { error: "Authentication required" }); }
   const contentLength = Number(req.headers.get("content-length") ?? "0");
   if (contentLength > 8192) return json(413, { error: "Request too large" });
@@ -36,12 +38,12 @@ Deno.serve(async (req: Request) => {
   // Any error fails closed rather than allowing an unthrottled Google request.
   try {
     const base = Deno.env.get("SUPABASE_URL");
-    const apiKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const apiKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!base || !apiKey) return json(503, { error: "Verification unavailable" });
     const limited = await fetch(base + "/rest/v1/rpc/consume_play_verify_limit", {
       method: "POST",
-      headers: { "apikey": apiKey, "Authorization": req.headers.get("authorization") || "", "Content-Type": "application/json" },
-      body: "{}",
+      headers: { "apikey": apiKey, "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_user_id: userId }),
       signal: AbortSignal.timeout(5000),
     });
     if (!limited.ok) return json(503, { error: "Verification unavailable" });
