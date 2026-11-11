@@ -21,7 +21,7 @@ final class SubscriptionCatalog {
         client.startConnection(new BillingClientStateListener() {
             @Override public void onBillingSetupFinished(BillingResult result) {
                 if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) {
-                    show("Subscription prices are unavailable. Please try again later.", null, null, false); return;
+                    show("Subscription prices are unavailable. Please try again later.", null, null, false, 0); return;
                 }
                 QueryProductDetailsParams.Product product = QueryProductDetailsParams.Product.newBuilder()
                         .setProductId("focuslock_premium")
@@ -30,6 +30,8 @@ final class SubscriptionCatalog {
                         .setProductList(Collections.singletonList(product)).build();
                 client.queryProductDetailsAsync(params, (status, details) -> {
                     String yearly = null, monthly = null;
+                    long yearlyMicros = -1, monthlyMicros = -1;
+                    String yearlyCurrency = null, monthlyCurrency = null;
                     boolean trial = false;
                     if (status.getResponseCode() == BillingClient.BillingResponseCode.OK) {
                         for (ProductDetails item : details.getProductDetailsList()) {
@@ -42,24 +44,29 @@ final class SubscriptionCatalog {
                                 }
                                 if (offer.getOfferId() != null) continue;
                                 for (ProductDetails.PricingPhase phase : offer.getPricingPhases().getPricingPhaseList()) {
-                                    if ("yearly".equals(offer.getBasePlanId())) yearly = phase.getFormattedPrice() + " / year";
-                                    if ("monthly".equals(offer.getBasePlanId())) monthly = phase.getFormattedPrice() + " / month";
+                                    if ("yearly".equals(offer.getBasePlanId())) { yearly = phase.getFormattedPrice() + " / year"; yearlyMicros = phase.getPriceAmountMicros(); yearlyCurrency = phase.getPriceCurrencyCode(); }
+                                    if ("monthly".equals(offer.getBasePlanId())) { monthly = phase.getFormattedPrice() + " / month"; monthlyMicros = phase.getPriceAmountMicros(); monthlyCurrency = phase.getPriceCurrencyCode(); }
                                 }
                             }
                         }
                     }
+                    int savings = 0;
+                    if (monthlyMicros > 0 && yearlyMicros >= 0 && monthlyCurrency != null && monthlyCurrency.equals(yearlyCurrency)) {
+                        double fullYear = (double) monthlyMicros * 12.0;
+                        savings = Math.max(0, Math.min(100, (int) Math.round(100.0 * (1.0 - yearlyMicros / fullYear))));
+                    }
                     show(yearly == null && monthly == null
-                            ? "Subscription plans are not available yet." : "Prices provided by Google Play.", yearly, monthly, trial);
+                            ? "Subscription plans are not available yet." : "Prices provided by Google Play.", yearly, monthly, trial, savings);
                 });
             }
-            @Override public void onBillingServiceDisconnected() { show("Google Play is unavailable.", null, null, false); }
-            private void show(String status, String yearly, String monthly, boolean trial) {
+            @Override public void onBillingServiceDisconnected() { show("Google Play is unavailable.", null, null, false, 0); }
+            private void show(String status, String yearly, String monthly, boolean trial, int savings) {
                 client.endConnection();
                 activity.runOnUiThread(() -> {
                     if (activity.isFinishing() || activity.isDestroyed()) return;
                     page.evaluateJavascript("window.updatePlayPrices(" + JSONObject.quote(yearly == null ? "Unavailable" : yearly)
                             + "," + JSONObject.quote(monthly == null ? "Unavailable" : monthly)
-                            + "," + JSONObject.quote(status) + "," + trial + ")", null);
+                            + "," + JSONObject.quote(status) + "," + trial + "," + savings + ")", null);
                 });
             }
         });
