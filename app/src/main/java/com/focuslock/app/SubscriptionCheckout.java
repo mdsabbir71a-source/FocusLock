@@ -33,25 +33,28 @@ final class SubscriptionCheckout {
         final BillingClient[] holder = new BillingClient[1];
         BillingClient client = BillingClient.newBuilder(activity)
                 .setListener((result, purchases) -> {
-                    if (result.getResponseCode() == BillingClient.BillingResponseCode.USER_CANCELED) return;
+                    if (result.getResponseCode() == BillingClient.BillingResponseCode.USER_CANCELED) { holder[0].endConnection(); return; }
                     if (result.getResponseCode() != BillingClient.BillingResponseCode.OK || purchases == null) {
                         message(activity, "Google Play could not complete the purchase. Please try again.");
+                        holder[0].endConnection();
                         return;
                     }
                     for (Purchase purchase : purchases) {
                         if (!purchase.getProducts().contains("focuslock_premium")) continue;
                         if (purchase.getPurchaseState() == Purchase.PurchaseState.PENDING) {
                             message(activity, "Your payment is pending. Premium will be available once verified.");
+                            holder[0].endConnection();
                             continue;
                         }
                         if (purchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) continue;
                         PlayPurchaseVerifier.verify(activity, purchase.getPurchaseToken(), (verified, expires, error) -> {
-                            if (!verified) { message(activity, error == null ? "Could not verify your subscription." : error); return; }
+                            if (!verified) { holder[0].endConnection(); message(activity, error == null ? "Could not verify your subscription." : error); return; }
                             PremiumEntitlementStore.recordVerified(activity, expires);
-                            if (purchase.isAcknowledged()) { message(activity, "Premium access is active."); return; }
+                            if (purchase.isAcknowledged()) { holder[0].endConnection(); message(activity, "Premium access is active."); return; }
                             AcknowledgePurchaseParams params = AcknowledgePurchaseParams.newBuilder()
                                     .setPurchaseToken(purchase.getPurchaseToken()).build();
                             holder[0].acknowledgePurchase(params, ack -> {
+                                holder[0].endConnection();
                                 if (ack.getResponseCode() == BillingClient.BillingResponseCode.OK)
                                     message(activity, "Premium access is active.");
                                 else {
