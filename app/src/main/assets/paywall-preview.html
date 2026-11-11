@@ -67,7 +67,7 @@ function updatePlayPrices(yearly,monthly,status,trial){window.playPricesResolved
 function selectPlan(yearly){location.href=yearly?'focuslock://paywall/yearly':'focuslock://paywall/monthly';window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('week').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?(window.playTrial?'Start 7-day free trial':'Continue with yearly'):(window.playMonthly||'Continue with monthly')}
 function previewAction(){location.href=window.selectedYearly===false?'focuslock://paywall/buy-monthly':'focuslock://paywall/buy-yearly'}
 function showRestorePreview(){location.href='focuslock://paywall/restore';}
-setTimeout(function(){if(!window.playPricesResolved){updatePlayPrices("Unavailable","Unavailable","Could not load prices. Check your connection and install the test app from Google Play.",false);}},15000);
+function startPlayPriceTimeout(){setTimeout(function(){if(!window.playPricesResolved){updatePlayPrices("Unavailable","Unavailable","Could not load prices. Check your connection and install the test app from Google Play.",false);}},15000);}
 </script>
 </body>
 </html>
