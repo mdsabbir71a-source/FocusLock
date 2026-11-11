@@ -233,6 +233,8 @@ public class MainActivity extends Activity {
                 });
             } else if (shouldShowOnboarding) {
                 if (welcomed) showPermissionsOnboarding(); else showWelcomeCards();
+            } else if (BuildConfig.BILLING_TEST_ENABLED && !PremiumEntitlementStore.hasVerifiedAccess(this)) {
+                showSubscriptionDialog(this::showHomeContent);
             } else {
                 showHomeContent();
                 if (!onboarding.getBoolean("guide_complete", false)
@@ -1532,7 +1534,7 @@ public class MainActivity extends Activity {
 
     private void showSubscriptionDialog(Runnable onClosed) {
         Dialog dialog = new Dialog(this, android.R.style.Theme_Material_Light_NoActionBar);
-        if (onClosed != null) dialog.setCancelable(false);
+        if (onClosed != null || BuildConfig.BILLING_TEST_ENABLED) dialog.setCancelable(false);
         if (preparedPaywallPage == null) preparePaywallPage();
         final android.webkit.WebView page = preparedPaywallPage;
         if (page == null) return;
@@ -1613,6 +1615,20 @@ public class MainActivity extends Activity {
             // page-finished paths, exactly once when the dialog is shown.
             page.evaluateJavascript("window.startPlayPriceTimeout && window.startPlayPriceTimeout()", null);
             SubscriptionCatalog.load(MainActivity.this, page);
+            if (BuildConfig.BILLING_TEST_ENABLED) {
+                // Checkout and restore verify and acknowledge asynchronously.
+                // Open the app only after the verified entitlement is stored.
+                paywallSurface.postDelayed(new Runnable() {
+                    @Override public void run() {
+                        if (!dialog.isShowing() || isFinishing() || isDestroyed()) return;
+                        if (PremiumEntitlementStore.hasVerifiedAccess(MainActivity.this)) {
+                            closePaywall.run();
+                        } else {
+                            paywallSurface.postDelayed(this, 1000L);
+                        }
+                    }
+                }, 1000L);
+            }
         };
         page.setWebViewClient(new android.webkit.WebViewClient() {
             @Override public void onPageFinished(android.webkit.WebView view, String url) {
