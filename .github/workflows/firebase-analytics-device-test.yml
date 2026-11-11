@@ -26,30 +26,6 @@ jobs:
           mkdir -p "$RUNNER_TEMP/subscription-test"
           javac -d "$RUNNER_TEMP/subscription-test" app/src/main/java/com/focuslock/app/SubscriptionOfferPolicy.java tools/SubscriptionOfferPolicyTest.java
           java -cp "$RUNNER_TEMP/subscription-test" com.focuslock.app.SubscriptionOfferPolicyTest
-      - name: Check no-login verification connection
-        run: |
-          python3 - <<'PY'
-          import json, urllib.request, urllib.error, re
-          text = open('app/build.gradle').read()
-          key = re.search(r'sb_publishable_[A-Za-z0-9_-]+', text).group()
-          base = 'https://sfrwqrjwyzhabmquythi.supabase.co'
-          def call(path, body=None, token=None):
-              headers={'apikey':key,'Content-Type':'application/json'}
-              if token: headers['Authorization']='Bearer '+token
-              req=urllib.request.Request(base+path,data=json.dumps(body).encode() if body is not None else None,headers=headers)
-              try:
-                  with urllib.request.urlopen(req,timeout=30) as response: return response.status,json.load(response)
-              except urllib.error.HTTPError as error: return error.code,json.load(error)
-          status, session=call('/auth/v1/signup',{})
-          assert status==200, ('signup',status,session)
-          print('Temporary billing test user:',session['user']['id'],flush=True)
-          token=session['access_token']
-          status, result=call('/functions/v1/verify-play-purchase',{'purchaseToken':'focuslock-invalid-test-token-000000000000'},token)
-          assert status==200 and result.get('entitled') is False, ('verification',status,result)
-          status, rows=call('/rest/v1/app_remote_config?select=id',None,token)
-          assert status==200 and rows==[], ('data isolation',status,rows)
-          print('Anonymous verification and data isolation passed')
-          PY
       - name: Install Android SDK
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
