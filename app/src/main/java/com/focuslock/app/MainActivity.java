@@ -297,6 +297,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        SubscriptionRefresh.refresh(getApplicationContext());
         visible = true;
         // Complete the last permission handoff before doing nonessential resume work.
         if (waitingForSpecialPermission != 0 && permissionOnboardingDialog != null
