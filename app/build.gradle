@@ -21,8 +21,9 @@ android {
         // Play Console permanently reserves uploaded version codes. Keep this
         // release functionally identical while allowing it to replace the
         // already-uploaded code 200 bundle.
-        versionCode 243
-        versionName '1.1.43'
+        versionCode 244
+        versionName '1.1.44'
+        buildConfigField 'boolean', 'BILLING_TEST_ENABLED', 'false'
         buildConfigField 'String', 'SUPABASE_URL', '"https://sfrwqrjwyzhabmquythi.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_Y3Xl3f_pmMX3bZblCvjXmw_c2l1iPM7"'
         buildConfigField 'String', 'PUBLIC_SITE_URL', '"https://focuslock.io"'
@@ -53,6 +54,12 @@ android {
             signingConfig signingConfigs.release
             minifyEnabled false
             shrinkResources false
+        }
+        billingTest {
+            initWith release
+            matchingFallbacks = ['release']
+            versionNameSuffix '-billing-test'
+            buildConfigField 'boolean', 'BILLING_TEST_ENABLED', 'true'
         }
     }
 
