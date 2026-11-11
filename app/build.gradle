@@ -21,8 +21,8 @@ android {
         // Play Console permanently reserves uploaded version codes. Keep this
         // release functionally identical while allowing it to replace the
         // already-uploaded code 200 bundle.
-        versionCode 246
-        versionName '1.1.46'
+        versionCode 247
+        versionName '1.1.47'
         buildConfigField 'boolean', 'BILLING_TEST_ENABLED', 'false'
         buildConfigField 'String', 'SUPABASE_URL', '"https://sfrwqrjwyzhabmquythi.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_Y3Xl3f_pmMX3bZblCvjXmw_c2l1iPM7"'
