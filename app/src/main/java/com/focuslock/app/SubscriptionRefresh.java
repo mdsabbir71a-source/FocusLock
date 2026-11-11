@@ -33,7 +33,14 @@ final class SubscriptionRefresh {
                     if (candidate == null) { PremiumEntitlementStore.clear(app); done(); return; }
                     Purchase current = candidate;
                     PlayPurchaseVerifier.verify(app, current.getPurchaseToken(), (verified, expiry, error) -> {
-                        if (!verified) { done(); return; }
+                        if (!verified) {
+                            // A definite negative result revokes access; a network
+                            // failure preserves the limited offline grace period.
+                            if ("No active subscription was verified.".equals(error))
+                                PremiumEntitlementStore.clear(app);
+                            done();
+                            return;
+                        }
                         PremiumEntitlementStore.recordVerified(app, expiry);
                         if (current.isAcknowledged()) { done(); return; }
                         AcknowledgePurchaseParams ack = AcknowledgePurchaseParams.newBuilder()
