@@ -44,13 +44,14 @@ final class SubscriptionRestore {
                         Purchase purchase = foundPurchase;
                         PlayPurchaseVerifier.verify(activity, purchase.getPurchaseToken(), (verified, expires, error) -> {
                             if (!verified) { finish(error == null ? "Could not verify your subscription." : error); return; }
-                            PremiumEntitlementStore.recordVerified(activity, expires);
-                            if (purchase.isAcknowledged()) { finish("Your premium access has been restored."); return; }
+                            if (purchase.isAcknowledged()) { PremiumEntitlementStore.recordVerified(activity, expires); finish("Your premium access has been restored."); return; }
                             AcknowledgePurchaseParams acknowledgement = AcknowledgePurchaseParams.newBuilder()
                                     .setPurchaseToken(purchase.getPurchaseToken()).build();
                             client.acknowledgePurchase(acknowledgement, ack -> {
-                                if (ack.getResponseCode() == BillingClient.BillingResponseCode.OK)
+                                if (ack.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+                                    PremiumEntitlementStore.recordVerified(activity, expires);
                                     finish("Your premium access has been restored.");
+                                }
                                 else {
                                     PremiumEntitlementStore.clear(activity);
                                     finish("Could not confirm your purchase with Google Play. Please try again.");
