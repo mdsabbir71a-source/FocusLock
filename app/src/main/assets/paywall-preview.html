@@ -63,10 +63,11 @@
 <p class="terms">Renews automatically. Cancel anytime. <a href="focuslock://terms">Terms &amp; conditions</a></p></footer>
 </main>
 <script>
-function updatePlayPrices(yearly,monthly,status,trial){window.playMonthly=monthly;window.playTrial=trial;document.querySelector("#year .plan-detail").textContent=trial ? "7-day free trial, then " + yearly : yearly;document.querySelector("#week .plan-detail").textContent=monthly;document.getElementById("action").textContent=window.selectedYearly===false ? monthly : (trial ? "Start 7-day free trial" : "Continue with yearly");var n=document.getElementById("restore-status");n.hidden=false;n.textContent=status;}
+function updatePlayPrices(yearly,monthly,status,trial){window.playPricesResolved=true;window.playMonthly=monthly;window.playTrial=trial;document.querySelector("#year .plan-detail").textContent=trial ? "7-day free trial, then " + yearly : yearly;document.querySelector("#week .plan-detail").textContent=monthly;document.getElementById("action").textContent=window.selectedYearly===false ? monthly : (trial ? "Start 7-day free trial" : "Continue with yearly");var n=document.getElementById("restore-status");n.hidden=false;n.textContent=status;}
 function selectPlan(yearly){location.href=yearly?'focuslock://paywall/yearly':'focuslock://paywall/monthly';window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('week').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?(window.playTrial?'Start 7-day free trial':'Continue with yearly'):(window.playMonthly||'Continue with monthly')}
 function previewAction(){location.href=window.selectedYearly===false?'focuslock://paywall/buy-monthly':'focuslock://paywall/buy-yearly'}
 function showRestorePreview(){location.href='focuslock://paywall/restore';}
+setTimeout(function(){if(!window.playPricesResolved){updatePlayPrices("Unavailable","Unavailable","Could not load prices. Check your connection and install the test app from Google Play.",false);}},15000);
 </script>
 </body>
 </html>
