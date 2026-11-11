@@ -35,17 +35,33 @@ final class SubscriptionCatalog {
                     boolean trial = false;
                     if (status.getResponseCode() == BillingClient.BillingResponseCode.OK) {
                         for (ProductDetails item : details.getProductDetailsList()) {
-                            if (item.getSubscriptionOfferDetails() == null) continue;
+                            if (!"focuslock_premium".equals(item.getProductId()) || item.getSubscriptionOfferDetails() == null) continue;
+                            ProductDetails.SubscriptionOfferDetails selectedYear = null;
+                            ProductDetails.SubscriptionOfferDetails selectedMonth = null;
+                            int yearlyScore = 0, monthlyScore = 0;
                             for (ProductDetails.SubscriptionOfferDetails offer : item.getSubscriptionOfferDetails()) {
-                                if ("yearly".equals(offer.getBasePlanId()) && "yearly-7-day-trial".equals(offer.getOfferId())) {
-                                    for (ProductDetails.PricingPhase phase : offer.getPricingPhases().getPricingPhaseList()) {
-                                        if (phase.getPriceAmountMicros() == 0 && ("P7D".equals(phase.getBillingPeriod()) || "P1W".equals(phase.getBillingPeriod()))) trial = true;
+                                int ys = SubscriptionOfferPolicy.score("yearly", offer.getBasePlanId(), offer.getOfferId());
+                                int ms = SubscriptionOfferPolicy.score("monthly", offer.getBasePlanId(), offer.getOfferId());
+                                if (ys > yearlyScore) { yearlyScore = ys; selectedYear = offer; }
+                                if (ms > monthlyScore) { monthlyScore = ms; selectedMonth = offer; }
+                            }
+                            if (selectedYear != null) {
+                                for (ProductDetails.PricingPhase phase : selectedYear.getPricingPhases().getPricingPhaseList()) {
+                                    if (phase.getPriceAmountMicros() == 0 && ("P7D".equals(phase.getBillingPeriod()) || "P1W".equals(phase.getBillingPeriod()))) trial = true;
+                                    if (phase.getRecurrenceMode() == ProductDetails.RecurrenceMode.INFINITE_RECURRING && "P1Y".equals(phase.getBillingPeriod())) {
+                                        yearly = phase.getFormattedPrice() + " / year";
+                                        yearlyMicros = phase.getPriceAmountMicros();
+                                        yearlyCurrency = phase.getPriceCurrencyCode();
                                     }
                                 }
-                                if (offer.getOfferId() != null) continue;
-                                for (ProductDetails.PricingPhase phase : offer.getPricingPhases().getPricingPhaseList()) {
-                                    if ("yearly".equals(offer.getBasePlanId())) { yearly = phase.getFormattedPrice() + " / year"; yearlyMicros = phase.getPriceAmountMicros(); yearlyCurrency = phase.getPriceCurrencyCode(); }
-                                    if ("monthly".equals(offer.getBasePlanId())) { monthly = phase.getFormattedPrice() + " / month"; monthlyMicros = phase.getPriceAmountMicros(); monthlyCurrency = phase.getPriceCurrencyCode(); }
+                            }
+                            if (selectedMonth != null) {
+                                for (ProductDetails.PricingPhase phase : selectedMonth.getPricingPhases().getPricingPhaseList()) {
+                                    if (phase.getRecurrenceMode() == ProductDetails.RecurrenceMode.INFINITE_RECURRING && "P1M".equals(phase.getBillingPeriod())) {
+                                        monthly = phase.getFormattedPrice() + " / month";
+                                        monthlyMicros = phase.getPriceAmountMicros();
+                                        monthlyCurrency = phase.getPriceCurrencyCode();
+                                    }
                                 }
                             }
                         }
