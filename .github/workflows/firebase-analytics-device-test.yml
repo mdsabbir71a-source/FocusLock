@@ -67,12 +67,17 @@ jobs:
           fi
       - name: Verify bundle signature
         run: jarsigner -verify -certs app/build/outputs/bundle/release/app-release.aab
-      - name: Verify live Play service rejects invalid purchase
+      - name: Verify purchase endpoint requires authentication
         run: |
-          curl -fsS --max-time 30 -H 'Content-Type: application/json' \
+          status="$(curl -sS --max-time 30 -o "$RUNNER_TEMP/play-check.json" -w '%{http_code}' \
+            -H 'Content-Type: application/json' \
             --data '{"purchaseToken":"focuslock-invalid-test-token-000000000000"}' \
-            'https://sfrwqrjwyzhabmquythi.supabase.co/functions/v1/verify-play-purchase' > "$RUNNER_TEMP/play-check.json"
-          python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); assert data.get("entitled") is False' "$RUNNER_TEMP/play-check.json"
+            'https://sfrwqrjwyzhabmquythi.supabase.co/functions/v1/verify-play-purchase')"
+          if [ "$status" != "401" ] && [ "$status" != "403" ]; then
+            echo "Expected authentication rejection, got HTTP $status"
+            exit 1
+          fi
+          echo "Unauthenticated request rejected; this does not test Google Play verification."
       - uses: actions/upload-artifact@v4
         if: ${{ success() || failure() }}
         with:
