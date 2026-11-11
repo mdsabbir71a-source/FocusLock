@@ -11,6 +11,19 @@ function json(status: number, data: Record<string, unknown>) {
 }
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
+  // Supabase's JWT gateway must remain enabled. A public legacy anon key is
+  // itself a valid JWT, so require an actual authenticated user session too.
+  try {
+    const authorization = req.headers.get("authorization") || "";
+    if (!authorization.startsWith("Bearer ")) return json(401, { error: "Authentication required" });
+    const parts = authorization.slice(7).split(".");
+    if (parts.length !== 3) return json(401, { error: "Authentication required" });
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const claims = JSON.parse(atob(payload.padEnd(Math.ceil(payload.length / 4) * 4, "=")));
+    if (claims.role !== "authenticated" || typeof claims.sub !== "string" || !claims.sub) {
+      return json(401, { error: "Authentication required" });
+    }
+  } catch { return json(401, { error: "Authentication required" }); }
   const now = Date.now();
   if (now - windowStarted >= limitWindow) { windowStarted = now; attempts = 0; }
   if (++attempts > 60) return json(429, { error: "Please try again later" });
