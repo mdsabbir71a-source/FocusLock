@@ -1611,6 +1611,7 @@ public class MainActivity extends Activity {
             // The paywall may already be fully loaded before its WebViewClient
             // is attached. Start the catalog on both the preloaded and normal
             // page-finished paths, exactly once when the dialog is shown.
+            page.evaluateJavascript("window.startPlayPriceTimeout && window.startPlayPriceTimeout()", null);
             SubscriptionCatalog.load(MainActivity.this, page);
         };
         page.setWebViewClient(new android.webkit.WebViewClient() {
