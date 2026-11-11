@@ -1608,11 +1608,14 @@ public class MainActivity extends Activity {
                 dialog.getWindow().getDecorView().setSystemUiVisibility(flags);
             }
             revealPaywall.run();
+            // The paywall may already be fully loaded before its WebViewClient
+            // is attached. Start the catalog on both the preloaded and normal
+            // page-finished paths, exactly once when the dialog is shown.
+            SubscriptionCatalog.load(MainActivity.this, page);
         };
         page.setWebViewClient(new android.webkit.WebViewClient() {
             @Override public void onPageFinished(android.webkit.WebView view, String url) {
                 showReadyPaywall.run();
-                SubscriptionCatalog.load(MainActivity.this, view);
             }
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
                 if ("focuslock://close".equals(url)) closePaywall.run();
