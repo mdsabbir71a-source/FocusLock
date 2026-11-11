@@ -21,6 +21,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/announcement-test"
           javac -d "$RUNNER_TEMP/announcement-test" app/src/main/java/com/focuslock/app/AnnouncementPolicy.java tools/AnnouncementPolicyTest.java
           java -cp "$RUNNER_TEMP/announcement-test" com.focuslock.app.AnnouncementPolicyTest
+      - name: Test subscription offer selection
+        run: |
+          mkdir -p "$RUNNER_TEMP/subscription-test"
+          javac -d "$RUNNER_TEMP/subscription-test" app/src/main/java/com/focuslock/app/SubscriptionOfferPolicy.java tools/SubscriptionOfferPolicyTest.java
+          java -cp "$RUNNER_TEMP/subscription-test" com.focuslock.app.SubscriptionOfferPolicyTest
       - name: Install Android SDK
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
