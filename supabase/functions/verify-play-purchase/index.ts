@@ -2,6 +2,7 @@
 // validated directly with Google; no premium access is granted by this service
 // unless Google reports a matching, unexpired subscription.
 import { verifyPlaySubscription } from "../_shared/verify-play-subscription.mjs";
+import { readLimitedBody } from "../_shared/read-limited-body.mjs";
 const headers = { "Content-Type": "application/json", "Cache-Control": "no-store" };
 function json(status: number, data: Record<string, unknown>) {
   return new Response(JSON.stringify(data), { status, headers });
@@ -27,10 +28,12 @@ Deno.serve(async (req: Request) => {
   if (contentLength > 8192) return json(413, { error: "Request too large" });
   let body: unknown;
   try {
-    const raw = await req.text();
-    if (raw.length > 8192) return json(413, { error: "Request too large" });
+    const raw = await readLimitedBody(req, 8192);
     body = JSON.parse(raw);
-  } catch { return json(400, { error: "Invalid request" }); }
+  } catch (error) {
+    if (error instanceof Error && error.name === "BodyTooLarge") return json(413, { error: "Request too large" });
+    return json(400, { error: "Invalid request" });
+  }
   const token = (body as Record<string, unknown>)?.purchaseToken;
   if (typeof token !== "string" || token.length < 20 || token.length > 4096)
     return json(400, { error: "Invalid request" });
