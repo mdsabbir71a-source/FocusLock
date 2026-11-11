@@ -2,9 +2,6 @@
 // validated directly with Google; no premium access is granted by this service
 // unless Google reports a matching, unexpired subscription.
 import { verifyPlaySubscription } from "../_shared/verify-play-subscription.mjs";
-const limitWindow = 60_000;
-let windowStarted = Date.now();
-let attempts = 0;
 const headers = { "Content-Type": "application/json", "Cache-Control": "no-store" };
 function json(status: number, data: Record<string, unknown>) {
   return new Response(JSON.stringify(data), { status, headers });
@@ -24,9 +21,6 @@ Deno.serve(async (req: Request) => {
       return json(401, { error: "Authentication required" });
     }
   } catch { return json(401, { error: "Authentication required" }); }
-  const now = Date.now();
-  if (now - windowStarted >= limitWindow) { windowStarted = now; attempts = 0; }
-  if (++attempts > 60) return json(429, { error: "Please try again later" });
   const contentLength = Number(req.headers.get("content-length") ?? "0");
   if (contentLength > 8192) return json(413, { error: "Request too large" });
   let body: unknown;
@@ -38,6 +32,23 @@ Deno.serve(async (req: Request) => {
   const token = (body as Record<string, unknown>)?.purchaseToken;
   if (typeof token !== "string" || token.length < 20 || token.length > 4096)
     return json(400, { error: "Invalid request" });
+  // Enforce a shared per-session limit across all function instances.
+  // Any error fails closed rather than allowing an unthrottled Google request.
+  try {
+    const base = Deno.env.get("SUPABASE_URL");
+    const apiKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!base || !apiKey) return json(503, { error: "Verification unavailable" });
+    const limited = await fetch(base + "/rest/v1/rpc/consume_play_verify_limit", {
+      method: "POST",
+      headers: { "apikey": apiKey, "Authorization": req.headers.get("authorization") || "", "Content-Type": "application/json" },
+      body: "{}",
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!limited.ok) return json(503, { error: "Verification unavailable" });
+    if ((await limited.json()) !== true) return json(429, { error: "Please try again later" });
+  } catch {
+    return json(503, { error: "Verification unavailable" });
+  }
   const secret = Deno.env.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON");
   if (!secret) return json(503, { error: "Verification unavailable" });
   try {
