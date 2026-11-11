@@ -17,6 +17,7 @@ final class PremiumEntitlementStore {
                 .putLong("checked_wall", now)
                 .putLong("checked_elapsed", SystemClock.elapsedRealtime()).apply();
     }
+    static boolean hasStoredAccess(Context context) { return prefs(context).getLong("expires_at", 0) > 0; }
     static boolean hasVerifiedAccess(Context context) {
         SharedPreferences p = prefs(context);
         long wall = System.currentTimeMillis();
