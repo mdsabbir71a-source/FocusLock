@@ -305,6 +305,11 @@ public final class SupabaseApi {
         });
     }
 
+    /** Returns a refreshed user access token for protected service requests. */
+    static String verificationAccessToken(Context context) throws Exception {
+        return freshSession(context).accessToken;
+    }
+
     private static SecureSessionStore.Session freshSession(Context context) throws Exception {
         return freshSession(context, false, null);
     }
