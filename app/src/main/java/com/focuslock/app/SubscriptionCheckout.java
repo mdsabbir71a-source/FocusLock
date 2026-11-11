@@ -5,7 +5,7 @@ import android.app.AlertDialog;
 import com.android.billingclient.api.*;
 import java.util.Collections;
 
-/** Checkout remains disabled until verified entitlements are configured and tested. */
+/** Checkout is enabled only in the dedicated Play billing test build. */
 final class SubscriptionCheckout {
     static void start(Activity activity, String planId) {
         if (!verifiedEntitlementsReady()) {
@@ -18,7 +18,7 @@ final class SubscriptionCheckout {
     }
 
     private static boolean verifiedEntitlementsReady() {
-        return false;
+        return BuildConfig.BILLING_TEST_ENABLED;
     }
 
     private static void message(Activity activity, String text) {
