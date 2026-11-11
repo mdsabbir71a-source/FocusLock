@@ -74,6 +74,7 @@ jobs:
             'https://sfrwqrjwyzhabmquythi.supabase.co/functions/v1/verify-play-purchase' > "$RUNNER_TEMP/play-check.json"
           python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); assert data.get("entitled") is False' "$RUNNER_TEMP/play-check.json"
       - uses: actions/upload-artifact@v4
+        if: ${{ success() || failure() }}
         with:
           name: FocusLock-Firebase-Analytics-Test
           path: |
