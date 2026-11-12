@@ -234,7 +234,17 @@ public class MainActivity extends Activity {
             } else if (shouldShowOnboarding) {
                 if (welcomed) showPermissionsOnboarding(); else showWelcomeCards();
             } else if (BuildConfig.BILLING_TEST_ENABLED && !PremiumEntitlementStore.hasVerifiedAccess(this)) {
-                showSubscriptionDialog(this::showHomeContent);
+                // A test renewal may have happened while the app was closed.
+                // Wait briefly for the in-flight Play refresh before deciding
+                // whether to show the paywall, instead of flashing it first.
+                final java.util.concurrent.atomic.AtomicBoolean decided = new java.util.concurrent.atomic.AtomicBoolean(false);
+                Runnable decide = () -> {
+                    if (!decided.compareAndSet(false, true) || isFinishing() || isDestroyed()) return;
+                    if (PremiumEntitlementStore.hasVerifiedAccess(this)) showHomeContent();
+                    else showSubscriptionDialog(this::showHomeContent);
+                };
+                SubscriptionRefresh.refresh(getApplicationContext(), decide);
+                new Handler(Looper.getMainLooper()).postDelayed(decide, 15000L);
             } else {
                 showHomeContent();
                 if (!onboarding.getBoolean("guide_complete", false)
