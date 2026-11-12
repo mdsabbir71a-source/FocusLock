@@ -3,14 +3,29 @@ package com.focuslock.app;
 import android.content.Context;
 import com.android.billingclient.api.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.ArrayList;
+import android.os.Handler;
+import android.os.Looper;
 
 /** Refreshes existing verified access without interrupting the user. */
 final class SubscriptionRefresh {
     private static final AtomicBoolean IN_FLIGHT = new AtomicBoolean(false);
+    private static final Object CALLBACK_LOCK = new Object();
+    private static final ArrayList<Runnable> CALLBACKS = new ArrayList<>();
+    private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
-    static void refresh(Context context) {
+    static void refresh(Context context) { refresh(context, null); }
+
+    static void refresh(Context context, Runnable whenFinished) {
         Context app = context.getApplicationContext();
-        if (!PremiumEntitlementStore.hasStoredAccess(app) || !IN_FLIGHT.compareAndSet(false, true)) return;
+        synchronized (CALLBACK_LOCK) {
+            if (!PremiumEntitlementStore.hasStoredAccess(app) && !IN_FLIGHT.get()) {
+                if (whenFinished != null) MAIN.post(whenFinished);
+                return;
+            }
+            if (whenFinished != null) CALLBACKS.add(whenFinished);
+            if (!IN_FLIGHT.compareAndSet(false, true)) return;
+        }
         final BillingClient client = BillingClient.newBuilder(app)
                 .setListener((result, purchases) -> { })
                 .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
@@ -54,7 +69,15 @@ final class SubscriptionRefresh {
                 });
             }
             @Override public void onBillingServiceDisconnected() { done(); }
-            private void done() { client.endConnection(); IN_FLIGHT.set(false); }
+            private void done() {
+                synchronized (CALLBACK_LOCK) {
+                    if (!IN_FLIGHT.getAndSet(false)) return;
+                    client.endConnection();
+                    ArrayList<Runnable> pending = new ArrayList<>(CALLBACKS);
+                    CALLBACKS.clear();
+                    for (Runnable callback : pending) MAIN.post(callback);
+                }
+            }
         });
     }
 }
