@@ -25,6 +25,9 @@
 .close{-webkit-tap-highlight-color:transparent;transition:transform .16s ease}
 .close:active{transform:scale(.9)}
 @media(prefers-reduced-motion:reduce){.plan,.action,.close{transition:none}}
+.price-placeholder{display:inline-block;width:100px;height:13px;border-radius:7px;background:rgba(31,107,71,.13);animation:price-pulse 1.2s ease-in-out infinite}
+@keyframes price-pulse{0%,100%{opacity:.45}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){.price-placeholder{animation:none}}
 </style>
 </head>
 <body>
@@ -53,8 +56,8 @@
 <div class="item"><span class="check">✓</span>All calming designs &amp; reminders</div><div class="item"><span class="check">✓</span>Longer lock durations</div>
 </div></section>
 <section class="plans" aria-label="Choose a subscription plan">
-<button class="plan" id="year" aria-pressed="true" onclick="selectPlan(true)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Yearly <span id="year-savings" style="font-size:13px;color:#1f6b47" hidden></span></span><span class="plan-detail">Checking Google Play…</span></span></button>
-<button class="plan" id="week" aria-pressed="false" onclick="selectPlan(false)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Monthly</span><span class="plan-detail">Checking Google Play…</span></span></button>
+<button class="plan" id="year" aria-pressed="true" onclick="selectPlan(true)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Yearly <span id="year-savings" style="font-size:13px;color:#1f6b47" hidden></span></span><span class="plan-detail"><span class="price-placeholder" aria-label="Loading price"></span></span></span></button>
+<button class="plan" id="week" aria-pressed="false" onclick="selectPlan(false)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Monthly</span><span class="plan-detail"><span class="price-placeholder" aria-label="Loading price"></span></span></span></button>
 </section>
 <div class="spacer"></div>
 <footer class="footer"><button class="action" id="action" onclick="previewAction()">Continue with yearly</button>
