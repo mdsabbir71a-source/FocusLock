@@ -244,7 +244,7 @@ public class MainActivity extends Activity {
                     else showSubscriptionDialog(this::showHomeContent);
                 };
                 SubscriptionRefresh.refresh(getApplicationContext(), decide);
-                new Handler(Looper.getMainLooper()).postDelayed(decide, 15000L);
+                new Handler(android.os.Looper.getMainLooper()).postDelayed(decide, 15000L);
             } else {
                 showHomeContent();
                 if (!onboarding.getBoolean("guide_complete", false)
