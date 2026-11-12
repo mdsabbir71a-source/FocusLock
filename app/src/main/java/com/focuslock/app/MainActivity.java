@@ -222,6 +222,11 @@ public class MainActivity extends Activity {
         } else {
             setContentView(buildLaunchPlaceholder(shouldShowOnboarding));
         }
+        // Begin loading the paywall and Google Play prices ahead of display.
+        if (paywallPending || shouldShowOnboarding ||
+                (BuildConfig.BILLING_TEST_ENABLED && !PremiumEntitlementStore.hasVerifiedAccess(this))) {
+            preparePaywallPage();
+        }
         new Handler().post(() -> {
             if (isFinishing()) return;
             FocusAnalytics.log(this, "focus_app_open");
@@ -1537,7 +1542,13 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(false);
         settings.setBlockNetworkLoads(true);
-        page.setWebViewClient(new android.webkit.WebViewClient());
+        page.setWebViewClient(new android.webkit.WebViewClient() {
+            @Override public void onPageFinished(android.webkit.WebView web, String url) {
+                // Warm the localized prices while setup or the launch screen is
+                // visible. Checkout still requests fresh offer details.
+                SubscriptionCatalog.load(MainActivity.this, web);
+            }
+        });
         preparedPaywallPage = page;
         page.loadUrl("file:///android_asset/paywall-preview.html");
     }
