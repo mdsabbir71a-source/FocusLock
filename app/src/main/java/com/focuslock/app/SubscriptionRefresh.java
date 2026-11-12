@@ -57,13 +57,13 @@ final class SubscriptionRefresh {
                             done();
                             return;
                         }
-                        PremiumEntitlementStore.recordVerified(app, expiry);
-                        if (current.isAcknowledged()) { done(); return; }
+                        if (current.isAcknowledged()) { PremiumEntitlementStore.recordVerified(app, expiry); done(); return; }
                         AcknowledgePurchaseParams ack = AcknowledgePurchaseParams.newBuilder()
                                 .setPurchaseToken(current.getPurchaseToken()).build();
                         client.acknowledgePurchase(ack, response -> {
-                            if (response.getResponseCode() != BillingClient.BillingResponseCode.OK)
-                                PremiumEntitlementStore.clear(app);
+                            if (response.getResponseCode() == BillingClient.BillingResponseCode.OK)
+                                PremiumEntitlementStore.recordVerified(app, expiry);
+                            else PremiumEntitlementStore.clear(app);
                             done();
                         });
                     });
