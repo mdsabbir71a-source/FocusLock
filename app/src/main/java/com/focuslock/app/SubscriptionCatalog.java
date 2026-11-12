@@ -10,10 +10,15 @@ import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.QueryProductDetailsParams;
 import java.util.Collections;
+import java.util.WeakHashMap;
 
 /** Loads eligible localized pricing from Google Play. Never initiates a purchase. */
 final class SubscriptionCatalog {
+    private static final WeakHashMap<WebView, Long> REQUESTS = new WeakHashMap<>();
+    private static long nextRequest;
     static void load(Activity activity, WebView page) {
+        final long requestId;
+        synchronized (REQUESTS) { requestId = ++nextRequest; REQUESTS.put(page, requestId); }
         BillingClient client = BillingClient.newBuilder(activity)
                 .setListener((result, purchases) -> { })
                 .enablePendingPurchases(PendingPurchasesParams.newBuilder()
@@ -80,6 +85,10 @@ final class SubscriptionCatalog {
                 client.endConnection();
                 activity.runOnUiThread(() -> {
                     if (activity.isFinishing() || activity.isDestroyed()) return;
+                    synchronized (REQUESTS) {
+                        Long latest = REQUESTS.get(page);
+                        if (latest == null || latest.longValue() != requestId) return;
+                    }
                     page.evaluateJavascript("window.updatePlayPrices(" + JSONObject.quote(yearly == null ? "Unavailable" : yearly)
                             + "," + JSONObject.quote(monthly == null ? "Unavailable" : monthly)
                             + "," + JSONObject.quote(status) + "," + trial + "," + savings + ")", null);
