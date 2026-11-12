@@ -45,6 +45,7 @@ public final class SectionActivity extends Activity {
     private WebView analyticsView;
     private WebView accountView;
     private boolean account;
+    private boolean membershipCheckFinished;
     private FrameLayout shell;
     private View nativeNavigation;
     // These bundled pages do not change while the process is alive. Caching
@@ -71,6 +72,16 @@ public final class SectionActivity extends Activity {
         refreshNativeNavigation();
         analyticsView.loadDataWithBaseURL("https://focuslock.local/", pageHtml(false), "text/html", "UTF-8", null);
         accountView.loadDataWithBaseURL("https://focuslock.local/", pageHtml(true), "text/html", "UTF-8", null);
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        membershipCheckFinished = false;
+        SubscriptionRefresh.refresh(getApplicationContext(), () -> {
+            if (isFinishing() || isDestroyed()) return;
+            membershipCheckFinished = true;
+            if (accountView != null) bind(accountView);
+        });
     }
 
     private WebView createSectionView() {
@@ -129,11 +140,13 @@ public final class SectionActivity extends Activity {
         } catch (Exception ignored) { return "<html><head>" + bridge() + "</head><body></body></html>"; }
     }
 
-    private static String bridge() { return "<style>html,body{width:100%;min-height:100%;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}body{padding:0!important;display:block!important;background:#F7F5EF!important}.phone{width:100vw!important;height:100vh!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}.status,nav{display:none!important}.app{padding-bottom:96px!important}.scroll{padding-bottom:96px!important}[data-action]{transition:transform .14s ease,background .16s ease}[data-action]:active{transform:scale(.985)}</style><script>document.addEventListener('click',function(e){var row=e.target.closest('[data-action]');if(row&&window.FocusLock){window.FocusLock.perform(row.dataset.action);}});window.setFocusLockAccount=function(){var name=document.querySelector('.profile strong'),detail=document.querySelector('.profile span'),avatar=document.querySelector('.avatar');if(name)name.textContent='Your FocusLock';if(detail)detail.textContent='Private setup on this device';if(avatar)avatar.textContent='F';};</script>"; }
+    private static String bridge() { return "<style>html,body{width:100%;min-height:100%;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}body{padding:0!important;display:block!important;background:#F7F5EF!important}.phone{width:100vw!important;height:100vh!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}.status,nav{display:none!important}.app{padding-bottom:96px!important}.scroll{padding-bottom:96px!important}[data-action]{transition:transform .14s ease,background .16s ease}[data-action]:active{transform:scale(.985)}</style><script>document.addEventListener('click',function(e){var row=e.target.closest('[data-action]');if(row&&window.FocusLock){window.FocusLock.perform(row.dataset.action);}});window.setFocusLockAccount=function(state){var name=document.querySelector('.profile strong'),detail=document.querySelector('.profile span'),avatar=document.querySelector('.avatar'),label=document.querySelector('.plan small'),title=document.querySelector('.plan b'),description=document.querySelector('.plan span');if(name)name.textContent='Your FocusLock';if(detail)detail.textContent='Private setup on this device';if(avatar)avatar.textContent='F';if(label)label.textContent=state==='premium'?'FOCUSLOCK PREMIUM':state==='checking'?'CHECKING MEMBERSHIP':'FOCUSLOCK FREE';if(title)title.textContent=state==='premium'?'Premium access active':'Your focus is protected';if(description)description.textContent=state==='premium'?'Your subscription is active on this device.':state==='checking'?'Checking your subscription status…':'No active subscription is currently verified.';};</script>"; }
     private void bind(WebView target) {
         if (target == null) return;
         target.evaluateJavascript("if(window.setFocusLockData){window.setFocusLockData(" + pauseEventsJson() + "," + appsJson() + ");}", null);
-        target.evaluateJavascript("if(window.setFocusLockAccount){window.setFocusLockAccount();}", null);
+        String membership = PremiumEntitlementStore.hasVerifiedAccess(this) ? "premium"
+                : (!membershipCheckFinished && PremiumEntitlementStore.hasStoredAccess(this) ? "checking" : "free");
+        target.evaluateJavascript("if(window.setFocusLockAccount){window.setFocusLockAccount(" + json(membership) + ");}", null);
     }
 
     /** Bridges the polished bundled Account page to real, native account actions. */
