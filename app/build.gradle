@@ -21,9 +21,10 @@ android {
         // Play Console permanently reserves uploaded version codes. Keep this
         // release functionally identical while allowing it to replace the
         // already-uploaded code 200 bundle.
-        versionCode 250
-        versionName '1.1.50'
-        buildConfigField 'boolean', 'BILLING_TEST_ENABLED', 'false'
+        versionCode 251
+        versionName '1.1.51'
+        // Enable the verified Google Play subscription flow in the release build.
+        buildConfigField 'boolean', 'BILLING_TEST_ENABLED', 'true'
         buildConfigField 'String', 'SUPABASE_URL', '"https://sfrwqrjwyzhabmquythi.supabase.co"'
         buildConfigField 'String', 'SUPABASE_PUBLISHABLE_KEY', '"sb_publishable_Y3Xl3f_pmMX3bZblCvjXmw_c2l1iPM7"'
         buildConfigField 'String', 'PUBLIC_SITE_URL', '"https://focuslock.io"'
@@ -71,8 +72,7 @@ android {
 
 // Firebase dependencies are aligned by the bill of materials.
 dependencies {
-    // Enables Play Console billing setup; purchases remain disabled until the
-    // purchase and verification flows have been implemented and tested.
+    // Google Play Billing supplies localized offers and processes purchases.
     implementation 'com.android.billingclient:billing:9.1.0'
     implementation platform('com.google.firebase:firebase-bom:34.19.0')
     implementation 'com.google.firebase:firebase-analytics'
