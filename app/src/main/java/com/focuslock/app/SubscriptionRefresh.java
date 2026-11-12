@@ -26,6 +26,7 @@ final class SubscriptionRefresh {
             if (whenFinished != null) CALLBACKS.add(whenFinished);
             if (!IN_FLIGHT.compareAndSet(false, true)) return;
         }
+        final AtomicBoolean completed = new AtomicBoolean(false);
         final BillingClient client = BillingClient.newBuilder(app)
                 .setListener((result, purchases) -> { })
                 .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
@@ -70,6 +71,7 @@ final class SubscriptionRefresh {
             }
             @Override public void onBillingServiceDisconnected() { done(); }
             private void done() {
+                if (!completed.compareAndSet(false, true)) return;
                 synchronized (CALLBACK_LOCK) {
                     if (!IN_FLIGHT.getAndSet(false)) return;
                     client.endConnection();
