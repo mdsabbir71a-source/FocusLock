@@ -477,9 +477,9 @@ public final class SectionActivity extends Activity {
         StringBuilder json = new StringBuilder("[");
         for (String packageName : packages) {
             try {
-                if (json.length() > 1) json.append(',');
                 CharSequence label = manager.getApplicationLabel(manager.getApplicationInfo(packageName, 0));
                 Drawable icon = manager.getApplicationIcon(packageName);
+                if (json.length() > 1) json.append(',');
                 json.append("{\"p\":").append(json(packageName)).append(",\"n\":")
                         .append(json(label == null ? packageName : label.toString())).append(",\"i\":")
                         .append(json(iconData(icon))).append('}');
