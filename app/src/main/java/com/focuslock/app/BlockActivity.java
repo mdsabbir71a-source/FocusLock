@@ -22,6 +22,7 @@ public class BlockActivity extends Activity {
 
     @Override protected void onCreate(Bundle state){
         super.onCreate(state);
+        ScreenInsets.apply(getWindow());
         if(!AccessStore.isAllowed(this)||!RemoteConfigStore.appBlockingEnabled(this)){finish();return;}
         blockedPackage=getIntent().getStringExtra("blocked_package");
         if(blockedPackage==null||!LockStore.isLocked(this,blockedPackage)){finish();return;}
