@@ -21,8 +21,8 @@ android {
         // Play Console permanently reserves uploaded version codes. Keep this
         // release functionally identical while allowing it to replace the
         // already-uploaded code 200 bundle.
-        versionCode 255
-        versionName '1.1.55'
+        versionCode 256
+        versionName '1.1.56'
         // Enable the verified Google Play subscription flow in the release build.
         buildConfigField 'boolean', 'BILLING_TEST_ENABLED', 'true'
         buildConfigField 'String', 'SUPABASE_URL', '"https://sfrwqrjwyzhabmquythi.supabase.co"'
