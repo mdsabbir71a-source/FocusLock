@@ -192,6 +192,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ScreenInsets.apply(getWindow());
         // onResume performs this cleanup; avoid doing the same package scan twice at launch.
         SharedPreferences onboarding = getSharedPreferences("focuslock_onboarding", MODE_PRIVATE);
         boolean welcomed = onboarding.getBoolean("welcome_handoff_v117_seen", false);
@@ -306,8 +307,10 @@ public class MainActivity extends Activity {
     /** Keeps the status and navigation bars part of each surface, never a flash of the old page. */
     private void setOnboardingSystemBars(boolean dark) {
         int color = dark ? Color.rgb(18, 48, 34) : BACKGROUND;
-        getWindow().setStatusBarColor(color);
-        getWindow().setNavigationBarColor(color);
+        if (Build.VERSION.SDK_INT < 35) {
+            getWindow().setStatusBarColor(color);
+            getWindow().setNavigationBarColor(color);
+        }
         int flags = getWindow().getDecorView().getSystemUiVisibility();
         if (Build.VERSION.SDK_INT >= 23) {
             if (dark) flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
@@ -871,6 +874,7 @@ public class MainActivity extends Activity {
         }
         dialog.setOnShowListener(ignored -> {
             if (dialog.getWindow() != null) {
+                ScreenInsets.apply(dialog.getWindow());
                 dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
             }
             page.animate().alpha(1f).translationY(0f).setDuration(300).setInterpolator(new DecelerateInterpolator()).start();
@@ -955,6 +959,7 @@ public class MainActivity extends Activity {
         dialog.setCancelable(false);
         dialog.setOnShowListener(ignored -> {
             if (dialog.getWindow() != null) {
+                ScreenInsets.apply(dialog.getWindow());
                 dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
                 dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
             }
@@ -1637,8 +1642,11 @@ public class MainActivity extends Activity {
             dialog.show();
             if (dialog.getWindow() != null) {
                 dialog.getWindow().setLayout(-1, -1);
-                dialog.getWindow().setStatusBarColor(Color.rgb(246, 244, 236));
-                dialog.getWindow().setNavigationBarColor(Color.rgb(246, 244, 236));
+                ScreenInsets.apply(dialog.getWindow());
+                if (Build.VERSION.SDK_INT < 35) {
+                    dialog.getWindow().setStatusBarColor(Color.rgb(246, 244, 236));
+                    dialog.getWindow().setNavigationBarColor(Color.rgb(246, 244, 236));
+                }
                 int flags = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
                 if (Build.VERSION.SDK_INT >= 26) flags |= android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
                 dialog.getWindow().getDecorView().setSystemUiVisibility(flags);
