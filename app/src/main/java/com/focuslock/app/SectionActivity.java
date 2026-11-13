@@ -59,7 +59,10 @@ public final class SectionActivity extends Activity {
         account = "account".equals(getIntent().getStringExtra(EXTRA_SECTION));
         shell = new FrameLayout(this);
         shell.setBackgroundColor(Color.rgb(247, 245, 239));
+        shell.setAlpha(0f);
         setContentView(shell);
+        // Fade in the selected page once it has drawn, with a fallback for slow devices.
+        shell.postDelayed(this::revealSection, 600L);
         analyticsView = createSectionView();
         accountView = createSectionView();
         view = account ? accountView : analyticsView;
@@ -99,9 +102,15 @@ public final class SectionActivity extends Activity {
         page.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView web, String url) { return handle(url); }
             @Override public boolean shouldOverrideUrlLoading(WebView web, WebResourceRequest request) { return handle(request.getUrl().toString()); }
-            @Override public void onPageFinished(WebView web, String url) { bind(web); }
+            @Override public void onPageFinished(WebView web, String url) { bind(web); if (web == view) revealSection(); }
         });
         return page;
+    }
+
+    private void revealSection() {
+        if (shell == null || shell.getAlpha() == 1f) return;
+        shell.animate().cancel();
+        shell.animate().alpha(1f).setDuration(160L).start();
     }
 
     private boolean handle(String url) {
@@ -119,8 +128,8 @@ public final class SectionActivity extends Activity {
         view = account ? accountView : analyticsView;
         previous.setVisibility(View.INVISIBLE);
         view.setVisibility(View.VISIBLE);
-        view.setAlpha(.96f);
-        view.setTranslationY(dp(4));
+        view.setAlpha(.80f);
+        view.setTranslationY(dp(2));
         view.animate().cancel();
         view.animate().alpha(1f).translationY(0f).setDuration(120).start();
         refreshNativeNavigation();
