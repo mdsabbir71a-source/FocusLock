@@ -21,8 +21,8 @@ android {
         // Play Console permanently reserves uploaded version codes. Keep this
         // release functionally identical while allowing it to replace the
         // already-uploaded code 200 bundle.
-        versionCode 257
-        versionName '1.1.57'
+        versionCode 258
+        versionName '1.1.58'
         // Enable the verified Google Play subscription flow in the release build.
         buildConfigField 'boolean', 'BILLING_TEST_ENABLED', 'true'
         buildConfigField 'String', 'SUPABASE_URL', '"https://sfrwqrjwyzhabmquythi.supabase.co"'
@@ -53,8 +53,9 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
-            minifyEnabled false
-            shrinkResources false
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         billingTest {
             initWith release
@@ -74,6 +75,8 @@ android {
 dependencies {
     // Google Play Billing supplies localized offers and processes purchases.
     implementation 'com.android.billingclient:billing:9.1.0'
+    // Override the obsolete transitive fragment dependency flagged by Play Console.
+    implementation 'androidx.fragment:fragment:1.8.9'
     implementation platform('com.google.firebase:firebase-bom:34.19.0')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-crashlytics'
