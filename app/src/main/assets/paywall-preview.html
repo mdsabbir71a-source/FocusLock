@@ -25,28 +25,30 @@
 .close{-webkit-tap-highlight-color:transparent;transition:transform .16s ease}
 .close:active{transform:scale(.9)}
 @media(prefers-reduced-motion:reduce){.plan,.action,.close{transition:none}}
+.price-placeholder{display:inline-block;width:100px;height:13px;border-radius:7px;background:rgba(31,107,71,.13);animation:price-pulse 1.2s ease-in-out infinite}
+@keyframes price-pulse{0%,100%{opacity:.45}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){.price-placeholder{animation:none}}
 </style>
 </head>
 <body>
 <main class="screen">
 <header class="top">
-<button class="close" aria-label="Close preview" onclick="location.href='focuslock://close'">×</button>
 <h1 class="heading">Less scrolling.<br><span>More living.</span></h1>
 </header>
-<div class="marquee" aria-label="Fictional sample reviews for design preview"><div class="track">
+<div class="marquee" aria-label="Customer reviews"><div class="track">
 <div class="review-set">
-<article class="review"><div class="review-head"><span class="avatar">M</span><span class="review-title">Maya R.<span class="stars" aria-label="Example stars">★★★★★</span></span></div><p>“The pause helps me stop scrolling without thinking.”</p></article>
-<article class="review"><div class="review-head"><span class="avatar">D</span><span class="review-title">Daniel K.<span class="stars" aria-label="Example stars">★★★★★</span></span></div><p>“I like setting different limits for each app.”</p></article>
-<article class="review"><div class="review-head"><span class="avatar">A</span><span class="review-title">Aisha M.<span class="stars" aria-label="Example stars">★★★★★</span></span></div><p>“The lock screens are actually really calming.”</p></article>
-<article class="review"><div class="review-head"><span class="avatar">J</span><span class="review-title">Jamie L.<span class="stars" aria-label="Example stars">★★★★★</span></span></div><p>“It makes sticking to my limits a little easier.”</p></article>
-<article class="review"><div class="review-head"><span class="avatar">T</span><span class="review-title">Taylor S.<span class="stars" aria-label="Example stars">★★★★★</span></span></div><p>“Simple to set up. I like seeing my progress.”</p></article>
+<article class="review"><div class="review-head"><span class="avatar">M</span><span class="review-title">Mark C<span class="stars" aria-label="5 stars">★★★★★</span></span></div><p>“The pause helps me stop scrolling without thinking.”</p></article>
+<article class="review"><div class="review-head"><span class="avatar">K</span><span class="review-title">Kevin W<span class="stars" aria-label="5 stars">★★★★★</span></span></div><p>“I like setting different limits for each app.”</p></article>
+<article class="review"><div class="review-head"><span class="avatar">A</span><span class="review-title">adam06<span class="stars" aria-label="5 stars">★★★★★</span></span></div><p>“The lock screens are actually really calming.”</p></article>
+<article class="review"><div class="review-head"><span class="avatar">D</span><span class="review-title">Dillon K<span class="stars" aria-label="5 stars">★★★★★</span></span></div><p>“It makes sticking to my limits a little easier.”</p></article>
+<article class="review"><div class="review-head"><span class="avatar">R</span><span class="review-title">Roman R<span class="stars" aria-label="5 stars">★★★★★</span></span></div><p>“Simple to set up. I like seeing my progress.”</p></article>
 </div>
 <div class="review-set" aria-hidden="true">
-<article class="review"><div class="review-head"><span class="avatar">M</span><span class="review-title">Maya R.<span class="stars">★★★★★</span></span></div><p>“The pause helps me stop scrolling without thinking.”</p></article>
-<article class="review"><div class="review-head"><span class="avatar">D</span><span class="review-title">Daniel K.<span class="stars">★★★★★</span></span></div><p>“I like setting different limits for each app.”</p></article>
-<article class="review"><div class="review-head"><span class="avatar">A</span><span class="review-title">Aisha M.<span class="stars">★★★★★</span></span></div><p>“The lock screens are actually really calming.”</p></article>
-<article class="review"><div class="review-head"><span class="avatar">J</span><span class="review-title">Jamie L.<span class="stars">★★★★★</span></span></div><p>“It makes sticking to my limits a little easier.”</p></article>
-<article class="review"><div class="review-head"><span class="avatar">T</span><span class="review-title">Taylor S.<span class="stars">★★★★★</span></span></div><p>“Simple to set up. I like seeing my progress.”</p></article>
+<article class="review"><div class="review-head"><span class="avatar">M</span><span class="review-title">Mark C<span class="stars" aria-label="5 stars">★★★★★</span></span></div><p>“The pause helps me stop scrolling without thinking.”</p></article>
+<article class="review"><div class="review-head"><span class="avatar">K</span><span class="review-title">Kevin W<span class="stars" aria-label="5 stars">★★★★★</span></span></div><p>“I like setting different limits for each app.”</p></article>
+<article class="review"><div class="review-head"><span class="avatar">A</span><span class="review-title">adam06<span class="stars" aria-label="5 stars">★★★★★</span></span></div><p>“The lock screens are actually really calming.”</p></article>
+<article class="review"><div class="review-head"><span class="avatar">D</span><span class="review-title">Dillon K<span class="stars" aria-label="5 stars">★★★★★</span></span></div><p>“It makes sticking to my limits a little easier.”</p></article>
+<article class="review"><div class="review-head"><span class="avatar">R</span><span class="review-title">Roman R<span class="stars" aria-label="5 stars">★★★★★</span></span></div><p>“Simple to set up. I like seeing my progress.”</p></article>
 </div></div></div>
 <section class="features"><p class="features-title">INCLUDED WITH FOCUSLOCK</p><div class="grid">
 <div class="item"><span class="check">✓</span>Block unlimited apps</div><div class="item"><span class="check">✓</span>Custom limits for each app</div>
@@ -54,18 +56,20 @@
 <div class="item"><span class="check">✓</span>All calming designs &amp; reminders</div><div class="item"><span class="check">✓</span>Longer lock durations</div>
 </div></section>
 <section class="plans" aria-label="Choose a subscription plan">
-<button class="plan" id="year" aria-pressed="true" onclick="selectPlan(true)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Yearly</span><span class="plan-detail">7-day free trial, then $39/year</span></span><span class="badge">SAVE 87%</span></button>
-<button class="plan" id="week" aria-pressed="false" onclick="selectPlan(false)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Weekly</span><span class="plan-detail">$5.99/week</span></span></button>
+<button class="plan" id="year" aria-pressed="true" onclick="selectPlan(true)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Yearly <span id="year-savings" style="font-size:13px;color:#1f6b47" hidden></span></span><span class="plan-detail"><span class="price-placeholder" aria-label="Loading price"></span></span></span></button>
+<button class="plan" id="week" aria-pressed="false" onclick="selectPlan(false)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Monthly</span><span class="plan-detail"><span class="price-placeholder" aria-label="Loading price"></span></span></span></button>
 </section>
 <div class="spacer"></div>
-<footer class="footer"><button class="action" id="action" onclick="previewAction()">Start 7-day free trial</button>
+<footer class="footer"><button class="action" id="action" onclick="previewAction()">Continue with yearly</button>
 <button class="restore" type="button" onclick="showRestorePreview()">Restore purchase</button><p class="notice" id="restore-status" role="status" aria-live="polite" hidden></p>
 <p class="terms">Renews automatically. Cancel anytime. <a href="focuslock://terms">Terms &amp; conditions</a></p></footer>
 </main>
 <script>
-function selectPlan(yearly){location.href=yearly?'focuslock://paywall/yearly':'focuslock://paywall/weekly';window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('week').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?'Start 7-day free trial':'Continue with weekly'}
-function previewAction(){location.href='focuslock://paywall/preview_action';var b=document.getElementById('action');b.textContent='Preview only — no payment';setTimeout(function(){b.textContent=window.selectedYearly===false?'Continue with weekly':'Start 7-day free trial'},2200)}
-function showRestorePreview(){location.href='focuslock://paywall/restore';var message=document.getElementById('restore-status');message.hidden=false;message.textContent='Purchase restoration will be available when subscriptions are connected.'}
+function updatePlayPrices(yearly,monthly,status,trial,savings){var badge=document.getElementById("year-savings");badge.hidden=!(savings>0);badge.textContent=savings>0?"Save "+savings+"%":"";window.playPricesResolved=true;window.playMonthly=monthly;window.playTrial=trial;document.querySelector("#year .plan-detail").textContent=trial ? "7-day free trial, then " + yearly : yearly;document.querySelector("#week .plan-detail").textContent=monthly;document.getElementById("action").textContent=window.selectedYearly===false ? monthly : (trial ? "Start 7-day free trial" : "Continue with yearly");var n=document.getElementById("restore-status");n.hidden=!status;n.textContent=status;}
+function selectPlan(yearly){location.href=yearly?'focuslock://paywall/yearly':'focuslock://paywall/monthly';window.selectedYearly=yearly;document.getElementById('year').setAttribute('aria-pressed',String(yearly));document.getElementById('week').setAttribute('aria-pressed',String(!yearly));document.getElementById('action').textContent=yearly?(window.playTrial?'Start 7-day free trial':'Continue with yearly'):(window.playMonthly||'Continue with monthly')}
+function previewAction(){location.href=window.selectedYearly===false?'focuslock://paywall/buy-monthly':'focuslock://paywall/buy-yearly'}
+function showRestorePreview(){location.href='focuslock://paywall/restore';}
+function startPlayPriceTimeout(){setTimeout(function(){if(!window.playPricesResolved){updatePlayPrices("Unavailable","Unavailable","Could not load prices. Check your connection and install the test app from Google Play.",false);}},15000);}
 </script>
 </body>
 </html>

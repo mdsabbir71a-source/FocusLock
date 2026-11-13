@@ -305,6 +305,49 @@ public final class SupabaseApi {
         });
     }
 
+    /**
+     * A private billing session requires no visible sign-in. Keep it separate
+     * from any existing account session and serialize refresh-token rotation.
+     * Anonymous sign-in must be enabled and access policies reviewed first.
+     */
+    static String verificationAccessToken(Context context) throws Exception {
+        synchronized (SESSION_LOCK) {
+            BillingSessionStore.Session session = BillingSessionStore.get(context);
+            long now = System.currentTimeMillis();
+            if (session != null && session.expiresAt > now + SESSION_REFRESH_WINDOW_MS) {
+                return session.accessToken;
+            }
+            Response response;
+            if (session != null) {
+                response = request("POST", "/auth/v1/token?grant_type=refresh_token",
+                        new JSONObject().put("refresh_token", session.refreshToken).toString(), null, null);
+                if (!response.ok()) {
+                    if (response.code != 400 && response.code != 401) {
+                        throw new ApiException("Could not refresh billing session.");
+                    }
+                    BillingSessionStore.clear(context);
+                    session = null;
+                }
+            } else {
+                response = null;
+            }
+            if (session == null) {
+                response = request("POST", "/auth/v1/signup", "{}", null, null);
+                if (!response.ok()) throw new ApiException("Could not start billing session.");
+            }
+            JSONObject body = new JSONObject(response.body);
+            String access = normalizeToken(body.optString("access_token", ""));
+            String refresh = normalizeToken(body.optString("refresh_token", ""));
+            if (access.isEmpty() || refresh.isEmpty()) throw new ApiException("Invalid billing session.");
+            String userId = jwtSubject(access);
+            BillingSessionStore.save(context, access, refresh, userId,
+                    tokenExpiry(access, body.optLong("expires_in", 3600)));
+            BillingSessionStore.Session saved = BillingSessionStore.get(context);
+            if (saved == null) throw new ApiException("Could not save billing session.");
+            return saved.accessToken;
+        }
+    }
+
     private static SecureSessionStore.Session freshSession(Context context) throws Exception {
         return freshSession(context, false, null);
     }

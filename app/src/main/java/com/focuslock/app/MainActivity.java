@@ -192,7 +192,8 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        LockStore.pruneUninstalled(this);
+        ScreenInsets.apply(getWindow());
+        // onResume performs this cleanup; avoid doing the same package scan twice at launch.
         SharedPreferences onboarding = getSharedPreferences("focuslock_onboarding", MODE_PRIVATE);
         boolean welcomed = onboarding.getBoolean("welcome_handoff_v117_seen", false);
         boolean permissionsFinished = onboarding.getBoolean("permission_onboarding_done", false);
@@ -219,8 +220,21 @@ public class MainActivity extends Activity {
             FrameLayout paywallBackground = new FrameLayout(this);
             paywallBackground.setBackgroundColor(Color.rgb(246, 244, 236));
             setContentView(paywallBackground);
+        } else if (shouldShowOnboarding) {
+            // Keep a single matching backdrop behind the first onboarding card.
+            FrameLayout onboardingBackground = new FrameLayout(this);
+            onboardingBackground.setBackgroundColor(Color.rgb(18, 48, 34));
+            setContentView(onboardingBackground);
         } else {
-            setContentView(buildLaunchPlaceholder(shouldShowOnboarding));
+            setContentView(buildLaunchPlaceholder(false));
+        }
+        // Begin loading the paywall and Google Play prices ahead of display.
+        if (paywallPending || (!shouldShowOnboarding && BuildConfig.BILLING_TEST_ENABLED
+                && !PremiumEntitlementStore.hasVerifiedAccess(this))) {
+            preparePaywallPage();
+        } else if (shouldShowOnboarding) {
+            // Let the first card draw before creating a WebView in the background.
+            new Handler().postDelayed(this::preparePaywallPage, 350L);
         }
         new Handler().post(() -> {
             if (isFinishing()) return;
@@ -233,6 +247,18 @@ public class MainActivity extends Activity {
                 });
             } else if (shouldShowOnboarding) {
                 if (welcomed) showPermissionsOnboarding(); else showWelcomeCards();
+            } else if (BuildConfig.BILLING_TEST_ENABLED && !PremiumEntitlementStore.hasVerifiedAccess(this)) {
+                // A test renewal may have happened while the app was closed.
+                // Wait briefly for the in-flight Play refresh before deciding
+                // whether to show the paywall, instead of flashing it first.
+                final java.util.concurrent.atomic.AtomicBoolean decided = new java.util.concurrent.atomic.AtomicBoolean(false);
+                Runnable decide = () -> {
+                    if (!decided.compareAndSet(false, true) || isFinishing() || isDestroyed()) return;
+                    if (PremiumEntitlementStore.hasVerifiedAccess(this)) showHomeContent();
+                    else showSubscriptionDialog(this::showHomeContent);
+                };
+                SubscriptionRefresh.refresh(getApplicationContext(), decide);
+                new Handler(android.os.Looper.getMainLooper()).postDelayed(decide, 15000L);
             } else {
                 showHomeContent();
                 if (!onboarding.getBoolean("guide_complete", false)
@@ -270,7 +296,7 @@ public class MainActivity extends Activity {
             @Override public boolean onPreDraw() {
                 home.getViewTreeObserver().removeOnPreDrawListener(this);
                 if (!finishingPermissionOnboarding) {
-                    home.animate().alpha(1f).setDuration(260L)
+                    home.animate().alpha(1f).setDuration(190L)
                             .setInterpolator(new AccelerateDecelerateInterpolator()).start();
                 }
                 return true;
@@ -281,8 +307,10 @@ public class MainActivity extends Activity {
     /** Keeps the status and navigation bars part of each surface, never a flash of the old page. */
     private void setOnboardingSystemBars(boolean dark) {
         int color = dark ? Color.rgb(18, 48, 34) : BACKGROUND;
-        getWindow().setStatusBarColor(color);
-        getWindow().setNavigationBarColor(color);
+        if (Build.VERSION.SDK_INT < 35) {
+            getWindow().setStatusBarColor(color);
+            getWindow().setNavigationBarColor(color);
+        }
         int flags = getWindow().getDecorView().getSystemUiVisibility();
         if (Build.VERSION.SDK_INT >= 23) {
             if (dark) flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
@@ -297,6 +325,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        SubscriptionRefresh.refresh(getApplicationContext());
         visible = true;
         // Complete the last permission handoff before doing nonessential resume work.
         if (waitingForSpecialPermission != 0 && permissionOnboardingDialog != null
@@ -833,16 +862,22 @@ public class MainActivity extends Activity {
         page.addView(new View(this), new LinearLayout.LayoutParams(1, 0, .18f));
         page.addView(continueButton, topMargin(22));
         attachPressAnimation(continueButton);
+        page.setAlpha(0f);
+        page.setTranslationY(dp(8));
         dialog.setContentView(root);
         dialog.setCanceledOnTouchOutside(false);
         dialog.setCancelable(false);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.rgb(18, 48, 34)));
+            dialog.getWindow().setWindowAnimations(0);
+            dialog.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        }
         dialog.setOnShowListener(ignored -> {
             if (dialog.getWindow() != null) {
-                dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+                ScreenInsets.apply(dialog.getWindow());
                 dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
             }
-            page.setAlpha(0f); page.setTranslationY(dp(18));
-            page.animate().alpha(1f).translationY(0f).setDuration(520).setInterpolator(new DecelerateInterpolator()).start();
+            page.animate().alpha(1f).translationY(0f).setDuration(300).setInterpolator(new DecelerateInterpolator()).start();
         });
         continueButton.setOnClickListener(v -> page.animate().alpha(1f).translationY(0f).setDuration(0)
                 .withEndAction(() -> {
@@ -924,6 +959,7 @@ public class MainActivity extends Activity {
         dialog.setCancelable(false);
         dialog.setOnShowListener(ignored -> {
             if (dialog.getWindow() != null) {
+                ScreenInsets.apply(dialog.getWindow());
                 dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
                 dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
             }
@@ -1524,14 +1560,20 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(false);
         settings.setBlockNetworkLoads(true);
-        page.setWebViewClient(new android.webkit.WebViewClient());
+        page.setWebViewClient(new android.webkit.WebViewClient() {
+            @Override public void onPageFinished(android.webkit.WebView web, String url) {
+                // Warm the localized prices while setup or the launch screen is
+                // visible. Checkout still requests fresh offer details.
+                SubscriptionCatalog.load(MainActivity.this, web);
+            }
+        });
         preparedPaywallPage = page;
         page.loadUrl("file:///android_asset/paywall-preview.html");
     }
 
     private void showSubscriptionDialog(Runnable onClosed) {
         Dialog dialog = new Dialog(this, android.R.style.Theme_Material_Light_NoActionBar);
-        if (onClosed != null) dialog.setCancelable(false);
+        if (onClosed != null || BuildConfig.BILLING_TEST_ENABLED) dialog.setCancelable(false);
         if (preparedPaywallPage == null) preparePaywallPage();
         final android.webkit.WebView page = preparedPaywallPage;
         if (page == null) return;
@@ -1543,8 +1585,8 @@ public class MainActivity extends Activity {
         FrameLayout paywallSurface = new FrameLayout(this);
         paywallSurface.setBackgroundColor(Color.rgb(246, 244, 236));
         paywallSurface.addView(page, new FrameLayout.LayoutParams(-1, -1));
-        page.setAlpha(.85f);
-        page.setTranslationY(dp(4));
+        page.setAlpha(0f);
+        page.setTranslationY(dp(3));
         Runnable revealPaywall = () -> {
             if (revealed[0] || !dialog.isShowing() || isFinishing() || isDestroyed()) return;
             revealed[0] = true;
@@ -1552,7 +1594,7 @@ public class MainActivity extends Activity {
             if (departingPermissions != null && departingPermissions.isShowing()) {
                 departingPermissions.dismiss();
             }
-            page.animate().alpha(1f).translationY(0f).setDuration(160L)
+            page.animate().alpha(1f).translationY(0f).setDuration(180L)
                     .setInterpolator(new DecelerateInterpolator()).start();
         };
         Runnable closePaywall = () -> {
@@ -1600,13 +1642,35 @@ public class MainActivity extends Activity {
             dialog.show();
             if (dialog.getWindow() != null) {
                 dialog.getWindow().setLayout(-1, -1);
-                dialog.getWindow().setStatusBarColor(Color.rgb(246, 244, 236));
-                dialog.getWindow().setNavigationBarColor(Color.rgb(246, 244, 236));
+                ScreenInsets.apply(dialog.getWindow());
+                if (Build.VERSION.SDK_INT < 35) {
+                    dialog.getWindow().setStatusBarColor(Color.rgb(246, 244, 236));
+                    dialog.getWindow().setNavigationBarColor(Color.rgb(246, 244, 236));
+                }
                 int flags = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
                 if (Build.VERSION.SDK_INT >= 26) flags |= android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
                 dialog.getWindow().getDecorView().setSystemUiVisibility(flags);
             }
             revealPaywall.run();
+            // The paywall may already be fully loaded before its WebViewClient
+            // is attached. Start the catalog on both the preloaded and normal
+            // page-finished paths, exactly once when the dialog is shown.
+            page.evaluateJavascript("window.startPlayPriceTimeout && window.startPlayPriceTimeout()", null);
+            SubscriptionCatalog.load(MainActivity.this, page);
+            if (BuildConfig.BILLING_TEST_ENABLED) {
+                // Checkout and restore verify and acknowledge asynchronously.
+                // Open the app only after the verified entitlement is stored.
+                paywallSurface.postDelayed(new Runnable() {
+                    @Override public void run() {
+                        if (!dialog.isShowing() || isFinishing() || isDestroyed()) return;
+                        if (PremiumEntitlementStore.hasVerifiedAccess(MainActivity.this)) {
+                            closePaywall.run();
+                        } else {
+                            paywallSurface.postDelayed(this, 1000L);
+                        }
+                    }
+                }, 1000L);
+            }
         };
         page.setWebViewClient(new android.webkit.WebViewClient() {
             @Override public void onPageFinished(android.webkit.WebView view, String url) {
@@ -1615,6 +1679,9 @@ public class MainActivity extends Activity {
             @Override public boolean shouldOverrideUrlLoading(android.webkit.WebView view, String url) {
                 if ("focuslock://close".equals(url)) closePaywall.run();
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
+                else if ("focuslock://paywall/restore".equals(url)) { FocusAnalytics.log(MainActivity.this, "paywall_restore_selected"); SubscriptionRestore.start(MainActivity.this); }
+                else if ("focuslock://paywall/buy-yearly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "yearly");
+                else if ("focuslock://paywall/buy-monthly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "monthly");
                 else recordPaywallAction(url);
                 return true;
             }
@@ -1622,6 +1689,9 @@ public class MainActivity extends Activity {
                 String url = request.getUrl().toString();
                 if ("focuslock://close".equals(url)) closePaywall.run();
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
+                else if ("focuslock://paywall/restore".equals(url)) { FocusAnalytics.log(MainActivity.this, "paywall_restore_selected"); SubscriptionRestore.start(MainActivity.this); }
+                else if ("focuslock://paywall/buy-yearly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "yearly");
+                else if ("focuslock://paywall/buy-monthly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "monthly");
                 else recordPaywallAction(url);
                 return true;
             }
@@ -1644,7 +1714,7 @@ public class MainActivity extends Activity {
 
     private void recordPaywallAction(String url) {
         if ("focuslock://paywall/yearly".equals(url)) FocusAnalytics.log(this, "paywall_yearly_selected");
-        else if ("focuslock://paywall/weekly".equals(url)) FocusAnalytics.log(this, "paywall_weekly_selected");
+        else if ("focuslock://paywall/monthly".equals(url)) FocusAnalytics.log(this, "paywall_monthly_selected");
         else if ("focuslock://paywall/preview_action".equals(url)) FocusAnalytics.log(this, "paywall_preview_action");
         else if ("focuslock://paywall/restore".equals(url)) FocusAnalytics.log(this, "paywall_restore_selected");
     }
