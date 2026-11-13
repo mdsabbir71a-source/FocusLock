@@ -44,13 +44,13 @@ final class SubscriptionRestore {
                         Purchase purchase = foundPurchase;
                         PlayPurchaseVerifier.verify(activity, purchase.getPurchaseToken(), (verified, expires, error) -> {
                             if (!verified) { finish(error == null ? "Could not verify your subscription." : error); return; }
-                            if (purchase.isAcknowledged()) { PremiumEntitlementStore.recordVerified(activity, expires); finish("Your premium access has been restored."); return; }
+                            if (purchase.isAcknowledged()) { PremiumEntitlementStore.recordVerified(activity, expires); finish(null); return; }
                             AcknowledgePurchaseParams acknowledgement = AcknowledgePurchaseParams.newBuilder()
                                     .setPurchaseToken(purchase.getPurchaseToken()).build();
                             client.acknowledgePurchase(acknowledgement, ack -> {
                                 if (ack.getResponseCode() == BillingClient.BillingResponseCode.OK) {
                                     PremiumEntitlementStore.recordVerified(activity, expires);
-                                    finish("Your premium access has been restored.");
+                                    finish(null);
                                 }
                                 else {
                                     PremiumEntitlementStore.clear(activity);
@@ -69,7 +69,7 @@ final class SubscriptionRestore {
             private void finish(String message) {
                 client.endConnection();
                 activity.runOnUiThread(() -> {
-                    if (!activity.isFinishing() && !activity.isDestroyed())
+                    if (message != null && !activity.isFinishing() && !activity.isDestroyed())
                         new AlertDialog.Builder(activity).setTitle("Restore purchases")
                                 .setMessage(message).setPositiveButton("OK", null).show();
                 });
