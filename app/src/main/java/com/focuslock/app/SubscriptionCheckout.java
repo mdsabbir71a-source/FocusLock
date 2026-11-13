@@ -49,14 +49,13 @@ final class SubscriptionCheckout {
                         if (purchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) continue;
                         PlayPurchaseVerifier.verify(activity, purchase.getPurchaseToken(), (verified, expires, error) -> {
                             if (!verified) { holder[0].endConnection(); message(activity, error == null ? "Could not verify your subscription." : error); return; }
-                            if (purchase.isAcknowledged()) { PremiumEntitlementStore.recordVerified(activity, expires); holder[0].endConnection(); message(activity, "Premium access is active."); return; }
+                            if (purchase.isAcknowledged()) { PremiumEntitlementStore.recordVerified(activity, expires); holder[0].endConnection(); return; }
                             AcknowledgePurchaseParams params = AcknowledgePurchaseParams.newBuilder()
                                     .setPurchaseToken(purchase.getPurchaseToken()).build();
                             holder[0].acknowledgePurchase(params, ack -> {
                                 holder[0].endConnection();
                                 if (ack.getResponseCode() == BillingClient.BillingResponseCode.OK) {
                                     PremiumEntitlementStore.recordVerified(activity, expires);
-                                    message(activity, "Premium access is active.");
                                 }
                                 else {
                                     PremiumEntitlementStore.clear(activity);
