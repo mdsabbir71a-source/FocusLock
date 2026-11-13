@@ -55,6 +55,7 @@ public final class SectionActivity extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        ScreenInsets.apply(getWindow());
         LockStore.pruneUninstalled(this);
         account = "account".equals(getIntent().getStringExtra(EXTRA_SECTION));
         shell = new FrameLayout(this);
