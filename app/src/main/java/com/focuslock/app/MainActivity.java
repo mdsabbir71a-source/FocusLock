@@ -219,13 +219,21 @@ public class MainActivity extends Activity {
             FrameLayout paywallBackground = new FrameLayout(this);
             paywallBackground.setBackgroundColor(Color.rgb(246, 244, 236));
             setContentView(paywallBackground);
+        } else if (shouldShowOnboarding) {
+            // Keep a single matching backdrop behind the first onboarding card.
+            FrameLayout onboardingBackground = new FrameLayout(this);
+            onboardingBackground.setBackgroundColor(Color.rgb(18, 48, 34));
+            setContentView(onboardingBackground);
         } else {
-            setContentView(buildLaunchPlaceholder(shouldShowOnboarding));
+            setContentView(buildLaunchPlaceholder(false));
         }
         // Begin loading the paywall and Google Play prices ahead of display.
-        if (paywallPending || shouldShowOnboarding ||
-                (BuildConfig.BILLING_TEST_ENABLED && !PremiumEntitlementStore.hasVerifiedAccess(this))) {
+        if (paywallPending || (!shouldShowOnboarding && BuildConfig.BILLING_TEST_ENABLED
+                && !PremiumEntitlementStore.hasVerifiedAccess(this))) {
             preparePaywallPage();
+        } else if (shouldShowOnboarding) {
+            // Let the first card draw before creating a WebView in the background.
+            new Handler().postDelayed(this::preparePaywallPage, 350L);
         }
         new Handler().post(() -> {
             if (isFinishing()) return;
@@ -851,16 +859,21 @@ public class MainActivity extends Activity {
         page.addView(new View(this), new LinearLayout.LayoutParams(1, 0, .18f));
         page.addView(continueButton, topMargin(22));
         attachPressAnimation(continueButton);
+        page.setAlpha(0f);
+        page.setTranslationY(dp(8));
         dialog.setContentView(root);
         dialog.setCanceledOnTouchOutside(false);
         dialog.setCancelable(false);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.rgb(18, 48, 34)));
+            dialog.getWindow().setWindowAnimations(0);
+            dialog.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        }
         dialog.setOnShowListener(ignored -> {
             if (dialog.getWindow() != null) {
-                dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
                 dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
             }
-            page.setAlpha(0f); page.setTranslationY(dp(18));
-            page.animate().alpha(1f).translationY(0f).setDuration(520).setInterpolator(new DecelerateInterpolator()).start();
+            page.animate().alpha(1f).translationY(0f).setDuration(300).setInterpolator(new DecelerateInterpolator()).start();
         });
         continueButton.setOnClickListener(v -> page.animate().alpha(1f).translationY(0f).setDuration(0)
                 .withEndAction(() -> {
