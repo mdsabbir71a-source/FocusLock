@@ -192,7 +192,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        LockStore.pruneUninstalled(this);
+        // onResume performs this cleanup; avoid doing the same package scan twice at launch.
         SharedPreferences onboarding = getSharedPreferences("focuslock_onboarding", MODE_PRIVATE);
         boolean welcomed = onboarding.getBoolean("welcome_handoff_v117_seen", false);
         boolean permissionsFinished = onboarding.getBoolean("permission_onboarding_done", false);
@@ -287,7 +287,7 @@ public class MainActivity extends Activity {
             @Override public boolean onPreDraw() {
                 home.getViewTreeObserver().removeOnPreDrawListener(this);
                 if (!finishingPermissionOnboarding) {
-                    home.animate().alpha(1f).setDuration(260L)
+                    home.animate().alpha(1f).setDuration(190L)
                             .setInterpolator(new AccelerateDecelerateInterpolator()).start();
                 }
                 return true;
@@ -1567,8 +1567,8 @@ public class MainActivity extends Activity {
         FrameLayout paywallSurface = new FrameLayout(this);
         paywallSurface.setBackgroundColor(Color.rgb(246, 244, 236));
         paywallSurface.addView(page, new FrameLayout.LayoutParams(-1, -1));
-        page.setAlpha(.85f);
-        page.setTranslationY(dp(4));
+        page.setAlpha(0f);
+        page.setTranslationY(dp(3));
         Runnable revealPaywall = () -> {
             if (revealed[0] || !dialog.isShowing() || isFinishing() || isDestroyed()) return;
             revealed[0] = true;
@@ -1576,7 +1576,7 @@ public class MainActivity extends Activity {
             if (departingPermissions != null && departingPermissions.isShowing()) {
                 departingPermissions.dismiss();
             }
-            page.animate().alpha(1f).translationY(0f).setDuration(160L)
+            page.animate().alpha(1f).translationY(0f).setDuration(180L)
                     .setInterpolator(new DecelerateInterpolator()).start();
         };
         Runnable closePaywall = () -> {
