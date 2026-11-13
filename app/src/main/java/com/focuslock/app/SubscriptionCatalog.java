@@ -77,7 +77,7 @@ final class SubscriptionCatalog {
                         savings = Math.max(0, Math.min(100, (int) Math.round(100.0 * (1.0 - yearlyMicros / fullYear))));
                     }
                     show(yearly == null && monthly == null
-                            ? "Subscription plans are not available yet." : "Prices provided by Google Play.", yearly, monthly, trial, savings);
+                            ? "Subscription plans are not available yet." : "", yearly, monthly, trial, savings);
                 });
             }
             @Override public void onBillingServiceDisconnected() { show("Google Play is unavailable.", null, null, false, 0); }
