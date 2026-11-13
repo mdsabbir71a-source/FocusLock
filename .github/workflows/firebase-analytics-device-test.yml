@@ -54,6 +54,11 @@ jobs:
           FOCUSLOCK_KEY_ALIAS: ${{ secrets.FOCUSLOCK_KEY_ALIAS }}
           FOCUSLOCK_KEY_PASSWORD: ${{ secrets.FOCUSLOCK_KEY_PASSWORD }}
         run: ./gradle-8.10.2/bin/gradle --no-daemon :app:assembleRelease :app:bundleRelease :app:assembleBillingTest :app:bundleBillingTest
+      - name: Verify optimized release and fragment dependency
+        run: |
+          test -s app/build/outputs/mapping/release/mapping.txt
+          ./gradle-8.10.2/bin/gradle --no-daemon :app:dependencyInsight --configuration releaseRuntimeClasspath --dependency androidx.fragment:fragment > "$RUNNER_TEMP/fragment-dependency.txt"
+          grep -F 'androidx.fragment:fragment:1.8.9' "$RUNNER_TEMP/fragment-dependency.txt"
       - name: Verify billing test signature
         run: |
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose app/build/outputs/apk/billingTest/app-billingTest.apk
@@ -91,4 +96,5 @@ jobs:
             app/build/outputs/bundle/release/app-release.aab
             app/build/outputs/apk/billingTest/app-billingTest.apk
             app/build/outputs/bundle/billingTest/app-billingTest.aab
+            app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: error
