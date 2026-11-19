@@ -82,7 +82,7 @@ final class SubscriptionCheckout {
                         ProductDetails.SubscriptionOfferDetails chosen = null;
                         int bestScore = 0;
                         for (ProductDetails.SubscriptionOfferDetails offer : details.getSubscriptionOfferDetails()) {
-                            int score = SubscriptionOfferPolicy.score(planId, offer.getBasePlanId(), offer.getOfferId());
+                            int score = SubscriptionOffers.score(planId, offer);
                             if (score > bestScore) { bestScore = score; chosen = offer; }
                         }
                         if (chosen == null) continue;
