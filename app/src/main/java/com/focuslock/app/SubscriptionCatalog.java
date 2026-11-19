@@ -49,8 +49,8 @@ final class SubscriptionCatalog {
                             ProductDetails.SubscriptionOfferDetails selectedMonth = null;
                             int yearlyScore = 0, monthlyScore = 0;
                             for (ProductDetails.SubscriptionOfferDetails offer : item.getSubscriptionOfferDetails()) {
-                                int ys = SubscriptionOfferPolicy.score("yearly", offer.getBasePlanId(), offer.getOfferId());
-                                int ms = SubscriptionOfferPolicy.score("monthly", offer.getBasePlanId(), offer.getOfferId());
+                                int ys = SubscriptionOffers.score("yearly", offer);
+                                int ms = SubscriptionOffers.score("monthly", offer);
                                 if (ys > yearlyScore) { yearlyScore = ys; selectedYear = offer; }
                                 if (ms > monthlyScore) { monthlyScore = ms; selectedMonth = offer; }
                             }
