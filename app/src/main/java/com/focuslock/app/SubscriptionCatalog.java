@@ -10,6 +10,10 @@ import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.QueryProductDetailsParams;
 import java.util.Collections;
+import java.util.Currency;
+import java.util.Locale;
+import java.text.NumberFormat;
+import java.math.BigDecimal;
 import java.util.WeakHashMap;
 
 /** Loads eligible localized pricing from Google Play. Never initiates a purchase. */
@@ -26,7 +30,7 @@ final class SubscriptionCatalog {
         client.startConnection(new BillingClientStateListener() {
             @Override public void onBillingSetupFinished(BillingResult result) {
                 if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) {
-                    show("Subscription prices are unavailable. Please try again later.", null, null, false, 0); return;
+                    show("Subscription prices are unavailable. Please try again later.", null, null, false, 0, null); return;
                 }
                 QueryProductDetailsParams.Product product = QueryProductDetailsParams.Product.newBuilder()
                         .setProductId("focuslock_premium")
@@ -72,16 +76,27 @@ final class SubscriptionCatalog {
                         }
                     }
                     int savings = 0;
+                    String monthlyAnnual = null;
                     if (monthlyMicros > 0 && yearlyMicros >= 0 && monthlyCurrency != null && monthlyCurrency.equals(yearlyCurrency)) {
                         double fullYear = (double) monthlyMicros * 12.0;
                         savings = Math.max(0, Math.min(100, (int) Math.round(100.0 * (1.0 - yearlyMicros / fullYear))));
+                        if (yearlyMicros < fullYear) {
+                            try {
+                                NumberFormat format = NumberFormat.getCurrencyInstance(Locale.getDefault());
+                                Currency currency = Currency.getInstance(monthlyCurrency);
+                                format.setCurrency(currency);
+                                int digits = currency.getDefaultFractionDigits();
+                                if (digits >= 0) { format.setMinimumFractionDigits(digits); format.setMaximumFractionDigits(digits); }
+                                monthlyAnnual = format.format(BigDecimal.valueOf(monthlyMicros).multiply(BigDecimal.valueOf(12)).movePointLeft(6));
+                            } catch (IllegalArgumentException ignored) { /* Hide comparison if currency is unknown. */ }
+                        }
                     }
                     show(yearly == null && monthly == null
-                            ? "Subscription plans are not available yet." : "", yearly, monthly, trial, savings);
+                            ? "Subscription plans are not available yet." : "", yearly, monthly, trial, savings, monthlyAnnual);
                 });
             }
-            @Override public void onBillingServiceDisconnected() { show("Google Play is unavailable.", null, null, false, 0); }
-            private void show(String status, String yearly, String monthly, boolean trial, int savings) {
+            @Override public void onBillingServiceDisconnected() { show("Google Play is unavailable.", null, null, false, 0, null); }
+            private void show(String status, String yearly, String monthly, boolean trial, int savings, String monthlyAnnual) {
                 client.endConnection();
                 activity.runOnUiThread(() -> {
                     if (activity.isFinishing() || activity.isDestroyed()) return;
@@ -91,7 +106,7 @@ final class SubscriptionCatalog {
                     }
                     page.evaluateJavascript("window.updatePlayPrices(" + JSONObject.quote(yearly == null ? "Unavailable" : yearly)
                             + "," + JSONObject.quote(monthly == null ? "Unavailable" : monthly)
-                            + "," + JSONObject.quote(status) + "," + trial + "," + savings + ")", null);
+                            + "," + JSONObject.quote(status) + "," + trial + "," + savings + "," + JSONObject.quote(monthlyAnnual == null ? "" : monthlyAnnual) + ")", null);
                 });
             }
         });
