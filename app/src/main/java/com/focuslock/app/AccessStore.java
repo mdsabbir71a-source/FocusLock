@@ -27,7 +27,8 @@ public final class AccessStore {
     }
 
     public static boolean isAllowed(Context context) {
-        return true;
+        // Restrict the dedicated subscription test without changing the live app.
+        return !BuildConfig.BILLING_TEST_ENABLED || PremiumEntitlementStore.hasVerifiedAccess(context);
     }
 
     public static String reason(Context context) {
@@ -35,7 +36,7 @@ public final class AccessStore {
     }
 
     public static String level(Context context) {
-        return "free";
+        return PremiumEntitlementStore.hasVerifiedAccess(context) ? "premium" : "free";
     }
 
     public static void clear(Context context) { prefs(context).edit().clear().apply(); }
