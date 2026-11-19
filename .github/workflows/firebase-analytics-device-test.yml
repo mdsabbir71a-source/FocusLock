@@ -1,7 +1,7 @@
 name: Build Firebase analytics device test
 on:
   push:
-    branches: [firebase-analytics-device-test, restore-analytics-notification, fix-intermittent-lock-recovery, fix/block-pause-continuity]
+    branches: [firebase-analytics-device-test, restore-analytics-notification, fix-intermittent-lock-recovery, fix/block-pause-continuity, feature/subscription-catalog, fix/play-quality-1.1.58]
   pull_request:
     branches: [fix-intermittent-lock-recovery, main]
   workflow_dispatch:
@@ -21,6 +21,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/announcement-test"
           javac -d "$RUNNER_TEMP/announcement-test" app/src/main/java/com/focuslock/app/AnnouncementPolicy.java tools/AnnouncementPolicyTest.java
           java -cp "$RUNNER_TEMP/announcement-test" com.focuslock.app.AnnouncementPolicyTest
+      - name: Test subscription offer selection
+        run: |
+          mkdir -p "$RUNNER_TEMP/subscription-test"
+          javac -d "$RUNNER_TEMP/subscription-test" app/src/main/java/com/focuslock/app/SubscriptionOfferPolicy.java tools/SubscriptionOfferPolicyTest.java
+          java -cp "$RUNNER_TEMP/subscription-test" com.focuslock.app.SubscriptionOfferPolicyTest
       - name: Install Android SDK
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
@@ -48,17 +53,48 @@ jobs:
           FOCUSLOCK_KEYSTORE_PASSWORD: ${{ secrets.FOCUSLOCK_KEYSTORE_PASSWORD }}
           FOCUSLOCK_KEY_ALIAS: ${{ secrets.FOCUSLOCK_KEY_ALIAS }}
           FOCUSLOCK_KEY_PASSWORD: ${{ secrets.FOCUSLOCK_KEY_PASSWORD }}
-        run: ./gradle-8.10.2/bin/gradle --no-daemon :app:assembleRelease :app:bundleRelease
+        run: ./gradle-8.10.2/bin/gradle --no-daemon :app:assembleRelease :app:bundleRelease :app:assembleBillingTest :app:bundleBillingTest
+      - name: Verify optimized release and fragment dependency
+        run: |
+          test -s app/build/outputs/mapping/release/mapping.txt
+          ./gradle-8.10.2/bin/gradle --no-daemon :app:dependencyInsight --configuration releaseRuntimeClasspath --dependency androidx.fragment:fragment > "$RUNNER_TEMP/fragment-dependency.txt"
+          grep -F 'androidx.fragment:fragment:1.8.9' "$RUNNER_TEMP/fragment-dependency.txt"
+      - name: Verify billing test signature
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose app/build/outputs/apk/billingTest/app-billingTest.apk
+          jarsigner -verify -certs app/build/outputs/bundle/billingTest/app-billingTest.aab
       - name: Verify signature
         run: '"$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk'
       - name: Verify billing permission
         run: '"$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions app/build/outputs/apk/release/app-release.apk | grep -F com.android.vending.BILLING'
+      - name: Verify advertising ID permissions are absent
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions app/build/outputs/apk/release/app-release.apk > "$RUNNER_TEMP/permissions.txt"
+          if grep -E 'com\.google\.android\.gms\.permission\.AD_ID|android\.permission\.ACCESS_ADSERVICES_AD_ID' "$RUNNER_TEMP/permissions.txt"; then
+            echo "Unexpected advertising ID permission"
+            exit 1
+          fi
       - name: Verify bundle signature
         run: jarsigner -verify -certs app/build/outputs/bundle/release/app-release.aab
+      - name: Verify purchase endpoint requires authentication
+        run: |
+          status="$(curl -sS --max-time 30 -o "$RUNNER_TEMP/play-check.json" -w '%{http_code}' \
+            -H 'Content-Type: application/json' \
+            --data '{"purchaseToken":"focuslock-invalid-test-token-000000000000"}' \
+            'https://sfrwqrjwyzhabmquythi.supabase.co/functions/v1/verify-play-purchase')"
+          if [ "$status" != "401" ] && [ "$status" != "403" ]; then
+            echo "Expected authentication rejection, got HTTP $status"
+            exit 1
+          fi
+          echo "Unauthenticated request rejected; this does not test Google Play verification."
       - uses: actions/upload-artifact@v4
+        if: ${{ success() || failure() }}
         with:
           name: FocusLock-Firebase-Analytics-Test
           path: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/bundle/release/app-release.aab
+            app/build/outputs/apk/billingTest/app-billingTest.apk
+            app/build/outputs/bundle/billingTest/app-billingTest.aab
+            app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: error
