@@ -1,0 +1,49 @@
+name: Build lifetime billing test candidate
+on:
+  push:
+    branches: [feature/lifetime-verification]
+permissions:
+  contents: read
+jobs:
+  build:
+    if: github.repository == 'mdsabbir71a-source/FocusLock' && github.ref == 'refs/heads/feature/lifetime-verification'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore Firebase configuration
+        env:
+          FIREBASE_ANDROID_CONFIG: ${{ secrets.FOCUSLOCK_FIREBASE_ANDROID_CONFIG }}
+        run: |
+          test -n "$FIREBASE_ANDROID_CONFIG"
+          printf '%s' "$FIREBASE_ANDROID_CONFIG" > app/google-services.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Install Android platform
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"'
+      - name: Restore signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.FOCUSLOCK_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/focuslock-signing.p12"
+      - name: Build signed candidate
+        env:
+          FOCUSLOCK_KEYSTORE_PATH: ${{ runner.temp }}/focuslock-signing.p12
+          FOCUSLOCK_KEYSTORE_PASSWORD: ${{ secrets.FOCUSLOCK_KEYSTORE_PASSWORD }}
+          FOCUSLOCK_KEY_ALIAS: ${{ secrets.FOCUSLOCK_KEY_ALIAS }}
+          FOCUSLOCK_KEY_PASSWORD: ${{ secrets.FOCUSLOCK_KEY_PASSWORD }}
+        run: gradle assembleRelease bundleRelease --stacktrace
+      - name: Verify APK signature
+        run: '"$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FocusLock-lifetime-billing-test-candidate
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
