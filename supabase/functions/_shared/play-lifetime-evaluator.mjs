@@ -5,7 +5,7 @@ export function evaluateLifetimePurchase(resource) {
     const offer = item?.productOfferDetails;
     return item?.productId === "focuslock_lifetime"
       && offer?.purchaseOptionId === "lifetime"
-      && offer?.consumptionState === "YET_TO_BE_CONSUMED"
+      && offer?.consumptionState === "CONSUMPTION_STATE_YET_TO_BE_CONSUMED"
       && !offer?.rentOfferDetails
       && Number.isInteger(offer?.refundableQuantity)
       && offer.refundableQuantity > 0;
