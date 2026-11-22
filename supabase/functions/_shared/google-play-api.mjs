@@ -53,3 +53,18 @@ export async function acknowledgePlaySubscription(credentials, purchaseToken, fe
   const result = await fetchFn(url, { method: "POST", headers: { authorization: "Bearer " + token, "content-type": "application/json" }, body: "{}" });
   if (!result.ok) throw new Error("Google Play acknowledgement failed");
 }
+
+/** Query Google directly for a non-consumable purchase; never trust a client-supplied state. */
+export async function getPlayLifetimePurchase(credentials, purchaseToken, fetchFn = fetch) {
+  if (typeof purchaseToken !== "string" || !purchaseToken || purchaseToken.length > 4096) throw new Error("Invalid purchase token");
+  const token = await accessToken(credentials, fetchFn);
+  const url = "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/" + PACKAGE + "/purchases/productsv2/tokens/" + encodeURIComponent(purchaseToken);
+  const result = await fetchFn(url, { headers: { authorization: "Bearer " + token } });
+  if (result.status === 400 || result.status === 404 || result.status === 410) {
+    const error = new Error("Invalid or expired Google Play purchase");
+    error.name = "InvalidPlayPurchase";
+    throw error;
+  }
+  if (!result.ok) throw new Error("Google Play one-time purchase verification failed " + result.status);
+  return await result.json();
+}

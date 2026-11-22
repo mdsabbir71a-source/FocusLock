@@ -46,7 +46,7 @@ jobs:
           retention-days: 90
 
   production:
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.production_release)
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.production_release) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feature/lifetime-verification' && github.event.pull_request.base.ref == 'fix/clear-trial-copy')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

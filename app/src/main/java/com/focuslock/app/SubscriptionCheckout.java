@@ -40,14 +40,15 @@ final class SubscriptionCheckout {
                         return;
                     }
                     for (Purchase purchase : purchases) {
-                        if (!purchase.getProducts().contains("focuslock_premium")) continue;
+                        boolean lifetime = purchase.getProducts().contains("focuslock_lifetime");
+                        if (!lifetime && !purchase.getProducts().contains("focuslock_premium")) continue;
                         if (purchase.getPurchaseState() == Purchase.PurchaseState.PENDING) {
                             message(activity, "Your payment is pending. Premium will be available once verified.");
                             holder[0].endConnection();
                             continue;
                         }
                         if (purchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) continue;
-                        PlayPurchaseVerifier.verify(activity, purchase.getPurchaseToken(), (verified, expires, error) -> {
+                        PlayPurchaseVerifier.verify(activity, purchase.getPurchaseToken(), lifetime ? "lifetime" : "subscription", (verified, expires, error) -> {
                             if (!verified) { holder[0].endConnection(); message(activity, error == null ? "Could not verify your subscription." : error); return; }
                             if (purchase.isAcknowledged()) { PremiumEntitlementStore.recordVerified(activity, expires); holder[0].endConnection(); return; }
                             AcknowledgePurchaseParams params = AcknowledgePurchaseParams.newBuilder()
@@ -72,12 +73,22 @@ final class SubscriptionCheckout {
             @Override public void onBillingSetupFinished(BillingResult setup) {
                 if (setup.getResponseCode() != BillingClient.BillingResponseCode.OK) { client.endConnection(); message(activity, "Google Play is unavailable. Please try again."); return; }
                 QueryProductDetailsParams.Product product = QueryProductDetailsParams.Product.newBuilder()
-                        .setProductId("focuslock_premium").setProductType(BillingClient.ProductType.SUBS).build();
+                        .setProductId("lifetime".equals(planId) ? "focuslock_lifetime" : "focuslock_premium")
+                        .setProductType("lifetime".equals(planId) ? BillingClient.ProductType.INAPP : BillingClient.ProductType.SUBS).build();
                 QueryProductDetailsParams query = QueryProductDetailsParams.newBuilder()
                         .setProductList(Collections.singletonList(product)).build();
                 client.queryProductDetailsAsync(query, (result, response) -> {
                     if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) { client.endConnection(); message(activity, "Could not load subscription plans. Please try again."); return; }
                     for (ProductDetails details : response.getProductDetailsList()) {
+                        if ("lifetime".equals(planId)) {
+                            ProductDetails.OneTimePurchaseOfferDetails oneTime = details.getOneTimePurchaseOfferDetails();
+                            if (oneTime == null) continue;
+                            BillingFlowParams.ProductDetailsParams item = BillingFlowParams.ProductDetailsParams.newBuilder()
+                                    .setProductDetails(details).setOfferToken(oneTime.getOfferToken()).build();
+                            BillingFlowParams flow = BillingFlowParams.newBuilder().setProductDetailsParamsList(Collections.singletonList(item)).build();
+                            activity.runOnUiThread(() -> client.launchBillingFlow(activity, flow));
+                            return;
+                        }
                         if (details.getSubscriptionOfferDetails() == null) continue;
                         ProductDetails.SubscriptionOfferDetails chosen = null;
                         int bestScore = 0;

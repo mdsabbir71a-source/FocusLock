@@ -46,15 +46,15 @@ final class SubscriptionRefresh {
                         }
                     }
                     // A successful Play query without an active purchase revokes cached access.
-                    if (candidate == null) { PremiumEntitlementStore.clear(app); done(); return; }
+                    if (candidate == null) { refreshLifetime(); return; }
                     Purchase current = candidate;
                     PlayPurchaseVerifier.verify(app, current.getPurchaseToken(), (verified, expiry, error) -> {
                         if (!verified) {
                             // A definite negative result revokes access; a network
                             // failure preserves the limited offline grace period.
-                            if ("No active subscription was verified.".equals(error))
-                                PremiumEntitlementStore.clear(app);
-                            done();
+                            if ("No active subscription was verified.".equals(error)) {
+                                refreshLifetime();
+                            } else done();
                             return;
                         }
                         if (current.isAcknowledged()) { PremiumEntitlementStore.recordVerified(app, expiry); done(); return; }
@@ -67,6 +67,27 @@ final class SubscriptionRefresh {
                             done();
                         });
                     });
+                });
+            }
+            private void refreshLifetime() {
+                QueryPurchasesParams params = QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build();
+                client.queryPurchasesAsync(params, (result, purchases) -> {
+                    if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) { done(); return; }
+                    for (Purchase purchase : purchases) {
+                        if (!purchase.getProducts().contains("focuslock_lifetime") || purchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) continue;
+                        PlayPurchaseVerifier.verify(app, purchase.getPurchaseToken(), "lifetime", (verified, expiry, error) -> {
+                            if (!verified) { if ("No active subscription was verified.".equals(error)) PremiumEntitlementStore.clear(app); done(); return; }
+                            if (purchase.isAcknowledged()) { PremiumEntitlementStore.recordVerified(app, expiry); done(); return; }
+                            AcknowledgePurchaseParams ack = AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.getPurchaseToken()).build();
+                            client.acknowledgePurchase(ack, response -> {
+                                if (response.getResponseCode() == BillingClient.BillingResponseCode.OK) PremiumEntitlementStore.recordVerified(app, expiry);
+                                done();
+                            });
+                        });
+                        return;
+                    }
+                    PremiumEntitlementStore.clear(app);
+                    done();
                 });
             }
             @Override public void onBillingServiceDisconnected() { done(); }

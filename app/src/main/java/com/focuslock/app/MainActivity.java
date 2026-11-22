@@ -1680,8 +1680,8 @@ public class MainActivity extends Activity {
                 if ("focuslock://close".equals(url)) closePaywall.run();
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
                 else if ("focuslock://paywall/restore".equals(url)) { FocusAnalytics.log(MainActivity.this, "paywall_restore_selected"); SubscriptionRestore.start(MainActivity.this); }
-                else if ("focuslock://paywall/buy-yearly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "yearly");
-                else if ("focuslock://paywall/buy-monthly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "monthly");
+                else if ("focuslock://paywall/buy-yearly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "lifetime");
+                else if ("focuslock://paywall/buy-monthly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "monthly-5");
                 else recordPaywallAction(url);
                 return true;
             }
@@ -1690,8 +1690,8 @@ public class MainActivity extends Activity {
                 if ("focuslock://close".equals(url)) closePaywall.run();
                 else if ("focuslock://terms".equals(url)) openWebsitePath("/terms");
                 else if ("focuslock://paywall/restore".equals(url)) { FocusAnalytics.log(MainActivity.this, "paywall_restore_selected"); SubscriptionRestore.start(MainActivity.this); }
-                else if ("focuslock://paywall/buy-yearly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "yearly");
-                else if ("focuslock://paywall/buy-monthly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "monthly");
+                else if ("focuslock://paywall/buy-yearly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "lifetime");
+                else if ("focuslock://paywall/buy-monthly".equals(url)) SubscriptionCheckout.start(MainActivity.this, "monthly-5");
                 else recordPaywallAction(url);
                 return true;
             }

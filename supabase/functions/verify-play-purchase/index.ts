@@ -1,6 +1,8 @@
 // Purchase-token verification endpoint. The unguessable Play purchase token is
 // validated directly with Google; no premium access is granted by this service
 // unless Google reports a matching, unexpired subscription.
+import { getPlayLifetimePurchase } from "../_shared/google-play-api.mjs";
+import { evaluateLifetimePurchase } from "../_shared/play-lifetime-evaluator.mjs";
 import { verifyPlaySubscription } from "../_shared/verify-play-subscription.mjs";
 import { readLimitedBody } from "../_shared/read-limited-body.mjs";
 const headers = { "Content-Type": "application/json", "Cache-Control": "no-store" };
@@ -35,6 +37,8 @@ Deno.serve(async (req: Request) => {
     return json(400, { error: "Invalid request" });
   }
   const token = (body as Record<string, unknown>)?.purchaseToken;
+  const productType = (body as Record<string, unknown>)?.productType ?? "subscription";
+  if (productType !== "subscription" && productType !== "lifetime") return json(400, { error: "Invalid request" });
   if (typeof token !== "string" || token.length < 20 || token.length > 4096)
     return json(400, { error: "Invalid request" });
   // Enforce a shared per-session limit across all function instances.
@@ -62,7 +66,9 @@ Deno.serve(async (req: Request) => {
       console.error("play-verification-failure service-account-mismatch");
       return json(503, { error: "Verification unavailable" });
     }
-    const result = await verifyPlaySubscription(credentials, token);
+    const result = productType === "lifetime"
+      ? { entitled: evaluateLifetimePurchase(await getPlayLifetimePurchase(credentials, token)), expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }
+      : await verifyPlaySubscription(credentials, token);
     return json(200, result);
   } catch (error) {
     if (error instanceof Error && error.name === "InvalidPlayPurchase") return json(200, { entitled: false, expiresAt: null });
