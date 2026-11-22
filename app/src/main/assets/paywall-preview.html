@@ -55,7 +55,7 @@
 <div class="item"><span class="check">✓</span>Detailed screen-time insights</div><div class="item"><span class="check">✓</span>Track your progress</div>
 <div class="item"><span class="check">✓</span>All calming designs &amp; reminders</div><div class="item"><span class="check">✓</span>Longer lock durations</div>
 </div></section>
-<section class="plans" aria-label="Choose a plan"><button class="plan" id="year" aria-pressed="true" onclick="selectPlan(true)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Lifetime <span class="savings-badge">BEST VALUE</span></span><span class="plan-detail">$39 · One-time payment</span></span></button><button class="plan" id="week" aria-pressed="false" onclick="selectPlan(false)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Monthly</span><span class="plan-detail">$5 / month · Billed monthly</span></span></button></section>
+<section class="plans" aria-label="Choose a plan"><button class="plan" id="year" aria-pressed="true" onclick="selectPlan(true)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Lifetime <span class="savings-badge">BEST VALUE</span></span><span class="plan-detail">$39 · One-time payment</span></span></button><button class="plan" id="week" aria-pressed="false" onclick="selectPlan(false)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Monthly</span><span class="plan-detail">3-day free trial, then $5 / month</span></span></button></section>
 <div class="spacer"></div>
 <footer class="footer"><button class="action" id="action" onclick="previewAction()">Get lifetime access</button>
 <button class="restore" type="button" onclick="showRestorePreview()">Restore purchase</button><p class="notice" id="restore-status" role="status" aria-live="polite" hidden></p>
@@ -64,7 +64,7 @@
 <script>
 function updatePlayPrices(){ }
 function startPlayPriceTimeout(){ }
-function selectPlan(lifetime){window.selectedLifetime=lifetime;document.getElementById('year').setAttribute('aria-pressed',String(lifetime));document.getElementById('week').setAttribute('aria-pressed',String(!lifetime));document.getElementById('action').textContent=lifetime?'Get lifetime access':'Continue with monthly';}
+function selectPlan(lifetime){window.selectedLifetime=lifetime;document.getElementById('year').setAttribute('aria-pressed',String(lifetime));document.getElementById('week').setAttribute('aria-pressed',String(!lifetime));document.getElementById('action').textContent=lifetime?'Get lifetime access':'Start 3-day free trial';}
 function previewAction(){var n=document.getElementById('restore-status');n.hidden=false;n.textContent='Preview only. Purchases are not enabled in this test.';}
 function showRestorePreview(){var n=document.getElementById('restore-status');n.hidden=false;n.textContent='Preview only. Purchases are not enabled in this test.';}
 </script>
