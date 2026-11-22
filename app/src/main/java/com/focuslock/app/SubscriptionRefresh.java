@@ -52,9 +52,9 @@ final class SubscriptionRefresh {
                         if (!verified) {
                             // A definite negative result revokes access; a network
                             // failure preserves the limited offline grace period.
-                            if ("No active subscription was verified.".equals(error))
-                                PremiumEntitlementStore.clear(app);
-                            done();
+                            if ("No active subscription was verified.".equals(error)) {
+                                refreshLifetime();
+                            } else done();
                             return;
                         }
                         if (current.isAcknowledged()) { PremiumEntitlementStore.recordVerified(app, expiry); done(); return; }
