@@ -43,7 +43,7 @@ final class SubscriptionRestore {
                     if (foundPurchase != null) {
                         Purchase purchase = foundPurchase;
                         PlayPurchaseVerifier.verify(activity, purchase.getPurchaseToken(), (verified, expires, error) -> {
-                            if (!verified) { finish(error == null ? "Could not verify your subscription." : error); return; }
+                            if (!verified) { if ("No active subscription was verified.".equals(error)) restoreLifetime(); else finish(error == null ? "Could not verify your subscription." : error); return; }
                             if (purchase.isAcknowledged()) { PremiumEntitlementStore.recordVerified(activity, expires); finish(null); return; }
                             AcknowledgePurchaseParams acknowledgement = AcknowledgePurchaseParams.newBuilder()
                                     .setPurchaseToken(purchase.getPurchaseToken()).build();
