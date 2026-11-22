@@ -60,7 +60,30 @@ final class SubscriptionRestore {
                         });
                     }
                     else if (pending) finish("Your subscription purchase is still pending. Please try again after payment is complete.");
-                    else finish("No active FocusLock subscription was found on this Google Play account.");
+                    else restoreLifetime();
+                });
+            }
+            private void restoreLifetime() {
+                QueryPurchasesParams params = QueryPurchasesParams.newBuilder()
+                        .setProductType(BillingClient.ProductType.INAPP).build();
+                client.queryPurchasesAsync(params, (result, purchases) -> {
+                    if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) { finish("Google Play could not check purchases. Please try again."); return; }
+                    for (Purchase purchase : purchases) {
+                        if (!purchase.getProducts().contains("focuslock_lifetime")) continue;
+                        if (purchase.getPurchaseState() == Purchase.PurchaseState.PENDING) { finish("Your purchase is pending. Please try again after payment completes."); return; }
+                        if (purchase.getPurchaseState() != Purchase.PurchaseState.PURCHASED) continue;
+                        PlayPurchaseVerifier.verify(activity, purchase.getPurchaseToken(), "lifetime", (verified, expires, error) -> {
+                            if (!verified) { finish(error == null ? "Could not verify your purchase." : error); return; }
+                            if (purchase.isAcknowledged()) { PremiumEntitlementStore.recordVerified(activity, expires); finish(null); return; }
+                            AcknowledgePurchaseParams ack = AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.getPurchaseToken()).build();
+                            client.acknowledgePurchase(ack, response -> {
+                                if (response.getResponseCode() == BillingClient.BillingResponseCode.OK) { PremiumEntitlementStore.recordVerified(activity, expires); finish(null); }
+                                else finish("Could not confirm your purchase. Please try again.");
+                            });
+                        });
+                        return;
+                    }
+                    finish("No active FocusLock purchase was found on this Google Play account.");
                 });
             }
             @Override public void onBillingServiceDisconnected() {
