@@ -19,6 +19,10 @@ final class PlayPurchaseVerifier {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
     static void verify(Context context, String purchaseToken, Callback callback) {
+        verify(context, purchaseToken, "subscription", callback);
+    }
+
+    static void verify(Context context, String purchaseToken, String productType, Callback callback) {
         if (purchaseToken == null || purchaseToken.isEmpty()) {
             MAIN.post(() -> callback.onResult(false, 0, "Purchase token missing."));
             return;
@@ -41,7 +45,7 @@ final class PlayPurchaseVerifier {
                 connection.setRequestProperty("Content-Type", "application/json");
                 connection.setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY);
                 connection.setRequestProperty("Authorization", "Bearer " + accessToken);
-                byte[] body = new JSONObject().put("purchaseToken", purchaseToken).toString().getBytes(StandardCharsets.UTF_8);
+                byte[] body = new JSONObject().put("purchaseToken", purchaseToken).put("productType", productType).toString().getBytes(StandardCharsets.UTF_8);
                 try (OutputStream output = connection.getOutputStream()) { output.write(body); }
                 if (connection.getResponseCode() != 200) throw new IllegalStateException();
                 byte[] response;
