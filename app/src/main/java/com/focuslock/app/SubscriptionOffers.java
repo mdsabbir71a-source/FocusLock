@@ -9,20 +9,20 @@ final class SubscriptionOffers {
     static int score(String wantedPlan, ProductDetails.SubscriptionOfferDetails offer) {
         if (!wantedPlan.equals(offer.getBasePlanId())) return 0;
         if ("monthly-5".equals(wantedPlan) && offer.getPricingPhases().getPricingPhaseList().size() == 2) {
-            boolean freeWeek = false;
-            boolean recurringYear = false;
+            boolean freeTrial = false;
+            boolean recurringMonth = false;
             for (ProductDetails.PricingPhase phase : offer.getPricingPhases().getPricingPhaseList()) {
                 if (phase.getPriceAmountMicros() == 0 && phase.getBillingCycleCount() == 1 &&
                         "P3D".equals(phase.getBillingPeriod())) {
-                    freeWeek = true;
+                    freeTrial = true;
                 }
                 if (phase.getPriceAmountMicros() > 0 &&
                         phase.getRecurrenceMode() == ProductDetails.RecurrenceMode.INFINITE_RECURRING &&
                         "P1M".equals(phase.getBillingPeriod())) {
-                    recurringYear = true;
+                    recurringMonth = true;
                 }
             }
-            if (freeWeek && recurringYear) return 2;
+            if (freeTrial && recurringMonth) return 2;
         }
         return offer.getOfferId() == null ? 1 : 0;
     }
