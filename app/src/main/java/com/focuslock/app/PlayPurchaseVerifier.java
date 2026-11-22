@@ -36,7 +36,7 @@ final class PlayPurchaseVerifier {
                 // Checkout remains disabled until no-login sessions, abuse protection,
                 // ownership checks and a real Play purchase have been tested.
                 String accessToken = SupabaseApi.verificationAccessToken(context);
-                URL url = new URL(BuildConfig.SUPABASE_URL + "/functions/v1/verify-play-purchase");
+                URL url = new URL(BuildConfig.SUPABASE_URL + "/functions/v1/verify-play-purchase-v2");
                 connection = (HttpURLConnection) url.openConnection();
                 connection.setConnectTimeout(12000);
                 connection.setReadTimeout(12000);
