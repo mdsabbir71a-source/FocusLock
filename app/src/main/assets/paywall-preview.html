@@ -55,18 +55,20 @@
 <div class="item"><span class="check">✓</span>Detailed screen-time insights</div><div class="item"><span class="check">✓</span>Track your progress</div>
 <div class="item"><span class="check">✓</span>All calming designs &amp; reminders</div><div class="item"><span class="check">✓</span>Longer lock durations</div>
 </div></section>
-<section class="plans" aria-label="Choose a plan"><button class="plan" id="year" aria-pressed="true" onclick="selectPlan(true)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Lifetime <span class="savings-badge">BEST VALUE</span></span><span class="plan-detail">$39 · One-time payment</span></span></button><button class="plan" id="week" aria-pressed="false" onclick="selectPlan(false)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Monthly</span><span class="plan-detail">3-day free trial, then $5 / month</span></span></button></section>
+<section class="plans" aria-label="Choose a plan"><button class="plan" id="year" aria-pressed="true" onclick="selectPlan(true)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Lifetime <span class="savings-badge">BEST VALUE</span></span><span class="plan-detail">Loading price…</span></span></button><button class="plan" id="week" aria-pressed="false" onclick="selectPlan(false)"><span class="radio"></span><span class="plan-copy"><span class="plan-name">Monthly</span><span class="plan-detail">Loading price…</span></span></button></section>
 <div class="spacer"></div>
-<footer class="footer"><button class="action" id="action" onclick="previewAction()">Get lifetime access</button>
+<footer class="footer"><button class="action" id="action" onclick="previewAction()" disabled>Get lifetime access</button>
 <button class="restore" type="button" onclick="showRestorePreview()">Restore purchase</button><p class="notice" id="restore-status" role="status" aria-live="polite" hidden></p>
 <p class="terms">Monthly plan renews automatically. Cancel anytime. <a href="focuslock://terms">Terms &amp; conditions</a></p></footer>
 </main>
 <script>
-function updatePlayPrices(){ }
-function startPlayPriceTimeout(){ }
-function selectPlan(lifetime){window.selectedLifetime=lifetime;document.getElementById('year').setAttribute('aria-pressed',String(lifetime));document.getElementById('week').setAttribute('aria-pressed',String(!lifetime));document.getElementById('action').textContent=lifetime?'Get lifetime access':'Start 3-day free trial';}
-function previewAction(){var n=document.getElementById('restore-status');n.hidden=false;n.textContent='Preview only. Purchases are not enabled in this test.';}
-function showRestorePreview(){var n=document.getElementById('restore-status');n.hidden=false;n.textContent='Preview only. Purchases are not enabled in this test.';}
+window.selectedLifetime=true; window.prices={lifetime:"",monthly:"",trial:false};
+function render(){var p=window.prices;document.querySelector('#year .plan-detail').textContent=p.lifetime ? p.lifetime+' · One-time payment' : 'Unavailable';document.querySelector('#week .plan-detail').textContent=p.monthly ? (p.trial?'3-day free trial, then ':'')+p.monthly+' / month' : 'Unavailable';var action=document.getElementById('action');action.disabled=!(window.selectedLifetime?p.lifetime:p.monthly);action.textContent=window.selectedLifetime?'Get lifetime access':(p.trial?'Start 3-day free trial':'Continue with monthly');}
+function updatePlayPrices(lifetime,monthly,status,trial){window.playPricesResolved=true;window.prices={lifetime:lifetime||'',monthly:monthly||'',trial:!!trial};var n=document.getElementById('restore-status');n.hidden=!status;n.textContent=status;render();}
+function selectPlan(lifetime){window.selectedLifetime=lifetime;document.getElementById('year').setAttribute('aria-pressed',String(lifetime));document.getElementById('week').setAttribute('aria-pressed',String(!lifetime));render();}
+function previewAction(){if(document.getElementById('action').disabled)return;location.href=window.selectedLifetime?'focuslock://paywall/buy-yearly':'focuslock://paywall/buy-monthly';}
+function showRestorePreview(){location.href='focuslock://paywall/restore';}
+function startPlayPriceTimeout(){setTimeout(function(){if(!window.playPricesResolved)updatePlayPrices('','','Could not load prices. Please try again.',false);},15000);}
 </script>
 </body>
 </html>
